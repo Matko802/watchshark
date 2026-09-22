@@ -78,6 +78,13 @@
 }
 md-icon.filled { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
 * { box-sizing: border-box; }
+html { scrollbar-gutter: stable; }
+* { scrollbar-width: thin; scrollbar-color: #3d3d3d transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2e2e2e; border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: #4d4d4d; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-corner { background: transparent; }
 body {
   margin: 0;
   background: var(--md-sys-color-surface);
