@@ -6,6 +6,13 @@ const appUrl = 'https://watchshark.duckdns.org';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    systemNavigationBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,
+    systemNavigationBarIconBrightness: Brightness.light,
+  ));
   runApp(const WatchSharkApp());
 }
 
@@ -72,6 +79,24 @@ class _WebShellState extends State<WebShell> {
     await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   }
 
+  Future<void> _insetSite() async {
+    final c = _ctrl;
+    if (c == null || !mounted) return;
+    final pad = MediaQuery.of(context).padding;
+    final top = pad.top.round();
+    final bottom = pad.bottom.round();
+    await c.evaluateJavascript(source:
+        "(function(){var st=document.getElementById('ws-insets');"
+        "if(!st){st=document.createElement('style');st.id='ws-insets';document.head.appendChild(st);}"
+        "st.textContent='*{ -webkit-tap-highlight-color:transparent !important;}"
+        ".topbar{padding-top:${top}px!important;}"
+        "#bottomnav{padding-bottom:${bottom}px!important;}"
+        "#ytmbar{padding-bottom:calc(10px + ${bottom}px)!important;}"
+        ".reel{height:calc(100dvh - 84px)!important;}"
+        ".reel-meta{padding-bottom:calc(30px + ${bottom}px)!important;}"
+        "#rseek{bottom:${bottom}px!important;}';})();");
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -84,11 +109,8 @@ class _WebShellState extends State<WebShell> {
       },
       child: Scaffold(
         backgroundColor: Colors.black,
-        body: SafeArea(
-          top: !_fullscreen,
-          bottom: !_fullscreen,
-          child: Stack(
-            children: [
+        body: Stack(
+          children: [
               InAppWebView(
                 initialUrlRequest:
                     URLRequest(url: WebUri(appUrl)),
@@ -109,7 +131,10 @@ class _WebShellState extends State<WebShell> {
                   _loading = true;
                   _error = false;
                 }),
-                onLoadStop: (_, __) => setState(() => _loading = false),
+                onLoadStop: (_, __) {
+                  setState(() => _loading = false);
+                  _insetSite();
+                },
                 onProgressChanged: (_, p) =>
                     setState(() => _progress = p / 100),
                 onReceivedError: (c, req, err) {
@@ -162,7 +187,6 @@ class _WebShellState extends State<WebShell> {
                   ),
                 ),
             ],
-          ),
         ),
       ),
     );
