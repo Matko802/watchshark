@@ -1,7 +1,0 @@
-syntax = "proto2";
-
-package video_streaming;
-
-message RequestIdentifier {
-  optional string token = 1;
-}
