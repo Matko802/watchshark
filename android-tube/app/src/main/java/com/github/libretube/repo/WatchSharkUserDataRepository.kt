@@ -1,6 +1,6 @@
 package com.github.libretube.repo
 
-import com.github.libretube.api.WatchSharkBackend
+import com.github.libretube.api.WatchSharkApi
 import com.github.libretube.api.obj.Playlist
 import com.github.libretube.api.obj.Playlists
 import com.github.libretube.api.obj.StreamItem
@@ -21,7 +21,7 @@ class WatchSharkUserDataRepository(
 ) : UserDataRepository by local {
 
     override suspend fun login(username: String, password: String): String {
-        val (id, name) = WatchSharkBackend.login(username, password)
+        val (id, name) = WatchSharkApi.login(username, password)
         local.login(name, username)
         return "ws:$id"
     }
@@ -30,18 +30,17 @@ class WatchSharkUserDataRepository(
         throw Exception("Register on the WatchShark website, then log in here")
     }
 
-    override suspend fun logout() {
+    suspend fun logout() {
         try {
-            WatchSharkBackend.logout()
+            WatchSharkApi.logout()
         } catch (_: Exception) {
         }
-        local.logout()
     }
 
     override suspend fun subscribe(channelId: String, name: String, uploaderAvatar: String?, verified: Boolean) {
         local.subscribe(channelId, name, uploaderAvatar, verified)
         try {
-            WatchSharkBackend.followByName(channelId.removePrefix("@"), true)
+            WatchSharkApi.followByName(channelId.removePrefix("@"), true)
         } catch (_: Exception) {
         }
     }
@@ -49,7 +48,7 @@ class WatchSharkUserDataRepository(
     override suspend fun unsubscribe(channelId: String) {
         local.unsubscribe(channelId)
         try {
-            WatchSharkBackend.followByName(channelId.removePrefix("@"), false)
+            WatchSharkApi.followByName(channelId.removePrefix("@"), false)
         } catch (_: Exception) {
         }
     }

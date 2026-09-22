@@ -16,6 +16,7 @@ class LibreTubeApp : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        com.github.libretube.api.WatchSharkApi.init(this)
 
         /**
          * Initialize the needed notification channels for DownloadService and BackgroundMode
