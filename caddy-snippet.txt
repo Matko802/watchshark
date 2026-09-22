@@ -1,0 +1,7 @@
+watchshark.duckdns.org {
+	reverse_proxy watchshark:3000
+	request_body {
+		max_size 4200M
+	}
+	encode gzip
+}

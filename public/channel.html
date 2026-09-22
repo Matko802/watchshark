@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Channel — WatchShark</title>
+<link rel="icon" type="image/png" href="/favicon.png?v=1">
+<link rel="stylesheet" href="/styles.css?v=30">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Material+Symbols+Outlined&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<script type="importmap">{ "imports": { "@material/web/": "https://esm.run/@material/web/" } }</script>
+<script type="module">import '@material/web/all.js';</script>
+<meta property="og:site_name" content="WatchShark">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+<body data-pjax="1">
+<header class="topbar">
+  <a class="brand" href="/"><img src="/watchshark.webp?v=2" alt="WatchShark logo"><span>WatchShark</span></a>
+  <span class="spacer"></span>
+  <md-text-button href="/wheels"><md-icon slot="icon">movie</md-icon>Wheels</md-text-button>
+  <md-text-button href="/music"><md-icon slot="icon">music_note</md-icon>Music</md-text-button>
+  <span id="bellSlot" data-auth="in" style="display:none"></span>
+  <md-text-button data-admin href="/admin" style="display:none">Admin</md-text-button>
+  <md-icon-button data-auth="in" href="/settings" aria-label="Settings" style="display:none"><md-icon>settings</md-icon></md-icon-button>
+  <md-filled-tonal-button data-auth="in" href="/upload" style="display:none">Create<md-icon slot="icon">add</md-icon></md-filled-tonal-button>
+  <span id="whoami"></span>
+  <md-filled-button data-auth="out" onclick="openAuth('login')" style="display:none">Sign in</md-filled-button>
+</header>
+<main>
+  <div id="gate"><md-linear-progress indeterminate></md-linear-progress></div>
+  <div id="body" style="display:none">
+    <div class="row">
+      <span id="cpic"></span>
+      <div>
+        <h2 id="cname" style="margin:0"></h2>
+        <p class="muted" id="csub" style="margin:4px 0"></p>
+        <p class="muted" id="cmore" style="display:none;margin:4px 0"></p>
+        <md-text-button id="cmoreBtn" onclick="toggleMore()">...more</md-text-button>
+      </div>
+      <span class="spacer"></span>
+      <md-filled-tonal-button id="cfollow" onclick="toggleChanFollow()" style="display:none"></md-filled-tonal-button>
+    </div>
+    <md-tabs id="chanTabs" aria-label="Channel sections">
+      <md-primary-tab id="tabVideos"><md-icon slot="icon">play_circle</md-icon>Videos</md-primary-tab>
+      <md-primary-tab id="tabWheels"><md-icon slot="icon">movie</md-icon>Wheels</md-primary-tab>
+      <md-primary-tab id="tabMusic"><md-icon slot="icon">music_note</md-icon>Music</md-primary-tab>
+    </md-tabs>
+    <div id="grid" class="grid"></div>
+  </div>
+</main>
+<md-dialog id="authDialog">
+  <div slot="headline">Welcome to WatchShark</div>
+  <div slot="content">
+    <form id="loginPane" method="post" action="/api/auth/login" onsubmit="return submitLogin(event)">
+      <div class="nfield">
+        <label for="login-id">Email</label>
+        <input placeholder=" " id="login-id" name="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+      </div>
+      <div class="nfield">
+        <label for="login-pw">Password</label>
+        <input placeholder=" " id="login-pw" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <div class="auth-row"><md-text-button onclick="location.href='/forgot'">Forgot password?</md-text-button></div>
+      <button type="submit" tabindex="-1" aria-hidden="true" style="position:fixed;top:0;left:0;width:8px;height:8px;opacity:.01;pointer-events:none;border:0;padding:0"></button>
+    </form>
+    <form id="signupPane" method="post" action="/api/auth/signup" onsubmit="return submitSignup(event)" style="display:none">
+      <div class="nfield">
+        <label for="su-name">Handle (a-z, 0-9, _)</label>
+        <input placeholder=" " id="su-name" name="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" minlength="3" maxlength="30" required>
+      </div>
+      <div class="nfield">
+        <label for="su-email">Email</label>
+        <input placeholder=" " id="su-email" name="email" type="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+      </div>
+      <div class="nfield">
+        <label for="su-pw">Password (6+ chars)</label>
+        <input placeholder=" " id="su-pw" name="password" type="password" autocomplete="new-password" minlength="6" required>
+      </div>
+      <button type="submit" tabindex="-1" aria-hidden="true" style="position:fixed;top:0;left:0;width:8px;height:8px;opacity:.01;pointer-events:none;border:0;padding:0"></button>
+    </form>
+    <p id="auth-err" style="color:var(--md-sys-color-error)"></p>
+  </div>
+  <div slot="actions">
+    <md-text-button id="auth-switch" onclick="toggleAuth()">Create account</md-text-button>
+    <md-filled-button id="auth-go" onclick="authGo()">Log in</md-filled-button>
+    <md-text-button onclick="closeAuth()">Close</md-text-button>
+  </div>
+</md-dialog>
+<script src="/app.js?v=13"></script>
+<script>
+window.__boot = function() {
+let CHAN = null;
+let CHANVIDS = [];
+let chanTab = 'video';
+function chanCard(v) {
+  const media = v.thumbnail
+    ? `<img class="media" src="${v.thumbnail}" loading="lazy" alt="">`
+    : `<video class="media" src="${v.src}#t=0.5" preload="metadata" muted></video>`;
+  const a = document.createElement('a');
+  a.className = 'cardlink'; a.href = '/watch?id=' + v.id;
+  a.innerHTML = `<article class="m3card">${media}<div class="meta"><div class="metatext"><h3>${esc(v.title)}</h3>`
+    + `<small>${fmtNum(v.views)} views • <span title="${esc(fmtDate(v.created_at))}">${fmtAge(v.created_at)}</span></small></div></div></article>`;
+  return a;
+}
+function wheelCard(v) {
+  const media = v.thumbnail
+    ? `<img class="wmedia" src="${v.thumbnail}" loading="lazy" alt="">`
+    : `<video class="wmedia" src="${v.src}#t=0.5" preload="metadata" muted></video>`;
+  const a = document.createElement('a');
+  a.className = 'cardlink'; a.href = '/watch?id=' + v.id;
+  a.innerHTML = `<article class="m3card wcard">${media}<div class="wmeta"><h3>${esc(v.title)}</h3>`
+    + `<small>${fmtNum(v.views)} views</small></div></article>`;
+  return a;
+}
+function musicCard(v) {
+  const art = v.thumbnail
+    ? `<img class="media" src="${v.thumbnail}" loading="lazy" alt="">`
+    : `<span class="media mnoart"><md-icon>music_note</md-icon></span>`;
+  const a = document.createElement('a');
+  a.className = 'cardlink'; a.href = '/music';
+  a.innerHTML = `<article class="m3card">${art}<div class="meta"><div class="metatext"><h3>${esc(v.title)}</h3>`
+    + `<small>${fmtNum(v.views)} views</small></div></div></article>`;
+  return a;
+}
+function chanKind(v) {
+  return v.kind || 'video';
+}
+function renderChanGrid() {
+  const g = document.getElementById('grid');
+  g.innerHTML = '';
+  g.className = chanTab === 'wheel' ? 'grid wgrid' : 'grid';
+  const list = CHANVIDS.filter((v) => chanKind(v) === chanTab);
+  if (!list.length) {
+    g.innerHTML = chanTab === 'wheel' ? '<p class="muted">No wheels yet.</p>' : chanTab === 'music' ? '<p class="muted">No music yet.</p>' : '<p class="muted">No videos yet.</p>';
+    return;
+  }
+  for (const v of list) g.appendChild(chanTab === 'wheel' ? wheelCard(v) : chanTab === 'music' ? musicCard(v) : chanCard(v));
+}
+async function initChannel() {
+  const name = new URLSearchParams(location.search).get('user') || '';
+  await refreshAuth();
+  if (!name) {
+    document.getElementById('gate').innerHTML = '<p class="muted">No channel given.</p>';
+    return;
+  }
+  document.title = '@' + name + ' — WatchShark';
+  const r = await fetch('/api/channel/' + encodeURIComponent(name));
+  if (!r.ok) {
+    document.getElementById('gate').innerHTML = '<p class="muted">Channel not found.</p>';
+    return;
+  }
+  const j = await r.json();
+  CHAN = j.user;
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('body').style.display = '';
+  document.getElementById('cpic').innerHTML = avatarHtml(CHAN.avatar, 'pfp-lg');
+  document.getElementById('cname').textContent = CHAN.username;
+  document.getElementById('csub').textContent = '@' + CHAN.username + ' • ' + fmtNum(CHAN.followers) + ' followers • ' + CHAN.videos + ' videos';
+  document.getElementById('cmore').textContent = fmtFull(CHAN.views) + ' total views • joined ' + CHAN.created_at;
+  renderChanFollow();
+  CHANVIDS = j.videos || [];
+  const counts = CHAN.counts || { video: 1, wheel: 1, music: 1 };
+  document.getElementById('tabWheels').style.display = counts.wheel ? '' : 'none';
+  document.getElementById('tabMusic').style.display = counts.music ? '' : 'none';
+  const tabs = document.querySelectorAll('#chanTabs md-primary-tab');
+  if (!counts.video && counts.wheel && tabs[1]) { chanTab = 'wheel'; tabs[1].click(); }
+  else if (!counts.video && !counts.wheel && counts.music && tabs[2]) { chanTab = 'music'; tabs[2].click(); }
+  else renderChanGrid();
+}
+document.getElementById('chanTabs').addEventListener('change', (e) => {
+  chanTab = ['video', 'wheel', 'music'][e.target.activeTabIndex] || 'video';
+  renderChanGrid();
+});
+async function renderChanFollow() {
+  const b = document.getElementById('cfollow');
+  const u = await me();
+  if (!u || (CHAN && u.id === CHAN.id)) { b.style.display = 'none'; return; }
+  b.style.display = '';
+  b.innerHTML = `<md-icon slot="icon">${CHAN.following ? 'how_to_reg' : 'person_add'}</md-icon>${CHAN.following ? 'Following' : 'Follow'}`;
+}
+async function toggleChanFollow() {
+  const r = await fetch('/api/follow/' + CHAN.id, { method: 'POST', credentials: 'include' });
+  const j = await r.json();
+  if (!r.ok) return;
+  CHAN.following = j.following;
+  CHAN.followers = j.followers;
+  renderChanFollow();
+}
+function toggleMore() {
+  const m = document.getElementById('cmore');
+  const open = m.style.display === 'none';
+  m.style.display = open ? '' : 'none';
+  document.getElementById('cmoreBtn').textContent = open ? 'Show less' : '...more';
+}
+initChannel();
+Object.assign(window, { toggleChanFollow, toggleMore });
+};
+window.__boot();
+</script>
+</body>
+</html>

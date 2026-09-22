@@ -1,0 +1,11 @@
+<resources>
+    <style name="Theme.WatchShark" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:statusBarColor">@android:color/black</item>
+        <item name="android:navigationBarColor">@android:color/black</item>
+    </style>
+
+    <style name="Theme.WatchShark.Splash" parent="Theme.WatchShark">
+        <item name="android:windowBackground">@drawable/splash</item>
+    </style>
+</resources>

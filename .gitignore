@@ -1,0 +1,15 @@
+data/
+backups/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.apk
+*.aab
+local.properties
+.gradle/
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+.DS_Store

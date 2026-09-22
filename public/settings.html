@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Settings — WatchShark</title>
+<link rel="icon" type="image/png" href="/favicon.png?v=1">
+<link rel="stylesheet" href="/styles.css?v=30">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Material+Symbols+Outlined&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<script type="importmap">{ "imports": { "@material/web/": "https://esm.run/@material/web/" } }</script>
+<script type="module">import '@material/web/all.js';</script>
+<meta property="og:site_name" content="WatchShark">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:title" content="WatchShark">
+<meta property="og:description" content="WatchShark — watch and share videos, wheels and music.">
+<meta property="og:image" content="https://watchshark.duckdns.org/watchshark.webp">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/"><img src="/watchshark.webp?v=2" alt="WatchShark logo"><span>WatchShark</span></a>
+  <span class="spacer"></span>
+  <span id="bellSlot" data-auth="in" style="display:none"></span>
+  <md-icon-button data-auth="in" href="/settings" aria-label="Settings" style="display:none"><md-icon>settings</md-icon></md-icon-button>
+  <md-text-button data-admin href="/admin" style="display:none">Admin</md-text-button>
+  <span id="whoami"></span>
+</header>
+<main>
+  <h2 id="sname"></h2>
+  <p class="muted" id="sinfo"></p>
+  <md-tabs id="setTabs" aria-label="Settings sections">
+    <md-primary-tab><md-icon slot="icon">person</md-icon>Account</md-primary-tab>
+    <md-primary-tab><md-icon slot="icon">lock</md-icon>Password</md-primary-tab>
+    <md-primary-tab><md-icon slot="icon">notifications</md-icon>Notifications</md-primary-tab>
+    <md-primary-tab><md-icon slot="icon">play_circle</md-icon>Playback and performance</md-primary-tab>
+  </md-tabs>
+  <div id="paneAccount">
+    <div id="spic"></div>
+    <h3>Profile picture</h3>
+    <p class="muted">Square picture, GIF becomes animated WebM, photos become WebP. Max 10MB.</p>
+    <div class="row">
+      <md-filled-tonal-button onclick="document.getElementById('pfpfile').click()"><md-icon slot="icon">folder_open</md-icon>Choose picture</md-filled-tonal-button>
+      <md-filled-button onclick="uploadPfp()"><md-icon slot="icon">cloud_upload</md-icon>Upload</md-filled-button>
+    </div>
+    <input type="file" id="pfpfile" accept="image/*" hidden>
+    <md-linear-progress id="pfpbar" indeterminate style="display:none"></md-linear-progress>
+    <p id="pfpmsg" class="muted"></p>
+    <h3>Handle</h3>
+    <p class="muted">Letters, numbers and _ only, 3-30 characters.</p>
+    <md-outlined-text-field id="nm-new" label="New handle" class="field"></md-outlined-text-field>
+    <md-filled-button onclick="doRename()"><md-icon slot="icon">edit</md-icon>Save name</md-filled-button>
+    <p id="nm-msg" class="muted"></p>
+    <div data-realadmin style="display:none">
+      <h3>Admin view</h3>
+      <div class="row">
+        <md-switch id="sw-adminview"></md-switch>
+        <span>Show admin controls (turn off to preview as a normal user)</span>
+      </div>
+    </div>
+  </div>
+  <div id="panePassword" style="display:none">
+    <h3>Change password</h3>
+    <form id="pwPane" method="post" action="/api/auth/change" onsubmit="return submitChangePw(event)">
+      <div class="nfield">
+        <label for="cp-cur">Current password</label>
+        <input placeholder=" " id="cp-cur" name="current-password" type="password" autocomplete="current-password" required>
+      </div>
+      <div class="nfield">
+        <label for="cp-new">New password (6+ chars)</label>
+        <input placeholder=" " id="cp-new" name="new-password" type="password" autocomplete="new-password" minlength="6" required>
+      </div>
+    </form>
+    <md-filled-button onclick="doChangePw()"><md-icon slot="icon">lock_reset</md-icon>Save new password</md-filled-button>
+    <p id="cp-msg" class="muted"></p>
+  </div>
+  <div id="paneNotif" style="display:none">
+    <h3>Upload alerts</h3>
+    <div class="row">
+      <md-switch id="sw-notif"></md-switch>
+      <span>Notify me when channels I follow upload</span>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <md-filled-button onclick="saveNotif()"><md-icon slot="icon">save</md-icon>Save</md-filled-button>
+    </div>
+    <p id="nt-msg" class="muted"></p>
+  </div>
+  <div id="panePlay" style="display:none">
+    <h3>Wheels playback</h3>
+    <div class="row">
+      <md-switch id="sw-autoplay"></md-switch>
+      <span>Autoplay next wheel</span>
+    </div>
+    <div class="row">
+      <md-switch id="sw-muted"></md-switch>
+      <span>Start muted</span>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <md-filled-button onclick="savePlayback()"><md-icon slot="icon">save</md-icon>Save</md-filled-button>
+    </div>
+    <p id="pb-msg" class="muted"></p>
+  </div>
+  <div style="margin-top:32px">
+    <h3>Sign out</h3>
+    <md-outlined-button onclick="doLogout()"><md-icon slot="icon">logout</md-icon>Sign out</md-outlined-button>
+  </div>
+</main>
+<script src="/app.js?v=13"></script>
+<script>
+async function initSettings() {
+  const u = await refreshAuth();
+  if (!u) { location.href = '/'; return; }
+  document.getElementById('sname').textContent = '@' + u.username;
+  document.getElementById('sinfo').textContent = 'Member since ' + fmtDate(u.since) + ' (' + fmtAge(u.since) + ')';
+  document.getElementById('spic').innerHTML = avatarHtml(u.avatar, 'pfp-lg');
+  document.getElementById('sw-notif').selected = u.notify_uploads !== false;
+  document.getElementById('sw-autoplay').selected = localStorage.getItem('ws_autoplay') !== '0';
+  document.getElementById('sw-muted').selected = localStorage.getItem('ws_muted') === '1';
+  if (u.admin) {
+    document.querySelector('[data-realadmin]').style.display = '';
+    document.getElementById('sw-adminview').selected = localStorage.getItem('ws_adminview') !== '0';
+    document.getElementById('sw-adminview').addEventListener('change', (e) => {
+      localStorage.setItem('ws_adminview', e.target.selected ? '1' : '0');
+      location.reload();
+    });
+  }
+}
+document.getElementById('setTabs').addEventListener('change', (e) => {
+  const panes = ['paneAccount', 'panePassword', 'paneNotif', 'panePlay'];
+  panes.forEach((id, i) => {
+    document.getElementById(id).style.display = i === e.target.activeTabIndex ? '' : 'none';
+  });
+});
+async function doRename() {
+  const username = document.getElementById('nm-new').value.trim();
+  const msg = document.getElementById('nm-msg');
+  const r = await fetch('/api/auth/username', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    credentials: 'include', body: JSON.stringify({ username }),
+  });
+  const j = await r.json();
+  if (!r.ok) { msg.textContent = j.error; return; }
+  msg.textContent = 'Name saved!';
+  initSettings();
+}
+async function saveNotif() {
+  const on = document.getElementById('sw-notif').selected;
+  const r = await fetch('/api/settings/notifications', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    credentials: 'include', body: JSON.stringify({ uploads: on }),
+  });
+  document.getElementById('nt-msg').textContent = r.ok ? 'Saved!' : 'Failed.';
+}
+function savePlayback() {
+  localStorage.setItem('ws_autoplay', document.getElementById('sw-autoplay').selected ? '1' : '0');
+  localStorage.setItem('ws_muted', document.getElementById('sw-muted').selected ? '1' : '0');
+  document.getElementById('pb-msg').textContent = 'Saved!';
+}
+async function uploadPfp() {
+  const f = document.getElementById('pfpfile').files[0];
+  const msg = document.getElementById('pfpmsg');
+  if (!f) { msg.textContent = 'Choose a picture first.'; return; }
+  document.getElementById('pfpbar').style.display = '';
+  msg.textContent = 'Uploading and converting…';
+  const r = await fetch('/api/pfp', {
+    method: 'POST', credentials: 'include',
+    headers: { 'Content-Type': f.type || 'image/png' }, body: f,
+  });
+  const j = await r.json();
+  document.getElementById('pfpbar').style.display = 'none';
+  if (!r.ok) { msg.textContent = j.error; return; }
+  msg.textContent = 'Saved!';
+  const u = await me();
+  document.getElementById('spic').innerHTML = avatarHtml(u.avatar, 'pfp-lg');
+  refreshAuth();
+}
+initSettings();
+</script>
+</body>
+</html>

@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Music — WatchShark</title>
+<link rel="icon" type="image/png" href="/favicon.png?v=1">
+<link rel="stylesheet" href="/styles.css?v=30">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Material+Symbols+Outlined&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<script type="importmap">{ "imports": { "@material/web/": "https://esm.run/@material/web/" } }</script>
+<script type="module">import '@material/web/all.js';</script>
+<meta property="og:site_name" content="WatchShark">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:title" content="WatchShark">
+<meta property="og:description" content="WatchShark — watch and share videos, wheels and music.">
+<meta property="og:image" content="https://watchshark.duckdns.org/watchshark.webp">
+</head>
+<body data-pjax="1">
+<header class="topbar">
+  <a class="brand" href="/"><img src="/watchshark.webp?v=2" alt="WatchShark logo"><span>WatchShark</span></a>
+  <span class="spacer"></span>
+  <md-text-button href="/wheels"><md-icon slot="icon">movie</md-icon>Wheels</md-text-button>
+  <md-text-button href="/music"><md-icon slot="icon">music_note</md-icon>Music</md-text-button>
+  <span id="bellSlot" data-auth="in" style="display:none"></span>
+  <md-icon-button data-auth="in" href="/settings" aria-label="Settings" style="display:none"><md-icon>settings</md-icon></md-icon-button>
+  <md-text-button data-admin href="/admin" style="display:none">Admin</md-text-button>
+  <md-filled-tonal-button data-auth="in" href="/upload" style="display:none">Create<md-icon slot="icon">add</md-icon></md-filled-tonal-button>
+  <span id="whoami"></span>
+  <md-filled-button data-auth="out" onclick="openAuth('login')" style="display:none">Sign in</md-filled-button>
+</header>
+<main class="musicpage ytm">
+  <div id="trackgate"><md-linear-progress indeterminate></md-linear-progress></div>
+  <div id="ytmHome" style="display:none">
+    <md-tabs id="musicTabs" aria-label="Sort music">
+      <md-primary-tab><md-icon slot="icon">new_releases</md-icon>Newest</md-primary-tab>
+      <md-primary-tab><md-icon slot="icon">local_fire_department</md-icon>Popular</md-primary-tab>
+    </md-tabs>
+    <section id="secQuick">
+      <div class="ytmsechead">
+        <h2>Quick picks</h2>
+        <span class="spacer"></span>
+        <md-filled-button id="qpPlayAll"><md-icon slot="icon">play_arrow</md-icon>Play all</md-filled-button>
+        <md-icon-button id="qpShuffle" aria-label="Shuffle play"><md-icon>shuffle</md-icon></md-icon-button>
+      </div>
+      <div class="qpgrid" id="qpGrid" role="list"></div>
+    </section>
+    <section id="secNew">
+      <div class="ytmsechead"><h2>New uploads</h2></div>
+      <div class="ytmcarousel" id="newRow"></div>
+    </section>
+    <section id="secTop">
+      <div class="ytmsechead"><h2>Top hits</h2></div>
+      <div class="ytmcarousel" id="topRow"></div>
+    </section>
+    <p class="muted" id="trackempty" style="display:none">No music yet.</p>
+  </div>
+</main>
+<div id="ytmbar" style="display:none">
+  <md-slider id="ytmSeek" min="0" max="1000" step="1" value="0" aria-label="Seek"></md-slider>
+  <div class="ytmbarrow">
+    <div class="ytmleft" id="ytmLeft">
+      <img id="ytmThumb" class="ytmthumb" alt="">
+      <div class="ytmmeta"><b id="ytmTitle"></b><span class="muted" id="ytmArtist"></span></div>
+    </div>
+    <div class="ytmcenter">
+      <md-icon-button id="ytmShuffle" aria-label="Shuffle"><md-icon>shuffle</md-icon></md-icon-button>
+      <md-icon-button id="ytmPrev" aria-label="Previous"><md-icon>skip_previous</md-icon></md-icon-button>
+      <md-icon-button id="ytmPlay" class="ytmplay" aria-label="Play or pause"><md-icon id="ytmPlayIcon">play_arrow</md-icon></md-icon-button>
+      <md-icon-button id="ytmNext" aria-label="Next"><md-icon>skip_next</md-icon></md-icon-button>
+      <md-icon-button id="ytmRepeat" aria-label="Repeat"><md-icon id="ytmRepeatIcon">repeat</md-icon></md-icon-button>
+    </div>
+    <div class="ytmright">
+      <span class="time" id="ytmTime">0:00 / 0:00</span>
+      <md-icon-button id="ytmMute" aria-label="Mute"><md-icon id="ytmMuteIcon">volume_up</md-icon></md-icon-button>
+      <md-slider id="ytmVol" class="vol" min="0" max="100" step="1" value="100" aria-label="Volume"></md-slider>
+      <md-icon-button id="ytmClose" aria-label="Stop"><md-icon>close</md-icon></md-icon-button>
+    </div>
+  </div>
+  <audio id="mplayer" preload="metadata"></audio>
+</div>
+<div id="ytmSheet" aria-label="Now playing">
+  <div class="ytmsheethead">
+    <md-icon-button id="ytmSheetClose" aria-label="Close player"><md-icon>expand_more</md-icon></md-icon-button>
+    <span class="muted">Now playing</span>
+    <span style="width:48px"></span>
+  </div>
+  <div class="ytmsheetart"><md-icon id="ytmSheetNoart">music_note</md-icon><img id="ytmSheetImg" style="display:none" alt=""></div>
+  <h2 id="ytmSheetTitle"></h2>
+  <p class="muted" id="ytmSheetArtist"></p>
+  <md-slider id="ytmSheetSeek" min="0" max="1000" step="1" value="0" aria-label="Seek"></md-slider>
+  <div class="nptime"><span id="ytmSheetCur">0:00</span><span id="ytmSheetDur">0:00</span></div>
+  <div class="ytmsheetcontrols">
+    <md-icon-button id="ytmSheetShuffle" aria-label="Shuffle"><md-icon>shuffle</md-icon></md-icon-button>
+    <md-icon-button id="ytmSheetPrev" aria-label="Previous"><md-icon>skip_previous</md-icon></md-icon-button>
+    <md-icon-button id="ytmSheetPlay" class="ytmplay big" aria-label="Play or pause"><md-icon id="ytmSheetPlayIcon">play_arrow</md-icon></md-icon-button>
+    <md-icon-button id="ytmSheetNext" aria-label="Next"><md-icon>skip_next</md-icon></md-icon-button>
+    <md-icon-button id="ytmSheetRepeat" aria-label="Repeat"><md-icon id="ytmSheetRepeatIcon">repeat</md-icon></md-icon-button>
+  </div>
+  <h3 class="ytmupnext">Up next</h3>
+  <div id="ytmQueue" role="list"></div>
+</div>
+<md-dialog id="authDialog">
+  <div slot="headline">Welcome to WatchShark</div>
+  <div slot="content">
+    <form id="loginPane" method="post" action="/api/auth/login" onsubmit="return submitLogin(event)">
+      <div class="nfield">
+        <label for="login-id">Email</label>
+        <input placeholder=" " id="login-id" name="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+      </div>
+      <div class="nfield">
+        <label for="login-pw">Password</label>
+        <input placeholder=" " id="login-pw" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <div class="auth-row"><md-text-button onclick="location.href='/forgot'">Forgot password?</md-text-button></div>
+      <button type="submit" tabindex="-1" aria-hidden="true" style="position:fixed;top:0;left:0;width:8px;height:8px;opacity:.01;pointer-events:none;border:0;padding:0"></button>
+    </form>
+    <form id="signupPane" method="post" action="/api/auth/signup" onsubmit="return submitSignup(event)" style="display:none">
+      <div class="nfield">
+        <label for="su-name">Handle (a-z, 0-9, _)</label>
+        <input placeholder=" " id="su-name" name="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" minlength="3" maxlength="30" required>
+      </div>
+      <div class="nfield">
+        <label for="su-email">Email</label>
+        <input placeholder=" " id="su-email" name="email" type="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+      </div>
+      <div class="nfield">
+        <label for="su-pw">Password (6+ chars)</label>
+        <input placeholder=" " id="su-pw" name="password" type="password" autocomplete="new-password" minlength="6" required>
+      </div>
+      <button type="submit" tabindex="-1" aria-hidden="true" style="position:fixed;top:0;left:0;width:8px;height:8px;opacity:.01;pointer-events:none;border:0;padding:0"></button>
+    </form>
+    <p id="auth-err" style="color:var(--md-sys-color-error)"></p>
+  </div>
+  <div slot="actions">
+    <md-text-button id="auth-switch" onclick="toggleAuth()">Create account</md-text-button>
+    <md-filled-button id="auth-go" onclick="authGo()">Log in</md-filled-button>
+    <md-text-button onclick="closeAuth()">Close</md-text-button>
+  </div>
+</md-dialog>
+<script src="/app.js?v=13"></script>
+<script>
+window.__boot = function() {
+let tracks = [];
+let ti = -1;
+let shuffleMode = false;
+let repeatMode = 'all';
+let musicSort = 'new';
+function fmtT(t) {
+  if (!isFinite(t) || t < 0) t = 0;
+  t = Math.floor(t);
+  return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0');
+}
+function fmtViews(n) {
+  n = Number(n) || 0;
+  if (n < 1000) return n + (n === 1 ? ' play' : ' plays');
+  if (n < 1e6) return (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'K plays';
+  return (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M plays';
+}
+function mp() { return document.getElementById('mplayer'); }
+function togglePlay() {
+  const p = mp();
+  if (!p.src && ti >= 0 && tracks[ti]) { playTrack(ti); return; }
+  if (p.paused) p.play().catch(() => {});
+  else p.pause();
+}
+function pickNext() {
+  if (shuffleMode) {
+    if (tracks.length < 2) return ti;
+    let n = ti;
+    while (n === ti) n = Math.floor(Math.random() * tracks.length);
+    return n;
+  }
+  return (ti + 1) % tracks.length;
+}
+function syncModeButtons() {
+  document.getElementById('ytmShuffle').classList.toggle('on', shuffleMode);
+  document.getElementById('ytmSheetShuffle').classList.toggle('on', shuffleMode);
+  const rep = document.getElementById('ytmRepeatIcon');
+  const repS = document.getElementById('ytmSheetRepeatIcon');
+  rep.textContent = repeatMode === 'one' ? 'repeat_one' : 'repeat';
+  repS.textContent = repeatMode === 'one' ? 'repeat_one' : 'repeat';
+  document.getElementById('ytmRepeat').classList.toggle('on', repeatMode !== 'off');
+  document.getElementById('ytmSheetRepeat').classList.toggle('on', repeatMode !== 'off');
+  document.getElementById('ytmRepeat').classList.toggle('off', repeatMode === 'off');
+  document.getElementById('ytmSheetRepeat').classList.toggle('off', repeatMode === 'off');
+}
+function cycleRepeat() {
+  repeatMode = repeatMode === 'all' ? 'one' : (repeatMode === 'one' ? 'off' : 'all');
+  mp().loop = repeatMode === 'one';
+  syncModeButtons();
+}
+function syncVolIcon() {
+  const p = mp();
+  const muted = p.muted || p.volume === 0;
+  document.getElementById('ytmMuteIcon').textContent = muted ? 'volume_off' : 'volume_up';
+}
+function on(id, ev, fn, opt) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener(ev, fn, opt);
+}
+function syncIcons() {
+  const paused = mp().paused;
+  const ic = paused ? 'play_arrow' : 'pause';
+  document.getElementById('ytmPlayIcon').textContent = ic;
+  document.getElementById('ytmSheetPlayIcon').textContent = ic;
+  markPlaying();
+}
+function markPlaying() {
+  const on = ti >= 0 && !mp().paused;
+  document.querySelectorAll('[data-idx]').forEach((el) => {
+    const cur = Number(el.dataset.idx) === ti;
+    el.classList.toggle('playing', cur && on);
+    el.classList.toggle('current', cur);
+    el.setAttribute('aria-current', cur ? 'true' : 'false');
+  });
+}
+function setMediaSession(t) {
+  try {
+    if (!('mediaSession' in navigator)) return;
+    if (!t) { navigator.mediaSession.metadata = null; return; }
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: t.title || 'Unknown track',
+      artist: '@' + (t.username || 'unknown'),
+      album: 'WatchShark Music',
+      artwork: t.thumbnail ? [{ src: t.thumbnail, sizes: '512x512' }] : [],
+    });
+    navigator.mediaSession.setActionHandler('play', () => mp().play().catch(() => {}));
+    navigator.mediaSession.setActionHandler('pause', () => mp().pause());
+    navigator.mediaSession.setActionHandler('previoustrack', () => playTrack((ti - 1 + tracks.length) % tracks.length));
+    navigator.mediaSession.setActionHandler('nexttrack', () => playTrack(pickNext()));
+  } catch {}
+}
+function showBar(t) {
+  const bar = document.getElementById('ytmbar');
+  bar.style.display = '';
+  document.getElementById('ytmTitle').textContent = t.title;
+  document.getElementById('ytmArtist').textContent = '@' + t.username;
+  const th = document.getElementById('ytmThumb');
+  if (t.thumbnail) { th.src = t.thumbnail; th.style.display = ''; }
+  else { th.removeAttribute('src'); th.style.display = 'none'; }
+  document.getElementById('ytmSheetTitle').textContent = t.title;
+  document.getElementById('ytmSheetArtist').textContent = '@' + t.username;
+  const si = document.getElementById('ytmSheetImg');
+  if (t.thumbnail) {
+    si.src = t.thumbnail;
+    si.style.display = '';
+    document.getElementById('ytmSheetNoart').style.display = 'none';
+  } else {
+    si.removeAttribute('src');
+    si.style.display = 'none';
+    document.getElementById('ytmSheetNoart').style.display = '';
+  }
+  syncTimes();
+  syncIcons();
+}
+function playTrack(i) {
+  if (!tracks.length) return;
+  ti = (i + tracks.length) % tracks.length;
+  const p = mp();
+  p.src = tracks[ti].src;
+  p.loop = repeatMode === 'one';
+  p.play().catch(() => {});
+  try { history.replaceState(null, '', '/music?track=' + tracks[ti].id); } catch {}
+  document.title = tracks[ti].title + ' — WatchShark';
+  setMediaSession(tracks[ti]);
+  showBar(tracks[ti]);
+  if (document.getElementById('ytmSheet').classList.contains('open')) renderQueue();
+}
+function closePlayer() {
+  const p = mp();
+  p.pause();
+  p.removeAttribute('src');
+  p.load();
+  ti = -1;
+  document.getElementById('ytmbar').style.display = 'none';
+  document.getElementById('ytmSheet').classList.remove('open');
+  document.title = 'Music — WatchShark';
+  setMediaSession(null);
+  try { history.replaceState(null, '', '/music'); } catch {}
+  markPlaying();
+  syncIcons();
+}
+function syncTimes() {
+  const p = mp();
+  const d = p.duration || 0, c = p.currentTime || 0;
+  const frac = d > 0 ? c / d : 0;
+  if (!scrub) {
+    const v = Math.round(frac * 1000);
+    document.getElementById('ytmSeek').value = v;
+    document.getElementById('ytmSheetSeek').value = v;
+  }
+  const t = document.getElementById('ytmTime');
+  if (t) t.textContent = fmtT(c) + ' / ' + fmtT(d);
+  document.getElementById('ytmSheetCur').textContent = fmtT(c);
+  document.getElementById('ytmSheetDur').textContent = fmtT(d);
+}
+let scrub = false;
+function wireSeek(id) {
+  const s = document.getElementById(id);
+  if (!s) return;
+  s.addEventListener('input', () => {
+    const p = mp();
+    if (p.duration) p.currentTime = s.value / 1000 * p.duration;
+  });
+  s.addEventListener('pointerdown', () => { scrub = true; });
+  Pjax.on(window, 'pointerup', () => { scrub = false; });
+}
+function artHtml(t, cls) {
+  return t.thumbnail
+    ? `<img class="${cls}" src="${t.thumbnail}" loading="lazy" alt="">`
+    : `<span class="${cls} yrnoart"><md-icon>music_note</md-icon></span>`;
+}
+function goTrack(i) {
+  return (e) => {
+    if (e.target.closest('a')) return;
+    if (i === ti) togglePlay();
+    else playTrack(i);
+  };
+}
+function bindRow(d, i) {
+  const go = goTrack(i);
+  d.addEventListener('click', go);
+  d.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(e); }
+  });
+}
+function qpRow(t, i) {
+  return `<md-list-item class="qprow" tabindex="0" data-idx="${i}" aria-label="${esc(t.title)} by @${esc(t.username)}">`
+    + `<div class="qpstart" slot="start">${artHtml(t, 'qpthumb')}<span class="qphover"><md-icon>play_arrow</md-icon><span class="eq"><span></span><span></span><span></span></span></span></div>`
+    + `<div slot="headline">${esc(t.title)}</div>`
+    + `<div slot="supporting-text"><a class="ulink" href="/channel?user=${esc(t.username)}">@${esc(t.username)}</a></div>`
+    + `<div slot="trailing-supporting-text" data-dur="${t.id}">…</div></md-list-item>`;
+}
+function ytmCard(t, i) {
+  return `<md-filled-card class="ytmcard" tabindex="0" data-idx="${i}" aria-label="${esc(t.title)} by @${esc(t.username)}">`
+    + `<div class="ycart">${artHtml(t, 'ycimg')}<span class="ychover"><md-icon>play_arrow</md-icon></span><span class="yceq"><span class="eq"><span></span><span></span><span></span></span></span></div>`
+    + `<b>${esc(t.title)}</b><span class="muted">${esc('@' + t.username)} • <span data-views="${t.id}">${fmtViews(t.views)}</span></span></md-filled-card>`;
+}
+function fillDurations() {
+  tracks.forEach((t, i) => {
+    const a = new Audio();
+    a.preload = 'metadata';
+    a.onloadedmetadata = () => {
+      document.querySelectorAll(`[data-dur="${t.id}"]`).forEach((el) => { el.textContent = fmtT(a.duration); });
+      a.removeAttribute('src');
+    };
+    a.onerror = () => {
+      document.querySelectorAll(`[data-dur="${t.id}"]`).forEach((el) => { el.textContent = ''; });
+    };
+    a.src = t.src;
+  });
+}
+function renderQueue() {
+  const q = document.getElementById('ytmQueue');
+  q.innerHTML = '';
+  tracks.forEach((t, i) => {
+    const d = document.createElement('div');
+    d.innerHTML = qpRow(t, i);
+    const row = d.firstChild;
+    bindRow(row, i);
+    q.appendChild(row);
+  });
+  markPlaying();
+  const cur = q.querySelector('.qprow.current');
+  if (cur) cur.scrollIntoView({ block: 'nearest' });
+}
+function sortedTracks() {
+  if (musicSort === 'pop') return [...tracks].sort((a, b) => (b.views || 0) - (a.views || 0));
+  return [...tracks].sort((a, b) => b.id - a.id);
+}
+function renderCardRow(el, list) {
+  el.innerHTML = '';
+  list.forEach((t) => {
+    const i = tracks.indexOf(t);
+    const d = document.createElement('div');
+    d.innerHTML = ytmCard(t, i);
+    const card = d.firstChild;
+    bindRow(card, i);
+    el.appendChild(card);
+  });
+}
+function renderSections() {
+  const order = sortedTracks();
+  // Quick picks follow the active tab, sections never repeat a shown song
+  const qp = document.getElementById('qpGrid');
+  qp.innerHTML = '';
+  const shown = new Set();
+  order.slice(0, 12).forEach((t) => {
+    shown.add(t.id);
+    const i = tracks.indexOf(t);
+    const d = document.createElement('div');
+    d.innerHTML = qpRow(t, i);
+    const row = d.firstChild;
+    bindRow(row, i);
+    qp.appendChild(row);
+  });
+  const fresh = [...tracks].sort((a, b) => b.id - a.id).filter((t) => !shown.has(t.id)).slice(0, 10);
+  const top = [...tracks].sort((a, b) => (b.views || 0) - (a.views || 0)).filter((t) => !shown.has(t.id)).slice(0, 10);
+  renderCardRow(document.getElementById('newRow'), fresh);
+  renderCardRow(document.getElementById('topRow'), top);
+  document.getElementById('secNew').style.display = (musicSort === 'new' && fresh.length) ? '' : 'none';
+  document.getElementById('secTop').style.display = (musicSort === 'pop' && top.length) ? '' : 'none';
+}
+async function initMusic() {
+  await refreshAuth();
+  try {
+    const r = await fetch('/api/videos?kind=music&limit=48');
+    document.getElementById('trackgate').style.display = 'none';
+    if (!r.ok) return;
+    tracks = ((await r.json()).videos || []).filter((v) => v.status === 'ready');
+  } catch { document.getElementById('trackgate').style.display = 'none'; return; }
+  if (!tracks.length) {
+    document.getElementById('ytmHome').style.display = '';
+    document.getElementById('trackempty').style.display = '';
+    return;
+  }
+  document.getElementById('ytmHome').style.display = '';
+  document.getElementById('musicTabs').addEventListener('change', (e) => {
+    musicSort = e.target.activeTabIndex === 1 ? 'pop' : 'new';
+    renderSections();
+    markPlaying();
+  });
+  renderSections();
+  fillDurations();
+  const p = mp();
+  const savedVol = parseFloat(localStorage.getItem('ws_vol'));
+  if (!isNaN(savedVol)) {
+    p.volume = Math.min(1, Math.max(0, savedVol));
+    document.getElementById('ytmVol').value = Math.round(p.volume * 100);
+  }
+  syncVolIcon();
+  p.addEventListener('timeupdate', syncTimes);
+  p.addEventListener('loadedmetadata', syncTimes);
+  p.addEventListener('play', syncIcons);
+  p.addEventListener('pause', syncIcons);
+  p.addEventListener('ended', () => {
+    if (repeatMode === 'one') return;
+    if (repeatMode === 'off' && !shuffleMode && ti >= tracks.length - 1) { closePlayer(); return; }
+    playTrack(pickNext());
+  });
+  try {
+    const want = new URLSearchParams(location.search).get('track');
+    if (want) {
+      const idx = tracks.findIndex((t) => String(t.id) === String(want));
+      if (idx >= 0) playTrack(idx);
+    }
+  } catch {}
+}
+function wirePlayer() {
+  on('qpPlayAll', 'click', () => playTrack(0));
+  on('qpShuffle', 'click', () => {
+    shuffleMode = true;
+    syncModeButtons();
+    if (tracks.length) playTrack(Math.floor(Math.random() * tracks.length));
+  });
+  on('ytmPlay', 'click', (e) => { e.stopPropagation(); togglePlay(); });
+  on('ytmSheetPlay', 'click', (e) => { e.stopPropagation(); togglePlay(); });
+  on('ytmPrev', 'click', (e) => { e.stopPropagation(); playTrack((ti - 1 + tracks.length) % tracks.length); });
+  on('ytmSheetPrev', 'click', (e) => { e.stopPropagation(); playTrack((ti - 1 + tracks.length) % tracks.length); });
+  on('ytmNext', 'click', (e) => { e.stopPropagation(); playTrack(pickNext()); });
+  on('ytmSheetNext', 'click', (e) => { e.stopPropagation(); playTrack(pickNext()); });
+  on('ytmShuffle', 'click', (e) => { e.stopPropagation(); shuffleMode = !shuffleMode; syncModeButtons(); });
+  on('ytmSheetShuffle', 'click', (e) => { e.stopPropagation(); shuffleMode = !shuffleMode; syncModeButtons(); });
+  on('ytmRepeat', 'click', (e) => { e.stopPropagation(); cycleRepeat(); });
+  on('ytmSheetRepeat', 'click', (e) => { e.stopPropagation(); cycleRepeat(); });
+  on('ytmClose', 'click', (e) => { e.stopPropagation(); closePlayer(); });
+  on('ytmMute', 'click', (e) => {
+    e.stopPropagation();
+    const p = mp();
+    p.muted = !p.muted;
+    syncVolIcon();
+  });
+  on('ytmVol', 'input', () => {
+    const p = mp();
+    p.volume = document.getElementById('ytmVol').value / 100;
+    p.muted = p.volume === 0;
+    syncVolIcon();
+    localStorage.setItem('ws_vol', String(p.volume));
+  });
+  on('ytmLeft', 'click', () => {
+    if (window.matchMedia('(max-width: 900px)').matches) {
+      renderQueue();
+      document.getElementById('ytmSheet').classList.add('open');
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  });
+  on('ytmSheetClose', 'click', () => {
+    document.getElementById('ytmSheet').classList.remove('open');
+  });
+  wireSeek('ytmSeek');
+  wireSeek('ytmSheetSeek');
+}
+wirePlayer();
+syncModeButtons();
+initMusic();
+window.__destroy = function() {
+  try {
+    const p = document.getElementById('mplayer');
+    if (p) { p.pause(); p.removeAttribute('src'); }
+  } catch {}
+  ti = -1;
+};
+};
+window.__boot();
+</script>
+</body>
+</html>

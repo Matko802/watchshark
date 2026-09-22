@@ -1,0 +1,723 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Watch — WatchShark</title>
+<link rel="icon" type="image/png" href="/favicon.png?v=1">
+<link rel="stylesheet" href="/styles.css?v=30">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Material+Symbols+Outlined&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<script type="importmap">{ "imports": { "@material/web/": "https://esm.run/@material/web/" } }</script>
+<script type="module">import '@material/web/all.js';</script>
+<meta property="og:site_name" content="WatchShark">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+<body data-pjax="1">
+<header class="topbar">
+  <a class="brand" href="/"><img src="/watchshark.webp?v=2" alt="WatchShark logo"><span>WatchShark</span></a>
+  <span class="spacer"></span>
+  <md-text-button href="/wheels"><md-icon slot="icon">movie</md-icon>Wheels</md-text-button>
+  <md-text-button href="/music"><md-icon slot="icon">music_note</md-icon>Music</md-text-button>
+  <span id="bellSlot" data-auth="in" style="display:none"></span>
+  <md-icon-button data-auth="in" href="/settings" aria-label="Settings" style="display:none"><md-icon>settings</md-icon></md-icon-button>
+  <md-text-button data-admin href="/admin" style="display:none">Admin</md-text-button>
+  <md-filled-tonal-button data-auth="in" href="/upload" style="display:none">Create<md-icon slot="icon">add</md-icon></md-filled-tonal-button>
+  <span id="whoami"></span>
+  <md-filled-button data-auth="out" onclick="openAuth('login')" style="display:none">Sign in</md-filled-button>
+</header>
+<main class="watchmain">
+  <div class="watchcol">
+    <div id="wrap"><md-linear-progress indeterminate></md-linear-progress></div>
+    <h3 id="chead">Comments</h3>
+    <div class="row">
+      <md-outlined-text-field id="cbody" placeholder="Add a comment..." class="field" style="flex:1"></md-outlined-text-field>
+      <md-filled-button onclick="sendComment()">Post<md-icon slot="icon">send</md-icon></md-filled-button>
+    </div>
+    <div id="cpreview"></div>
+    <md-text-button id="ctoggle" style="display:none">Show less</md-text-button>
+    <md-list id="comments" style="display:none"></md-list>
+  </div>
+  <aside class="watchrail" id="rail" style="display:none">
+    <md-tabs id="upnextTabs" aria-label="More videos">
+      <md-primary-tab>Latest</md-primary-tab>
+      <md-primary-tab>Trending</md-primary-tab>
+    </md-tabs>
+    <div id="upnext"></div>
+  </aside>
+</main>
+<md-dialog id="authDialog">
+  <div slot="headline">Login required</div>
+  <div slot="content">
+    <form id="loginPane" method="post" action="/api/auth/login" onsubmit="return submitLogin(event)">
+      <div class="nfield">
+        <label for="login-id">Email</label>
+        <input placeholder=" " id="login-id" name="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+      </div>
+      <div class="nfield">
+        <label for="login-pw">Password</label>
+        <input placeholder=" " id="login-pw" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <div class="auth-row"><md-text-button onclick="location.href='/forgot'">Forgot password?</md-text-button></div>
+      <button type="submit" tabindex="-1" aria-hidden="true" style="position:fixed;top:0;left:0;width:8px;height:8px;opacity:.01;pointer-events:none;border:0;padding:0"></button>
+    </form>
+    <form id="signupPane" method="post" action="/api/auth/signup" onsubmit="return submitSignup(event)" style="display:none">
+      <div class="nfield">
+        <label for="su-name">Handle (a-z, 0-9, _)</label>
+        <input placeholder=" " id="su-name" name="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" minlength="3" maxlength="30" required>
+      </div>
+      <div class="nfield">
+        <label for="su-email">Email</label>
+        <input placeholder=" " id="su-email" name="email" type="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+      </div>
+      <div class="nfield">
+        <label for="su-pw">Password (6+ chars)</label>
+        <input placeholder=" " id="su-pw" name="password" type="password" autocomplete="new-password" minlength="6" required>
+      </div>
+      <button type="submit" tabindex="-1" aria-hidden="true" style="position:fixed;top:0;left:0;width:8px;height:8px;opacity:.01;pointer-events:none;border:0;padding:0"></button>
+    </form>
+    <p id="auth-err" style="color:var(--md-sys-color-error)"></p>
+  </div>
+  <div slot="actions">
+    <md-text-button id="auth-switch" onclick="toggleAuth()">Create account</md-text-button>
+    <md-filled-button id="auth-go" onclick="authGo()">Log in</md-filled-button>
+    <md-text-button onclick="closeAuth()">Close</md-text-button>
+  </div>
+</md-dialog>
+<md-dialog id="delDialog">
+  <div slot="headline">Delete this video?</div>
+  <div slot="content">
+    <p class="muted" id="delSub"></p>
+    <md-outlined-text-field id="delReason" label="Reason (sent to the owner)" class="field"></md-outlined-text-field>
+    <p id="del-err" style="color:var(--md-sys-color-error)"></p>
+  </div>
+  <div slot="actions">
+    <md-text-button onclick="closeDelDialog()">Cancel</md-text-button>
+    <md-filled-button onclick="adminDel()">Delete</md-filled-button>
+  </div>
+</md-dialog>
+<md-dialog id="editDialog">
+  <div slot="headline">Edit video</div>
+  <div slot="content">
+    <div class="nfield">
+      <label for="edTitle">Title</label>
+      <input placeholder=" " id="edTitle" type="text" maxlength="120" required>
+    </div>
+    <div class="nfield">
+      <label for="edDesc">Description</label>
+      <textarea placeholder=" " id="edDesc" rows="4"></textarea>
+    </div>
+    <div class="row">
+      <md-filled-tonal-button onclick="document.getElementById('edThumb').click()"><md-icon slot="icon">image</md-icon>Thumbnail</md-filled-tonal-button>
+      <img id="edThumbPrev" style="display:none;width:128px;aspect-ratio:16/9;object-fit:cover;border-radius:8px" alt="">
+    </div>
+    <input type="file" id="edThumb" accept="image/*" hidden>
+    <p id="edit-err" style="color:var(--md-sys-color-error)"></p>
+  </div>
+  <div slot="actions">
+    <md-text-button onclick="closeEditDialog()">Cancel</md-text-button>
+    <md-filled-button onclick="saveEdit()">Save</md-filled-button>
+  </div>
+</md-dialog>
+<script src="/app.js?v=13"></script>
+<script>
+window.__boot = function() {
+const id = new URLSearchParams(location.search).get('id');
+let VID = null;
+function destroyPlayer() {
+  try { P.vid.pause(); } catch {}
+  try { P.vid.removeAttribute('src'); P.vid.load(); } catch {}
+  P = null;
+  stopCmtTimer();
+}
+async function init() {
+  destroyPlayer();
+  await refreshAuth();
+  const r = await fetch('/api/videos/' + id);
+  if (!r.ok) { document.getElementById('wrap').innerHTML = '<p>Video not found. <a href="/">Back</a></p>'; return; }
+  const j = await r.json();
+  VID = j.video;
+  document.title = VID.title + ' — WatchShark';
+  if (VID.status !== 'ready') {
+    document.getElementById('wrap').innerHTML = VID.status === 'failed'
+      ? `<h2>${esc(VID.title)}</h2><p class="muted">Processing failed. This file could not be converted to a playable video.</p><div class="row"><md-outlined-button onclick="del()"><md-icon slot="icon">delete</md-icon>Delete</md-outlined-button></div>`
+      : `<h2>${esc(VID.title)}</h2><md-linear-progress indeterminate></md-linear-progress><p class="muted">Processing video… big files take a while. This page refreshes automatically.</p>`;
+    if (VID.status !== 'failed') Pjax.timeout(init, 10000);
+    return;
+  }
+  document.getElementById('wrap').innerHTML = `
+    <div class="player-wrap loading" id="pw" tabindex="0">
+      <video id="vid" class="player-video" playsinline preload="auto"></video>
+      <md-circular-progress id="spin" class="spin" indeterminate style="display:none"></md-circular-progress>
+      <div class="gesture left" id="gleft"></div>
+      <div class="gesture right" id="gright"></div>
+      <div class="seek-flash" id="flash" style="display:none"></div>
+      <md-fab id="bigplay" class="bigplay" variant="primary" size="large" aria-label="Play"><md-icon slot="icon" id="bigIcon">play_arrow</md-icon></md-fab>
+      <md-filled-tonal-button id="unmute" class="unmute" style="display:none"><md-icon slot="icon">volume_up</md-icon>Tap to unmute</md-filled-tonal-button>
+      <div class="controls" id="ctrl">
+        <md-slider id="seek" min="0" max="1000" step="1" value="0" aria-label="Seek"></md-slider>
+        <div class="ctrl-row">
+          <md-icon-button id="playBtn" aria-label="Play"><md-icon id="playIcon">play_arrow</md-icon></md-icon-button>
+          <md-icon-button id="muteBtn" aria-label="Mute"><md-icon id="muteIcon">volume_up</md-icon></md-icon-button>
+          <md-slider id="vol" class="vol" min="0" max="100" step="1" value="100" aria-label="Volume"></md-slider>
+          <span class="time" id="time">0:00 / 0:00</span>
+          <span class="spacer"></span>
+          <md-text-button id="speedBtn">1x</md-text-button>
+          <md-text-button id="qualBtn">Auto</md-text-button>
+          <md-icon-button id="fullBtn" aria-label="Fullscreen"><md-icon id="fullIcon">fullscreen</md-icon></md-icon-button>
+        </div>
+      </div>
+      <md-menu id="qualMenu" anchor="qualBtn" positioning="popover"></md-menu>
+    </div>
+    <h2>${esc(VID.title)}</h2>
+    <div class="row">
+      <span id="uav"></span>
+      <md-assist-chip href="/channel?user=${esc(VID.username)}" label="${esc(VID.username)}"></md-assist-chip>
+      <md-outlined-button id="followBtn" onclick="toggleFollow()" style="display:none"></md-outlined-button>
+      <md-filled-tonal-button id="likeBtn" onclick="like()"><md-icon slot="icon" class="filled" style="display:${VID.liked ? '' : 'none'}">&#xE87D;</md-icon><md-icon slot="icon" style="display:${VID.liked ? 'none' : ''}">&#xE87E;</md-icon><span id="likeN">${fmtFull(VID.likes)}</span></md-filled-tonal-button>
+      <span class="muted">${fmtFull(VID.views)} views • <span title="${esc(fmtDate(VID.created_at))}">${fmtAge(VID.created_at)}</span></span>
+      <md-outlined-button id="delBtn" style="display:none"><md-icon slot="icon">delete</md-icon><span id="delLbl">Delete</span></md-outlined-button>
+      <md-outlined-button id="editBtn" style="display:none"><md-icon slot="icon">edit</md-icon><span>Edit</span></md-outlined-button>
+    </div>
+    <p class="muted" style="white-space:pre-wrap">${esc(VID.description)}</p>`;
+  const list = document.getElementById('comments');
+  document.getElementById('uav').innerHTML = avatarHtml(VID.avatar, 'pfp-sm');
+  cItems = j.comments || [];
+  cIdx = 0;
+  cCollapsed = true;
+  renderComments();
+  initPlayer(VID.src);
+  renderFollow();
+  loadUpnext();
+}
+function commentHTML(c) {
+  return `<md-list-item><div slot="start">${avatarHtml(c.avatar, 'pfp-sm')}</div><div slot="headline"><a class="ulink" href="/channel?user=${esc(c.username)}">${esc(c.username)}</a></div>`
+    + `<div slot="supporting-text">${esc(c.body)}</div>`
+    + `<div slot="trailing-supporting-text">${esc(c.created_at)}</div></md-list-item>`;
+}
+function renderComments() {
+  stopCmtTimer();
+  const list = document.getElementById('comments');
+  const prev = document.getElementById('cpreview');
+  const tog = document.getElementById('ctoggle');
+  document.getElementById('chead').textContent = cItems.length ? 'Comments (' + cItems.length + ')' : 'Comments';
+  if (!cCollapsed) {
+    prev.style.display = 'none';
+    tog.style.display = '';
+    list.style.display = '';
+    list.innerHTML = cItems.map(commentHTML).join('') || '<p class="muted">No comments yet.</p>';
+    return;
+  }
+  list.style.display = 'none';
+  tog.style.display = 'none';
+  prev.style.display = '';
+  if (!cItems.length) {
+    prev.innerHTML = '<p class="muted">No comments yet.</p>';
+    return;
+  }
+  const c = cItems[cIdx % cItems.length];
+  prev.innerHTML = `<div class="crow">${avatarHtml(c.avatar, 'pfp-sm')}<div class="metatext"><b>${esc(c.username)}</b><p>${esc(c.body)}</p></div></div>`
+    + `<p class="muted">Tap to show all ${cItems.length} comments</p>`;
+  if (cItems.length > 1) cTimer = setTimeout(nextCmt, 4000);
+}
+function nextCmt() {
+  cTimer = null;
+  if (cCollapsed && cItems.length > 1) {
+    cIdx = (cIdx + 1) % cItems.length;
+    renderComments();
+  }
+}
+function stopCmtTimer() {
+  if (cTimer) { clearTimeout(cTimer); cTimer = null; }
+}
+function expandComments() {
+  cCollapsed = false;
+  renderComments();
+}
+function collapseComments() {
+  cCollapsed = true;
+  cIdx = 0;
+  renderComments();
+}
+let upnextTab = 'new';
+let upnextCache = {};
+async function loadUpnext() {
+  const rail = document.getElementById('rail');
+  if (!rail || !VID) return;
+  rail.style.display = '';
+  const sort = upnextTab === 'pop' ? 'popular' : 'new';
+  if (!upnextCache[sort]) {
+    try {
+      const r = await fetch('/api/videos?sort=' + sort + '&limit=12');
+      if (!r.ok) return;
+      upnextCache[sort] = (await r.json()).videos || [];
+    } catch { return; }
+  }
+  const box = document.getElementById('upnext');
+  if (!box) return;
+  box.innerHTML = '';
+  upnextCache[sort].filter((v) => v.id !== VID.id).slice(0, 10).forEach((v) => {
+    const media = v.thumbnail
+      ? `<img class="upthumb" src="${v.thumbnail}" loading="lazy" alt="">`
+      : `<video class="upthumb" src="${v.src}#t=0.5" preload="metadata" muted></video>`;
+    const a = document.createElement('a');
+    a.className = 'cardlink upnext'; a.href = '/watch?id=' + v.id;
+    a.innerHTML = `${media}<div class="metatext"><h3>${esc(v.title)}</h3>`
+      + `<small>${esc(v.username)} • ${fmtNum(v.views)} views</small></div>`;
+    box.appendChild(a);
+  });
+}
+async function renderFollow() {
+  const b = document.getElementById('followBtn');
+  const u = await me();
+  renderDel(u);
+  if (!u || (VID && u.id === VID.user_id)) { b.style.display = 'none'; return; }
+  b.style.display = '';
+  b.innerHTML = `<md-icon slot="icon">${VID.following ? 'how_to_reg' : 'person_add'}</md-icon>${VID.following ? 'Following' : 'Follow'}`;
+}
+function renderDel(u) {
+  const d = document.getElementById('delBtn');
+  const lbl = document.getElementById('delLbl');
+  const t = document.getElementById('editBtn');
+  d.onclick = null;
+  if (!u || !VID) { d.style.display = 'none'; t.style.display = 'none'; return; }
+  if (u.id === VID.user_id) {
+    d.style.display = '';
+    t.style.display = '';
+    lbl.textContent = 'Delete';
+    d.onclick = del;
+  } else if (isAdminView(u)) {
+    d.style.display = '';
+    t.style.display = '';
+    lbl.textContent = 'Delete';
+    d.onclick = openDelDialog;
+  } else {
+    d.style.display = 'none';
+    t.style.display = 'none';
+  }
+  t.onclick = openEditDialog;
+}
+function openEditDialog() {
+  document.getElementById('edTitle').value = VID.title;
+  document.getElementById('edDesc').value = VID.description || '';
+  document.getElementById('edit-err').textContent = '';
+  document.getElementById('edThumb').value = '';
+  const prev = document.getElementById('edThumbPrev');
+  if (VID.thumbnail) {
+    prev.src = VID.thumbnail;
+    prev.style.display = '';
+  } else {
+    prev.removeAttribute('src');
+    prev.style.display = 'none';
+  }
+  document.getElementById('editDialog').show();
+}
+function closeEditDialog() { document.getElementById('editDialog').close(); }
+async function saveEdit() {
+  const title = document.getElementById('edTitle').value.trim();
+  const err = document.getElementById('edit-err');
+  if (!title) { err.textContent = 'Title required'; return; }
+  err.textContent = 'Saving…';
+  const fd = new FormData();
+  fd.append('title', title);
+  fd.append('description', document.getElementById('edDesc').value);
+  const tf = document.getElementById('edThumb').files[0];
+  if (tf) fd.append('thumb', tf);
+  let j = {};
+  try {
+    const r = await fetch('/api/videos/' + id + '/edit', { method: 'POST', credentials: 'include', body: fd });
+    j = await r.json();
+    if (!r.ok) { err.textContent = j.error || 'Failed'; return; }
+  } catch { err.textContent = 'Failed'; return; }
+  VID.title = title;
+  VID.description = document.getElementById('edDesc').value;
+  document.title = title + ' — WatchShark';
+  document.querySelector('#wrap h2').textContent = title;
+  document.querySelector('#wrap p.muted').textContent = VID.description;
+  closeEditDialog();
+}
+function openDelDialog() {
+  document.getElementById('delReason').value = '';
+  document.getElementById('del-err').textContent = '';
+  document.getElementById('delSub').textContent = 'Deleting "' + VID.title + '" by @' + VID.username + '. The owner will be notified.';
+  document.getElementById('delDialog').show();
+}
+function closeDelDialog() { document.getElementById('delDialog').close(); }
+async function adminDel() {
+  const reason = document.getElementById('delReason').value.trim();
+  if (!reason) { document.getElementById('del-err').textContent = 'Reason required'; return; }
+  const r = await fetch('/api/videos/' + id, {
+    method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+    credentials: 'include', body: JSON.stringify({ reason }),
+  });
+  const j = await r.json();
+  if (!r.ok) { document.getElementById('del-err').textContent = j.error || 'Failed'; return; }
+  location.href = '/';
+}
+async function toggleFollow() {
+  const r = await fetch('/api/follow/' + VID.user_id, { method: 'POST', credentials: 'include' });
+  const j = await r.json();
+  if (!r.ok) return alert(j.error);
+  VID.following = j.following;
+  VID.followers = j.followers;
+  renderFollow();
+}
+const SPEEDS = [1, 1.25, 1.5, 2, 0.5];
+let P = null;
+let flashTimer = null;
+let cItems = [];
+let cIdx = 0;
+let cCollapsed = true;
+let cTimer = null;
+function fmt(t) {
+  if (!isFinite(t) || t < 0) t = 0;
+  t = Math.floor(t);
+  const h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60;
+  return (h > 0 ? h + ':' + String(m).padStart(2, '0') + ':' : m + ':') + String(s).padStart(2, '0');
+}
+function initPlayer(src) {
+  const vid = document.getElementById('vid');
+  vid.src = src;
+  P = {
+    wrap: document.getElementById('pw'),
+    vid: vid,
+    seek: document.getElementById('seek'),
+    vol: document.getElementById('vol'),
+    playIcon: document.getElementById('playIcon'),
+    bigIcon: document.getElementById('bigIcon'),
+    bigplay: document.getElementById('bigplay'),
+    unmute: document.getElementById('unmute'),
+    muteIcon: document.getElementById('muteIcon'),
+    time: document.getElementById('time'),
+    spin: document.getElementById('spin'),
+    flash: document.getElementById('flash'),
+    speedBtn: document.getElementById('speedBtn'),
+    qualBtn: document.getElementById('qualBtn'),
+    fullIcon: document.getElementById('fullIcon'),
+    speedIdx: 0,
+    hideTimer: null,
+    flashing: false,
+    wantAuto: true,
+    forceMuted: false
+  };
+  vid.addEventListener('play', onPlayState);
+  vid.addEventListener('pause', onPlayState);
+  vid.addEventListener('ended', onPlayState);
+  vid.addEventListener('timeupdate', onTime);
+  vid.addEventListener('loadedmetadata', onTime);
+  vid.addEventListener('waiting', () => { if (P) { P.spin.style.display = ''; P.wrap.classList.add('loading'); } });
+  vid.addEventListener('seeking', () => { if (P) { P.spin.style.display = ''; P.wrap.classList.add('loading'); } });
+  vid.addEventListener('playing', () => { if (P) { P.spin.style.display = 'none'; P.wrap.classList.remove('loading'); } });
+  vid.addEventListener('canplay', () => { if (P) { P.spin.style.display = 'none'; P.wrap.classList.remove('loading'); } });
+  vid.addEventListener('click', onVideoClick);
+  P.seek.addEventListener('input', () => {
+    if (vid.duration) vid.currentTime = P.seek.value / 1000 * vid.duration;
+  });
+  P.seek.addEventListener('pointerdown', () => { P.seeking = true; });
+  Pjax.on(window, 'pointerup', () => { if (P) P.seeking = false; });
+  vid.addEventListener('dblclick', (e) => {
+    e.preventDefault();
+    if (isTouchDevice()) return;
+    clearTimeout(clickTimer);
+    toggleFull();
+  });
+  P.vol.addEventListener('input', () => {
+    vid.volume = P.vol.value / 100;
+    vid.muted = vid.volume === 0;
+    if (!vid.muted) { P.forceMuted = false; P.unmute.style.display = 'none'; }
+    syncMuteIcon();
+  });
+  document.getElementById('playBtn').addEventListener('click', (e) => { e.stopPropagation(); togglePlay(); });
+  document.getElementById('muteBtn').addEventListener('click', (e) => { e.stopPropagation(); toggleMute(); });
+  document.getElementById('fullBtn').addEventListener('click', (e) => { e.stopPropagation(); toggleFull(); });
+  P.speedBtn.addEventListener('click', (e) => { e.stopPropagation(); cycleSpeed(); });
+  P.qualBtn.addEventListener('click', (e) => { e.stopPropagation(); openQualityMenu(); });
+  applyAutoQuality();
+  P.bigplay.addEventListener('click', (e) => { e.stopPropagation(); togglePlay(); });
+  P.unmute.addEventListener('click', (e) => { e.stopPropagation(); unmuteGesture(); });
+  P.wrap.addEventListener('pointerdown', () => unmuteGesture(), { passive: true });
+  P.wrap.addEventListener('mousemove', poke);
+  P.wrap.addEventListener('touchstart', (e) => { tapMoved = false; poke(); }, { passive: true });
+  P.wrap.addEventListener('touchmove', () => { tapMoved = true; }, { passive: true });
+  P.wrap.addEventListener('keydown', onKey);
+  Pjax.on(document, 'fullscreenchange', syncFullIcon);
+  bindDoubleTap(document.getElementById('gleft'), -10);
+  bindDoubleTap(document.getElementById('gright'), 10);
+  syncMuteIcon();
+  onTime();
+  poke();
+  autoPlay();
+}
+function autoPlay() {
+  if (!P) return;
+  P.wantAuto = true;
+  P.forceMuted = false;
+  P.vid.muted = false;
+  syncMuteIcon();
+  P.unmute.style.display = 'none';
+  P.vid.play().then(() => {
+    if (P) P.unmute.style.display = 'none';
+  }).catch(() => {
+    if (!P) return;
+    P.forceMuted = true;
+    P.vid.muted = true;
+    syncMuteIcon();
+    P.vid.play().then(() => {
+      if (P) P.unmute.style.display = '';
+    }).catch(() => {
+      if (P) P.unmute.style.display = 'none';
+    });
+  });
+}
+function unmuteGesture() {
+  if (!P || !P.forceMuted) return;
+  P.forceMuted = false;
+  P.vid.muted = false;
+  syncMuteIcon();
+  P.unmute.style.display = 'none';
+  P.vid.play().catch(() => {});
+}
+function isTouchDevice() {
+  return matchMedia('(pointer: coarse)').matches;
+}
+let tapMoved = false;
+let clickTimer = null;
+function onVideoClick() {
+  if (isTouchDevice()) {
+    if (tapMoved) return;
+    toggleControls();
+    return;
+  }
+  clearTimeout(clickTimer);
+  clickTimer = setTimeout(() => togglePlay(), 260);
+}
+function toggleControls() {
+  if (!P) return;
+  if (P.wrap.classList.contains('hide')) {
+    poke();
+  } else {
+    P.wrap.classList.add('hide');
+    clearTimeout(P.hideTimer);
+  }
+}
+function togglePlay() {
+  if (!P) return;
+  P.wantAuto = false;
+  if (P.vid.paused || P.vid.ended) {
+    if (P.forceMuted) {
+      P.forceMuted = false;
+      P.vid.muted = false;
+      syncMuteIcon();
+      P.unmute.style.display = 'none';
+    }
+    P.vid.play().catch(() => {});
+  }
+  else { P.vid.pause(); }
+  poke();
+}
+function onPlayState() {
+  if (!P) return;
+  const playing = !P.vid.paused && !P.vid.ended;
+  P.playIcon.textContent = playing ? 'pause' : 'play_arrow';
+  P.bigIcon.textContent = P.vid.ended ? 'replay' : 'play_arrow';
+  if (!P.flashing) P.bigplay.style.display = playing ? 'none' : '';
+  poke();
+}
+function onTime() {
+  if (!P) return;
+  const d = P.vid.duration || 0, c = P.vid.currentTime || 0;
+  if (!P.seeking) P.seek.value = d > 0 ? Math.round(c / d * 1000) : 0;
+  P.time.textContent = fmt(c) + ' / ' + fmt(d);
+}
+function poke() {
+  if (!P) return;
+  P.wrap.classList.remove('hide');
+  clearTimeout(P.hideTimer);
+  if (!P.vid.paused && !P.vid.ended) P.hideTimer = setTimeout(() => P.wrap.classList.add('hide'), 2800);
+}
+function toggleMute() {
+  P.vid.muted = !P.vid.muted;
+  if (!P.vid.muted && P.vid.volume === 0) { P.vid.volume = 0.5; P.vol.value = 50; }
+  if (!P.vid.muted) { P.forceMuted = false; P.unmute.style.display = 'none'; }
+  syncMuteIcon();
+  poke();
+}
+function syncMuteIcon() {
+  P.muteIcon.textContent = (P.vid.muted || P.vid.volume === 0) ? 'volume_off' : 'volume_up';
+}
+function cycleSpeed() {
+  P.speedIdx = (P.speedIdx + 1) % SPEEDS.length;
+  P.vid.playbackRate = SPEEDS[P.speedIdx];
+  P.speedBtn.textContent = SPEEDS[P.speedIdx] + 'x';
+  poke();
+}
+function qualOptions() {
+  const o = [{ label: 'Auto', src: null }];
+  if (VID.renditions) {
+    if (VID.renditions['720p']) o.push({ label: '720p', src: VID.renditions['720p'] });
+    if (VID.renditions['480p']) o.push({ label: '480p', src: VID.renditions['480p'] });
+    if (VID.renditions['360p']) o.push({ label: '360p', src: VID.renditions['360p'] });
+  }
+  o.push({ label: 'Source', src: VID.src });
+  return o;
+}
+function applyAutoQuality() {
+  const o = qualOptions();
+  let pick = o[o.length - 1].src;
+  try {
+    const c = navigator.connection;
+    if (c && (c.saveData || c.effectiveType === 'slow-2g' || c.effectiveType === '2g' || c.effectiveType === '3g')) {
+      const low = o.find((x) => x.label === '360p') || o.find((x) => x.label === '480p') || o.find((x) => x.label === '720p');
+      if (low) pick = low.src;
+    }
+  } catch { pick = o[o.length - 1].src; }
+  setQualitySrc(pick, 'Auto');
+}
+function setQualitySrc(src, label) {
+  if (!src || P.vid.currentSrc.endsWith(src)) {
+    P.qualBtn.textContent = qualDisplay(label);
+    return;
+  }
+  const t = P.vid.currentTime;
+  const playing = !P.vid.paused;
+  P.vid.src = src;
+  P.vid.currentTime = t;
+  if (playing) P.vid.play().catch(() => {});
+  P.qualBtn.textContent = qualDisplay(label);
+  poke();
+}
+function qualDisplay(label) {
+  if (label === 'Auto' || label === 'Source') return label;
+  const n = parseInt(label, 10);
+  if (n >= 720) return label + ' HD';
+  return label;
+}
+function openQualityMenu() {
+  const m = document.getElementById('qualMenu');
+  const o = qualOptions();
+  const cur = P.qualBtn.textContent;
+  m.innerHTML = '<md-list>' + o.map((opt, i) =>
+    `<md-list-item onclick="applyQualityOpt(${i})">`
+    + `<div slot="headline">${esc(qualDisplay(opt.label))}</div>`
+    + (cur === qualDisplay(opt.label) ? '<md-icon slot="end">check</md-icon>' : '')
+    + '</md-list-item>').join('') + '</md-list>';
+  m.show();
+}
+function applyQualityOpt(i) {
+  const o = qualOptions();
+  const opt = o[i % o.length];
+  document.getElementById('qualMenu').close();
+  setQualitySrc(opt.src, opt.label);
+}
+function toggleFull() {
+  if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); return; }
+  if (P.wrap.requestFullscreen) P.wrap.requestFullscreen().catch(() => {});
+  else if (P.vid.webkitEnterFullscreen) P.vid.webkitEnterFullscreen();
+  poke();
+}
+function syncFullIcon() {
+  if (P) P.fullIcon.textContent = document.fullscreenElement ? 'fullscreen_exit' : 'fullscreen';
+}
+function nudge(d) {
+  P.vid.currentTime = Math.min(Math.max(0, P.vid.currentTime + d), P.vid.duration || 0);
+  flash((d > 0 ? '+' : '') + d + 's');
+  poke();
+}
+function bumpVolume(d) {
+  P.vid.muted = false;
+  P.vid.volume = Math.min(1, Math.max(0, P.vid.volume + d));
+  P.vol.value = Math.round(P.vid.volume * 100);
+  syncMuteIcon();
+  poke();
+}
+function flash(txt) {
+  P.flashing = true;
+  P.bigplay.style.display = 'none';
+  P.flash.textContent = txt;
+  P.flash.style.display = '';
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => {
+    P.flash.style.display = 'none';
+    P.flashing = false;
+    if (P.vid.paused || P.vid.ended) P.bigplay.style.display = '';
+  }, 600);
+}
+function onKey(e) {
+  if (!P) return;
+  const tag = (e.target && e.target.tagName) || '';
+  if (tag !== 'DIV' && tag !== 'VIDEO' && tag !== 'BODY') return;
+  const k = e.key;
+  if (k === ' ' || k === 'k') { e.preventDefault(); togglePlay(); }
+  else if (k === 'ArrowRight') { e.preventDefault(); nudge(10); }
+  else if (k === 'ArrowLeft') { e.preventDefault(); nudge(-10); }
+  else if (k === 'ArrowUp') { e.preventDefault(); bumpVolume(0.1); }
+  else if (k === 'ArrowDown') { e.preventDefault(); bumpVolume(-0.1); }
+  else if (k === 'f') toggleFull();
+  else if (k === 'm') toggleMute();
+}
+function bindDoubleTap(el, d) {
+  let last = 0;
+  el.addEventListener('touchend', (e) => {
+    const now = Date.now();
+    if (now - last < 320) { e.preventDefault(); nudge(d); }
+    last = now;
+  }, { passive: false });
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (isTouchDevice()) {
+      if (!tapMoved) toggleControls();
+      return;
+    }
+    clearTimeout(clickTimer);
+    clickTimer = setTimeout(() => togglePlay(), 260);
+  });
+  el.addEventListener('dblclick', (e) => {
+    e.stopPropagation();
+    if (isTouchDevice()) nudge(d);
+    else { clearTimeout(clickTimer); toggleFull(); }
+  });
+}
+async function like() {
+  if (!(await me())) return openAuth('login');
+  const r = await fetch(`/api/videos/${id}/like`, { method: 'POST', credentials: 'include' });
+  const j = await r.json();
+  if (!r.ok) return alert(j.error);
+  VID.liked = j.liked;
+  VID.likes = j.likes;
+  document.getElementById('likeBtn').innerHTML = `<md-icon slot="icon" class="filled" style="display:${j.liked ? '' : 'none'}">&#xE87D;</md-icon><md-icon slot="icon" style="display:${j.liked ? 'none' : ''}">&#xE87E;</md-icon><span id="likeN">${fmtFull(j.likes)}</span>`;
+}
+async function del() {
+  if (!confirm('Delete this video?')) return;
+  const r = await fetch('/api/videos/' + id, { method: 'DELETE', credentials: 'include' });
+  const j = await r.json();
+  if (!r.ok) return alert(j.error);
+  location.href = '/';
+}
+async function sendComment() {
+  if (!(await me())) return openAuth('login');
+  const body = document.getElementById('cbody').value;
+  const r = await fetch(`/api/videos/${id}/comments`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    credentials: 'include', body: JSON.stringify({ body }),
+  });
+  const j = await r.json();
+  if (!r.ok) return alert(j.error);
+  document.getElementById('cbody').value = '';
+  init();
+}
+document.getElementById('cbody').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendComment(); });
+document.getElementById('cpreview').onclick = expandComments;
+document.getElementById('ctoggle').onclick = collapseComments;
+document.getElementById('upnextTabs').onchange = (e) => {
+  upnextTab = e.target.activeTabIndex === 1 ? 'pop' : 'new';
+  loadUpnext();
+};
+init();
+window.__destroy = function() {
+  destroyPlayer();
+};
+Object.assign(window, { like, toggleFollow, sendComment, openDelDialog, closeDelDialog, adminDel, applyQualityOpt, openEditDialog, closeEditDialog, saveEdit });
+};
+window.__boot();
+</script>
+</body>
+</html>
