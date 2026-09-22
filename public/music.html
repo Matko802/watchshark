@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Music — WatchShark</title>
 <link rel="icon" type="image/png" href="/favicon.png?v=1">
-<link rel="stylesheet" href="/styles.css?v=30">
+<link rel="stylesheet" href="/styles.css?v=31">
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Material+Symbols+Outlined&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
 <script type="importmap">{ "imports": { "@material/web/": "https://esm.run/@material/web/" } }</script>
 <script type="module">import '@material/web/all.js';</script>
@@ -138,6 +138,41 @@
     <md-text-button onclick="closeAuth()">Close</md-text-button>
   </div>
 </md-dialog>
+<nav id="bottomnav">
+  <a href="/" data-tab="home"><md-icon>home</md-icon><span>Home</span></a>
+  <a href="/wheels" data-tab="wheels"><md-icon>movie</md-icon><span>Wheels</span></a>
+  <a href="/settings" data-tab="account" id="navAccount"><md-icon>person</md-icon><span>You</span></a>
+</nav>
+<script>
+(function() {
+  function mark(tab) {
+    document.querySelectorAll('#bottomnav [data-tab]').forEach((a) => {
+      a.classList.toggle('active', a.dataset.tab === tab);
+    });
+  }
+  const path = location.pathname;
+  if (path === '/') mark('home');
+  else if (path === '/wheels') mark('wheels');
+  else if (path === '/settings' || path === '/admin') mark('account');
+  const acc = document.getElementById('navAccount');
+  fetch('/api/me', { credentials: 'include' }).then((r) => r.json()).then((j) => {
+    if (j && j.user) {
+      acc.href = '/channel?user=' + encodeURIComponent(j.user.username);
+      acc.dataset.user = j.user.username;
+      const u = new URLSearchParams(location.search).get('user');
+      if (path.startsWith('/channel') && u === j.user.username) mark('account');
+    }
+  }).catch(() => {});
+  acc.addEventListener('click', (e) => {
+    if (!acc.dataset.user) {
+      e.preventDefault();
+      if (typeof openAuth === 'function') openAuth('login');
+      else location.href = '/';
+    }
+  });
+})();
+</script>
+
 <script src="/app.js?v=13"></script>
 <script>
 window.__boot = function() {
@@ -382,7 +417,6 @@ function renderCardRow(el, list) {
 }
 function renderSections() {
   const order = sortedTracks();
-  // Quick picks follow the active tab, sections never repeat a shown song
   const qp = document.getElementById('qpGrid');
   qp.innerHTML = '';
   const shown = new Set();

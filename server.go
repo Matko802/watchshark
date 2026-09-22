@@ -379,6 +379,7 @@ func openDB() error {
 		}
 	}
 	}
+	_, _ = db.Exec("UPDATE users SET verified=1, verify_token=NULL WHERE verified=0")
 	return nil
 }
 
@@ -590,7 +591,6 @@ func getBanState(uid int64) (banned bool, daysLeft float64, reason string, delet
 			r = breason.String
 		}
 		dl := float64(until.Int64-time.Now().Unix()) / 86400.0
-		// permanent bans use far-future timestamp
 		if until.Int64 > 4102444800 {
 			dl = -1
 		}
@@ -667,7 +667,6 @@ func handleSignup(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, "Hashing failed")
 		return
 	}
-	vtok := randHex(32)
 	dbMu.Lock()
 	var nusers, nmail int64
 	_ = db.QueryRow("SELECT COUNT(*) FROM users").Scan(&nusers)
@@ -681,7 +680,7 @@ func handleSignup(w http.ResponseWriter, r *http.Request) {
 	if nmail >= 5 {
 		cap = true
 	} else {
-		res, err := db.Exec("INSERT INTO users (username,email,password_hash,verified,verify_token,role) VALUES (?,?,?,?,?,?)", u, e, hh, 0, vtok, role)
+		res, err := db.Exec("INSERT INTO users (username,email,password_hash,verified,verify_token,role) VALUES (?,?,?,?,?,?)", u, e, hh, 1, nil, role)
 		if err != nil {
 			if strings.Contains(err.Error(), "UNIQUE constraint") {
 				conflict = true
@@ -703,9 +702,9 @@ func handleSignup(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	link := appURL + "/verify?token=" + vtok
-	sendMail(e, "Confirm your WatchShark account", "Welcome to WatchShark!\n\nConfirm your account by opening this link:\n"+link+"\n")
-	writeJSON(w, 200, map[string]any{"ok": true, "verify": true})
+	sendMail(e, "Welcome to WatchShark", "Welcome to WatchShark, "+u+"!\n\nYour account is ready — just log in and start watching.\n")
+	setAuthCookie(w, id, u)
+	writeJSON(w, 200, map[string]any{"ok": true, "user": apiUser{ID: id, Username: u}})
 }
 
 func handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -1173,8 +1172,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{"videos": videos, "page": page, "pages": pages, "total": total})
 }
 
-func handleGetVideo(w http.ResponseWriter, r *http.Request, id int64) {
-	viewer := int64(-1)
+func handleGetVideo(w http.ResponseWriter, r *http.Request, id int64) {	viewer := int64(-1)
 	if vid, _, ok := authUser(r); ok {
 		viewer = vid
 	}
@@ -2149,7 +2147,6 @@ func handleAdminBan(w http.ResponseWriter, r *http.Request) {
 	} else {
 		totalSec := b.Days*86400 + b.Hours*3600 + b.Minutes*60
 		if totalSec <= 0 {
-			// allow plain days fallback; if still <=0, require duration
 			writeErr(w, 400, "Give a ban duration")
 			return
 		}
@@ -2193,7 +2190,6 @@ func handleAdminSoftDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	reason := truncateRunes(b.Reason, 500)
-	// remove user's videos files but keep user row with deleted flag so login shows warning
 	var fns, ths []string
 	dbMu.Lock()
 	rows, err := db.Query("SELECT filename,thumbnail FROM videos WHERE user_id=?", b.ID)

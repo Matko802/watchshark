@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Wheels — WatchShark</title>
 <link rel="icon" type="image/png" href="/favicon.png?v=1">
-<link rel="stylesheet" href="/styles.css?v=30">
+<link rel="stylesheet" href="/styles.css?v=31">
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Material+Symbols+Outlined&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
 <link rel="stylesheet" href="/swiper-bundle.min.css?v=1">
 <script type="importmap">{ "imports": { "@material/web/": "https://esm.run/@material/web/" } }</script>
@@ -57,6 +57,41 @@
     </div>
   </div>
 </main>
+<nav id="bottomnav">
+  <a href="/" data-tab="home"><md-icon>home</md-icon><span>Home</span></a>
+  <a href="/wheels" data-tab="wheels"><md-icon>movie</md-icon><span>Wheels</span></a>
+  <a href="/settings" data-tab="account" id="navAccount"><md-icon>person</md-icon><span>You</span></a>
+</nav>
+<script>
+(function() {
+  function mark(tab) {
+    document.querySelectorAll('#bottomnav [data-tab]').forEach((a) => {
+      a.classList.toggle('active', a.dataset.tab === tab);
+    });
+  }
+  const path = location.pathname;
+  if (path === '/') mark('home');
+  else if (path === '/wheels') mark('wheels');
+  else if (path === '/settings' || path === '/admin') mark('account');
+  const acc = document.getElementById('navAccount');
+  fetch('/api/me', { credentials: 'include' }).then((r) => r.json()).then((j) => {
+    if (j && j.user) {
+      acc.href = '/channel?user=' + encodeURIComponent(j.user.username);
+      acc.dataset.user = j.user.username;
+      const u = new URLSearchParams(location.search).get('user');
+      if (path.startsWith('/channel') && u === j.user.username) mark('account');
+    }
+  }).catch(() => {});
+  acc.addEventListener('click', (e) => {
+    if (!acc.dataset.user) {
+      e.preventDefault();
+      if (typeof openAuth === 'function') openAuth('login');
+      else location.href = '/';
+    }
+  });
+})();
+</script>
+
 <script src="/app.js?v=13"></script>
 <script>
 window.__boot = function() {
@@ -145,15 +180,61 @@ async function loadBatch() {
   return added > 0;
 }
 let endShown = false;
+let endCardEl = null;
+let lastWatchAgain = 0;
 function showEndCard() {
   if (!SW || endShown) return;
   endShown = true;
   const d = document.createElement('div');
   d.className = 'swiper-slide';
-  d.innerHTML = `<div class="rempty" style="position:absolute;inset:0"><h2>You watched all wheels</h2><p class="muted">Check back later for more.</p><md-filled-button>Watch again</md-filled-button></div>`;
-  d.querySelector('md-filled-button').addEventListener('click', () => SW.slideTo(0));
+  d.innerHTML = `<div class="rempty" style="position:absolute;inset:0;pointer-events:auto"><h2>You watched all wheels</h2><p class="muted">Fresh wheels, same button.</p><md-filled-button id="watchAgainBtn" style="pointer-events:auto;cursor:pointer">Watch again</md-filled-button></div>`;
+  const btn = d.querySelector('#watchAgainBtn');
+  const go = (e) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    const now = Date.now();
+    if (now - lastWatchAgain < 1500) return;
+    lastWatchAgain = now;
+    watchAgain();
+  };
+  btn.addEventListener('click', go);
+  btn.addEventListener('touchend', go, { passive: false });
+  endCardEl = d;
   SW.appendSlide(d);
   SW.update();
+}
+async function watchAgain() {
+  pauseOthers();
+  seen = [];
+  try { localStorage.removeItem('ws_seen'); } catch {}
+  VDATA = [];
+  exhausted = false;
+  endShown = false;
+  if (SW) {
+    SW.removeAllSlides();
+    SW.update();
+  }
+  endCardEl = null;
+  document.getElementById('rspin').style.display = '';
+  await loadBatch();
+  document.getElementById('rspin').style.display = 'none';
+  if (SW && SW.slides.length) {
+    SW.slideTo(0, 0);
+    onSlide();
+  }
+}
+function trimFarSlides() {
+  if (!SW) return;
+  const slides = document.getElementById('wwrap').children;
+  for (let i = 0; i < slides.length; i++) {
+    if (Math.abs(i - SW.activeIndex) > 2) {
+      const w = slides[i].querySelector('video');
+      if (w && w.src) {
+        try { w.pause(); } catch {}
+        w.removeAttribute('src');
+        try { w.load(); } catch {}
+      }
+    }
+  }
 }
 function onSlide() {
   VID = VDATA[SW.activeIndex] || null;
@@ -211,6 +292,7 @@ function onSlide() {
   }
   if (SW.activeIndex >= SW.slides.length - 3) loadBatch();
   warmNeighbors();
+  trimFarSlides();
 }
 function warmNeighbors() {
   if (!SW) return;
@@ -366,7 +448,7 @@ async function initWheels() {
   SW = new Swiper('#wswiper', {
     direction: 'vertical',
     effect: 'slide',
-    speed: 280,
+    speed: 0,
     resistanceRatio: 0.85,
     mousewheel: true,
   });

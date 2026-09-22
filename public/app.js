@@ -102,14 +102,6 @@ async function doSignup() {
   const j = await r.json();
   if (!r.ok) { document.getElementById('auth-err').textContent = j.error || 'Signup failed'; authBusy = false; return; }
   await storeCred(body.username, body.password);
-  if (j.verify) {
-    const e = document.getElementById('auth-err');
-    e.style.color = 'var(--md-sys-color-primary)';
-    e.textContent = 'Account created — waiting for admin approval.';
-    switchAuth('login');
-    authBusy = false;
-    return;
-  }
   location.reload();
 }
 const Pjax = {

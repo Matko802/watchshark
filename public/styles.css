@@ -382,6 +382,10 @@ md-icon.pfp-lg { font-size: 128px; }
 .notifpane { min-width: 330px; max-width: min(430px, 88vw); max-height: 62vh; overflow: auto; }
 .pad { padding: 8px 16px; }
 md-list-item.unread { --md-list-item-container-color: var(--md-sys-color-secondary-container); }
+#bottomnav { display: none; }
+.chanrow { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 12px; scrollbar-width: none; }
+.chanrow::-webkit-scrollbar { display: none; }
+.chanchip { flex-shrink: 0; display: flex; align-items: center; gap: 8px; text-decoration: none; color: inherit; background: var(--md-sys-color-surface-container-low); border: 1px solid var(--md-sys-color-outline-variant); border-radius: 20px; padding: 6px 14px 6px 6px; font-size: 14px; }
 #banOverlay {
   position: fixed; inset: 0; z-index: 9999;
   background: rgba(0,0,0,.85);
@@ -412,6 +416,21 @@ md-list-item.unread { --md-list-item-container-color: var(--md-sys-color-seconda
 @media (max-width: 720px) {
   .notifpane { min-width: min(320px, 86vw); }
   #bellSlot { margin-left: -4px; }
+  #bottomnav {
+    display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    background: var(--md-sys-color-surface-container);
+    border-top: 1px solid var(--md-sys-color-outline-variant);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  #bottomnav a {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 9px 0 7px; text-decoration: none;
+    color: var(--md-sys-color-on-surface-variant); font-size: 11px; font-weight: 500;
+  }
+  #bottomnav a.active { color: var(--md-sys-color-on-surface); }
+  #bottomnav md-icon { font-size: 24px; width: 24px; height: 24px; }
+  main { padding-bottom: 170px; }
+  .reel { height: calc(100dvh - 84px - 62px - env(safe-area-inset-bottom)); }
   .qpgrid { grid-template-columns: 1fr; }
   .ytmsechead h2 { font-size: 18px; }
 }
