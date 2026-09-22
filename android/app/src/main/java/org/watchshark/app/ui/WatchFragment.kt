@@ -115,6 +115,68 @@ class WatchFragment : Fragment() {
             exo.prepare()
             exo.play()
         }
+        pv.setFullscreenButtonClickListener { toggleFullscreen() }
+        pv.findViewById<android.widget.Button>(R.id.exo_qual)?.setOnClickListener { anchor ->
+            showQualityMenu(anchor)
+        }
+        pv.findViewById<android.widget.Button>(R.id.exo_speed)?.setOnClickListener { anchor ->
+            cycleSpeed(anchor as android.widget.Button)
+        }
+    }
+
+    private val SPEEDS = floatArrayOf(1f, 1.25f, 1.5f, 2f, 0.5f)
+    private var speedIdx = 0
+
+    private fun cycleSpeed(btn: android.widget.Button) {
+        speedIdx = (speedIdx + 1) % SPEEDS.size
+        player?.setPlaybackSpeed(SPEEDS[speedIdx])
+        btn.text = (if (SPEEDS[speedIdx] % 1f == 0f) SPEEDS[speedIdx].toInt().toString() else SPEEDS[speedIdx].toString()) + "x"
+    }
+
+    private fun qualityOptions(): List<Pair<String, String?>> {
+        val vid = video ?: return listOf("Auto" to null)
+        val o = mutableListOf("Auto" to null as String?)
+        vid.renditions?.get("720p")?.let { o.add("720p HD" to it) }
+        vid.renditions?.get("480p")?.let { o.add("480p" to it) }
+        vid.renditions?.get("360p")?.let { o.add("360p" to it) }
+        o.add("Source" to vid.src)
+        return o
+    }
+
+    private fun showQualityMenu(anchor: View) {
+        val popup = android.widget.PopupMenu(requireContext(), anchor)
+        val options = qualityOptions()
+        val cur = (view?.findViewById<android.widget.Button>(R.id.exo_qual)?.text ?: "Auto").toString()
+        options.forEachIndexed { i, (label, _) -> popup.menu.add(0, i, i, label).isChecked = label == cur }
+        popup.menu.setGroupCheckable(0, true, true)
+        popup.setOnMenuItemClickListener { item ->
+            val (label, src) = options[item.itemId]
+            view?.findViewById<android.widget.Button>(R.id.exo_qual)?.text = label
+            val exo = player
+            if (src != null && exo != null) {
+                val t = exo.currentPosition
+                val playing = exo.isPlaying
+                exo.setMediaItem(MediaItem.fromUri(fullUrl(src) ?: src))
+                exo.prepare()
+                exo.seekTo(t)
+                if (playing) exo.play()
+            }
+            true
+        }
+        popup.show()
+    }
+
+    private fun toggleFullscreen() {
+        val act = activity ?: return
+        val decor = act.window.decorView
+        val controller = androidx.core.view.WindowInsetsControllerCompat(act.window, decor)
+        if (act.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
+            act.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            controller.show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        } else {
+            act.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        }
     }
 
     private fun releasePlayer() {

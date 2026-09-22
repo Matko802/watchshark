@@ -46,39 +46,43 @@
         android:layout_marginBottom="120dp"
         android:orientation="vertical">
 
-        <ImageButton
+        <com.google.android.material.button.MaterialIconButton
             android:id="@+id/reel_like"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:background="@drawable/pill_bg"
             android:src="@drawable/ic_thumb_up"
-            android:contentDescription="Like" />
+            android:contentDescription="Like" 
+            app:backgroundTint="#2b2b2b"
+            app:tint="@android:color/white" />
 
-        <ImageButton
+        <com.google.android.material.button.MaterialIconButton
             android:id="@+id/reel_mute"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_marginTop="12dp"
-            android:background="@drawable/pill_bg"
             android:src="@drawable/ic_volume_up"
-            android:contentDescription="Mute" />
+            android:contentDescription="Mute" 
+            app:backgroundTint="#2b2b2b"
+            app:tint="@android:color/white" />
 
-        <ImageButton
+        <com.google.android.material.button.MaterialIconButton
             android:id="@+id/reel_comments"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_marginTop="12dp"
-            android:background="@drawable/pill_bg"
             android:src="@drawable/ic_expand_more"
-            android:contentDescription="Comments" />
+            android:contentDescription="Comments" 
+            app:backgroundTint="#2b2b2b"
+            app:tint="@android:color/white" />
 
-        <ImageButton
+        <com.google.android.material.button.MaterialIconButton
             android:id="@+id/reel_quality"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_marginTop="12dp"
-            android:background="@drawable/pill_bg"
             android:src="@drawable/ic_settings"
-            android:contentDescription="Quality" />
+            android:contentDescription="Quality" 
+            app:backgroundTint="#2b2b2b"
+            app:tint="@android:color/white" />
     </LinearLayout>
 </FrameLayout>
