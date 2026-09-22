@@ -1,249 +1,185 @@
 <div align="center">
-  <br>
-  <h1>WatchShark Tube</h1>
-  <p><strong>Fork of <a href="https://github.com/codexskills/YouTubeClone">codexskills/YouTubeClone</a>, rewired to run on the <a href="https://github.com/Matko802/watchshark">WatchShark</a> media server instead of YouTube.</strong><br>
-  Same Compose Material 3 UI and ExoPlayer playback — Home feed, search, watch with qualities, Shorts-style wheels, channels with follow, likes, comments, notifications, uploads, and WatchShark login. All YouTube/InnerTube and extractor code was removed.</p>
-  <br>
-  <img src="https://img.shields.io/badge/YouTubeClone-v1.0-FF0000?style=flat-square&logo=youtube&logoColor=white" alt="Version">
-  <img src="https://img.shields.io/badge/Kotlin-2.0-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin">
-  <img src="https://img.shields.io/badge/API-24%2B-FF6600?style=flat-square&logo=android&logoColor=white" alt="Min SDK">
-  <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License">
-  <br><br>
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/📱_YouTubeClone-FF0000?style=for-the-badge&logo=youtube&logoColor=white&labelColor=111">
-    <img src="https://img.shields.io/badge/📱_YouTubeClone-FF0000?style=for-the-badge&logo=youtube&logoColor=white&labelColor=fff" alt="YouTubeClone" width="400">
-  </picture>
-  <br><br>
-  <p><strong>A premium, open-source YouTube client for Android</strong><br>
-  Built with Kotlin + Jetpack Compose + ExoPlayer — featuring YouTube-style UI, video playback, settings, and more.</p>
-  <br>
-  <a href="http://187.127.175.206:8080/app-release.apk">
-    <img src="https://img.shields.io/badge/⬇_Download_APK-FF0000?style=for-the-badge&logo=android&logoColor=white" alt="Download">
-  </a>
-  &nbsp;
-  <a href="https://github.com/codexskills/YouTubeClone">
-    <img src="https://img.shields.io/badge/🐙_Source_Code-181717?style=for-the-badge&logo=github&logoColor=white" alt="Source">
-  </a>
-  &nbsp;
-  <a href="https://t.me/codex_update">
-    <img src="https://img.shields.io/badge/📢_Updates-0088CC?style=for-the-badge&logo=telegram&logoColor=white" alt="Updates">
-  </a>
-  <br><br>
+  <img src="assets/banners/gh-banner.png" width="auto" height="auto" alt="LibreTube">
+
+[![GPL-v3](assets/widgets/license-widget.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html)
+</div><div align="center" style="width:100%; display:flex; justify-content:space-between;">
+
+[![Matrix](assets/widgets/mat-widget.svg)](https://matrix.to/#/#LibreTube:matrix.org)
+[![Mastodon](assets/widgets/mast-widget.svg)](https://fosstodon.org/@libretube)
+[![Lemmy](assets/widgets/lemmy-widget.svg)](https://feddit.rocks/c/libretube)
+
 </div>
 
----
+> **Note** <br>
+> We don't accept feature or bug requests on these platforms. Kindly submit requests only on GitHub.
 
-## ✨ Highlights
+</div><div align="center" style="width:100%; display:flex; justify-content:space-between;">
 
-| Area | Features |
-|------|----------|
-| **🎬 Player** | ExoPlayer, double-tap seek (±10s), speed (0.25x–5x), quality selector, loop, captions, stats for nerds, fullscreen pinch-zoom |
-| **📺 UI** | YouTube-style flat bottom nav (Home, Shorts, Create+, Notifications, Profile), dark theme, mini player |
-| **🏠 Home** | Category feeds, video cards, channel bar, pull-to-refresh, shimmer loading |
-| **📱 Shorts** | Vertical swipe feed, autoplay, like/dislike, share |
-| **👤 Profile** | Avatar, stats, playlists, history, downloads, liked videos, sign-in prompt |
-| **⚙️ Settings** | 11 sub-pages: General, Account, Data Saver, Autoplay, Quality, Downloads, TV, History, Privacy, Notifications, Accessibility |
-| **🔐 Login** | 2-step login with guest mode, YouTube-style form |
-| **⬇️ Downloads** | Quality selector, download manager |
-| **🔔 Notifications** | Notification feed |
-| **💬 About** | Developer credits, version info, release notes |
+[<img src="assets/badges/fdrload.png" alt="Get it on F-Droid" width="30%">](https://f-droid.org/en/packages/com.github.libretube/)
+[<img src="assets/badges/izzyload.png" alt="Get it on IzzyOnDroid" width="30%">](https://apt.izzysoft.de/fdroid/index/apk/com.github.libretube)<br/>
+[<img src="assets/badges/ghload.png" alt="Get it on GitHub" width="30%">](https://github.com/libre-tube/LibreTube/releases/latest)
+[<img src="assets/badges/ghload-nightly.png" alt="Get it on GitHub (Nightly)" width="30%">](https://github.com/libre-tube/LibreTube/releases/tag/nightly)
 
----
-
-## 📸 Screenshots
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Screenshots coming soon — Replace this section with your own  │
-│  device screenshots of Home, Player, Settings, Profile, etc.   │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 🚀 Quick Start
-
-### Download & Install
-
-```bash
-# Option 1: Direct download
-curl -O http://187.127.175.206:8080/app-release.apk
-adb install app-release.apk
-
-# Option 2: Browse to URL
-open http://187.127.175.206:8080/
-```
-
-### Build from Source
-
-```bash
-# Clone
-git clone https://github.com/codexskills/YouTubeClone.git
-cd YouTubeClone
-
-# Build
-chmod +x gradlew
-./gradlew assembleRelease
-
-# Output: app/build/outputs/apk/release/app-release-unsigned.apk
-# Sign with your keystore before install
-```
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| **Language** | Kotlin 2.0 |
-| **UI** | Jetpack Compose, Material 3 |
-| **Player** | ExoPlayer (Media3) |
-| **API** | InnerTube (YouTube) |
-| **Async** | Coroutines + Flow |
-| **DI** | Hilt |
-| **Storage** | DataStore Preferences |
-| **Build** | Gradle 9.4, Kotlin 2.3 |
-| **Min SDK** | API 24 (Android 7.0) |
-| **Target SDK** | API 36 |
-
----
-
-## 📁 Architecture
-
-```
-app/
-├── src/main/java/com/darkk/youtube/
-│   ├── data/
-│   │   └── LocalRepository.kt        # DataStore + session management
-│   ├── download/
-│   │   └── DownloadManager.kt        # Video download handler
-│   ├── innertube/
-│   │   ├── InnerTubeClient.kt        # YouTube API client
-│   │   └── PlayerData.kt             # Data models
-│   ├── ui/
-│   │   ├── components/               # Reusable composables
-│   │   │   ├── VideoOptionsSheet.kt
-│   │   │   ├── DownloadDialog.kt
-│   │   │   └── YouTubeTopBar.kt
-│   │   ├── screens/                  # All screen composables
-│   │   │   ├── HomeScreen.kt
-│   │   │   ├── ShortsScreen.kt
-│   │   │   ├── PlayerScreen.kt       # 1800+ lines
-│   │   │   ├── ProfileScreen.kt
-│   │   │   ├── SettingsScreen.kt
-│   │   │   ├── LoginScreen.kt
-│   │   │   ├── AboutScreen.kt
-│   │   │   ├── NotificationsScreen.kt
-│   │   │   ├── CreateScreen.kt
-│   │   │   ├── SettingsSubPage.kt    # Reusable settings UI
-│   │   │   └── *_SettingsScreen.kt   # 11 sub-settings
-│   │   └── theme/
-│   └── viewmodel/
-│       └── YouTubeViewModel.kt       # Main ViewModel
-├── src/main/res/
-│   ├── drawable/
-│   │   ├── ic_launcher_foreground.xml # YouTube-style play icon
-│   │   └── ic_launcher_background.xml # Red background
-│   └── mipmap-*/                     # Launcher icons
-└── build.gradle.kts
-```
-
----
-
-## ⚙️ Configuration
-
-Settings stored via DataStore:
-
-| Setting | Values | Default |
-|---------|--------|---------|
-| Playback Speed | 0.25x – 5x | 1x (Normal) |
-| Video Quality | Auto, 144p–1080p | Auto |
-| Data Saver | On/Off | Off |
-| Autoplay | On/Off | On |
-| Dark Theme | On/Off | On |
-| Save History | On/Off | On |
-| Captions | Off / Language | Off |
-| Loop | On/Off | Off |
-
----
-
-## 🖼️ App Icon
-
-<div align="center">
-  <table>
-    <tr>
-      <td align="center">
-        <img src="https://img.shields.io/badge/🔴-FF0000?style=for-the-badge&label=Background&labelColor=FF0000" alt="Red BG"><br>
-        <strong>Red (#FF0000)</strong>
-      </td>
-      <td align="center">
-        <img src="https://img.shields.io/badge/▶-FFFFFF?style=for-the-badge&label=Foreground&labelColor=FFFFFF" alt="White Play"><br>
-        <strong>Play Triangle</strong>
-      </td>
-    </tr>
-  </table>
-  <p><em>YouTube-style adaptive icon for API 26+</em></p>
 </div>
 
----
+> **Note about Nightly builds** <br>
+> Nightly builds include features/fixes before the official release. Therefore, they are generally less stable than normal releases. Use nightly builds at your own risk.
 
-## 👨‍💻 Developer
+<details>
+  <summary>📜️ Credits</summary>
 
-<div align="center">
-  <br>
-  <table>
-    <tr>
-      <td align="center" width="200">
-        <img src="https://avatars.githubusercontent.com/u/191073266?v=4" width="120" style="border-radius: 50%; border: 3px solid #FF0000;" alt="Codex Skiller"><br><br>
-        <strong style="font-size: 18px;">Codex Skiller</strong><br>
-        <span style="color: #888;">Android Developer & Creator</span>
-      </td>
-    </tr>
-  </table>
-  <br><br>
-  <table>
-    <tr>
-      <td align="center">
-        <a href="https://github.com/codexskills">
-          <img src="https://img.shields.io/badge/🐙_@codexskills-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub">
-        </a>
-      </td>
-      <td align="center">
-        <a href="https://t.me/codex_update">
-          <img src="https://img.shields.io/badge/📢_@codex_update-0088CC?style=for-the-badge&logo=telegram&logoColor=white" alt="Updates">
-        </a>
-      </td>
-      <td align="center">
-        <a href="https://t.me/codexskills">
-          <img src="https://img.shields.io/badge/💬_@codexskills-0088CC?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram">
-        </a>
-      </td>
-      <td align="center">
-        <a href="http://187.127.175.206:8080/">
-          <img src="https://img.shields.io/badge/🌐_Portfolio-FF0000?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Portfolio">
-        </a>
-      </td>
-    </tr>
-  </table>
-  <br>
+<sub>Readme Design and Banners by [XelXen](https://github.com/XelXen)</sub> <br>
+<sub>Readme Screenshots by [ARBoyGo](https://github.com/ARBoyGo)</sub> <br>
+<sub>Readme Emoji is from [openmoji](https://openmoji.org)</sub>
+
+  <summary>Icons</summary>
+
+<sub>[Default App Icon](https://github.com/libre-tube/LibreTube/blob/master/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png) by [XelXen](https://github.com/XelXen)</sub> <br>
+<sub>[Boosted Bird](https://github.com/libre-tube/LibreTube/blob/master/app/src/main/res/mipmap-xxxhdpi/ic_bird_round.png) by [Margot Albert-Heuzey](https://margotdesign.ovh)</sub>
+
+</details>
+
+<h2 align="left">
+<sub>
+<img  src="assets/readme/about.svg"
+      height="30"
+      width="30">
+</sub>
+About
+</h2>
+
+YouTube has an extremely invasive [privacy policy](https://support.google.com/youtube/answer/10364219) which relies on using user data in unethical ways. They store a lot of your personal data - ranging from ideas, music taste, content, political opinions, and much more than you think.
+
+LibreTube aims at improving the users' privacy by being independent from Google and bypassing their data collection as much as possible. The app only sends the minimum amount of data necessary to ensure that the app works, e.g. it only loads the YouTube-video you want to play without tracking your behavior when using the app.
+
+If you have questions or need help, please make sure to read the [FAQ](https://libre-tube.github.io/#faq) before asking for help at the community channels. The [Matrix room](https://matrix.to/#/#LibreTube:matrix.org) is considered as the main communication channel, all other forums or social media accounts are maintained by volunteers from the community but not the developer(s).
+
+<h2 align="left">
+<sub>
+<img  src="assets/readme/phone.svg"
+      height="30"
+      width="30">
+</sub>
+Screenshots
+</h2>
+
+<div style="width:100%; display:flex; justify-content:space-between;">
+
+[<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/Screenshot_1.jpg" width=19% alt="Home">](fastlane/metadata/android/en-US/images/phoneScreenshots/Screenshot_1.jpg)
+[<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/Screenshot_2.jpg" width=19% alt="Home">](fastlane/metadata/android/en-US/images/phoneScreenshots/Screenshot_2.jpg)
+[<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/Screenshot_3.jpg" width=19% alt="Subscriptions">](fastlane/metadata/android/en-US/images/phoneScreenshots/Screenshot_3.jpg)
+[<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/Screenshot_4.jpg" width=19% alt="Library">](fastlane/metadata/android/en-US/images/phoneScreenshots/Screenshot_4.jpg)
+[<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/Screenshot_9.jpg" width=19% alt="Channel Overview">](fastlane/metadata/android/en-US/images/phoneScreenshots/Screenshot_9.jpg)
+
+* More screenshots can be found [here](https://github.com/libre-tube/LibreTube/blob/master/SCREEN_SHOT.md)
+
 </div>
 
----
+<h2 align="left">
+<sub>
+<img  src="assets/readme/feature.svg"
+      height="30"
+      width="30">
+</sub>
+Features
+</h2>
 
-## 📜 License
+- [x] No Ads or Tracking
+- [x] Subscriptions
+- [x] Subscription Groups
+- [x] User Playlists
+- [x] Playlist Bookmarks
+- [x] Watch/Search History
+- [x] Downloads
+- [x] Background playback
+- [x] User Accounts via [Piped](https://github.com/TeamPiped/Piped) (optional)
+- [x] [SponsorBlock](https://sponsor.ajay.app/) - skip sponsored segments in videos
+- [x] [ReturnYouTubeDislike](https://www.returnyoutubedislike.com/) - provides video dislike statistics
+- [x] [DeArrow](https://dearrow.ajay.app/) - provides better titles and thumbnails
 
-```
-This project is for educational purposes only.
-YouTube is a trademark of Google LLC.
-InnerTube API is unofficial and may break at any time.
-```
+<h2 align="left">
+<sub>
+<img  src="assets/readme/community.svg"
+      height="30"
+      width="30">
+</sub>
+Contributing
+</h2>
 
-<div align="center">
-  <br><br>
-  <sub>
-    Built with ❤️ by <a href="https://github.com/codexskills"><strong>Codex Skiller</strong></a> •
-    Join <a href="https://t.me/codex_update"><strong>@codex_update</strong></a> for latest releases
-  </sub>
-  <br><br>
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=ff0000&height=100&section=footer&text=⭐%20Star%20if%20you%20like%20it!&fontSize=20&fontColor=fff" width="100%">
+Whether you have ideas, translations, design changes, code cleaning or really heavy code changes, help is always welcome. The more is done, the better it gets! Please respect our [Code of Conduct](https://github.com/libre-tube/LibreTube/blob/master/CODE_OF_CONDUCT.md) in order to keep all interactions and discussions healthy.
+
+You can open and build the project like any other normal Android project by using Android Studio.
+
+Please make sure the title of your pull request and the commit messages follow the [conventional commit types](https://github.com/commitizen/conventional-commit-types/blob/master/index.json) (e.g. `feat: support for xy`).
+For instance, the most common commit types are "feat", "fix", "refactor", "ci" and "chore".
+
+> [!NOTE]
+> Any issue avoiding the issue template will be ignored and forced to be closed.
+
+> [!NOTE]
+> The usage of AI to generate issue texts or pull requests is not permitted at this repository and thus such issues / pull requests will be ignored.
+
+<h2 align="left">
+<sub>
+<img  src="assets/readme/donate.svg"
+      height="30"
+      width="30">
+</sub>
+Donate
+</h2>
+
+Donations can be made at:
+* <https://github.com/sponsors/Bnyro>
+* <https://liberapay.com/Bnyro>
+* Monero (XMR): 47jAx7jMFo5iqy9VgDH98qL1bSK4kr6Pxi7HKWcRwsxbVYJdjxJtyrwXeAUa5MutvcQUmWMBfvAKnPAutDHvWEymUgLm5v8
+* Ethereum (ETH): 0x599909f54CdC18B997Be8F032341d1Fb14BF4F39
+
+Contributions in any form are welcome!
+
+<h2 align="left">
+📝 Translations
+</h2>
+
+<a href="https://hosted.weblate.org/projects/libretube/#languages">
+<img src="https://hosted.weblate.org/widgets/libretube/-/287x66-grey.png" alt="Translation status" />
+</a>
+
+<h2 align="left">
+<sub>
+<img  src="assets/readme/ltvnp.svg"
+      height="30"
+      width="30">
+</sub>
+Differences to NewPipe
+</h2>
+
+LibreTube's main difference to NewPipe is that it has a much stronger focus on user experience. LibreTube uses the modern [Material 3 Expressive](https://m3.material.io) design, supports external APIs such as SponsorBlock, ReturnYouTubeDislike, or DeArrow, and allows you to synchronize your user data across devices, e.g. via Piped. <!-- TODO: replace with LibreTube sync server -->
+
+While LibreTube only supports content from YouTube, NewPipe also allows the use of other platforms like SoundCloud, PeerTube, Bandcamp and media.ccc.de.
+
+Both, LibreTube and NewPipe, are great clients for watching YouTube videos. There's no general answer about which one is better, just try them both and see which one fits you best.
+
+<h2 align="left">
+<sub>
+<img  src="assets/readme/privacy.svg"
+      height="30"
+      width="30">
+</sub>
+Privacy Policy and Disclaimer
+</h2>
+
+
+LibreTube aims to protect the privacy of its users. [Our Privacy Policy](/PRIVACY_POLICY.md) gives detailed information on which data the app stores in order to work, how it is being used, and how the project protects your personal information. It is recommended to read the privacy policy of LibreTube as well as the privacy policy of the instance you have chosen inside the app.
+
+## License
+[![GNU GPLv3 Image](https://www.gnu.org/graphics/gplv3-127x51.png)](http://www.gnu.org/licenses/gpl-3.0.en.html)
+
+LibreTube is [Free Software](https://en.wikipedia.org/wiki/Free_software): You can use, study, share and modify it at your will. The app can be redistributed and/or modified under the terms of the
+[GNU General Public License version 3 or later](https://www.gnu.org/licenses/gpl.html) published by the 
+[Free Software Foundation](https://www.fsf.org/).
+
+<div align="right">
+<table><td>
+<a href="#start-of-content">↥ Scroll to top</a>
+</td></table>
 </div>
