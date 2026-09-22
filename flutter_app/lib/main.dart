@@ -124,6 +124,8 @@ class _WebShellState extends State<WebShell> {
                   useHybridComposition: true,
                   builtInZoomControls: false,
                   displayZoomControls: false,
+                  verticalScrollBarEnabled: false,
+                  horizontalScrollBarEnabled: false,
                   thirdPartyCookiesEnabled: true,
                 ),
                 onWebViewCreated: (c) => _ctrl = c,
