@@ -9,7 +9,9 @@ Single Go binary + SQLite + FFmpeg, Material 3 web UI, native Kotlin Android app
 - Channels, follows, upload notifications, likes, comments
 - Email verification, password reset, admin approval + bans / soft-delete with notices
 - View counting (signed-in users), trending, search with animated expanding search box
-- PWA-friendly web UI (`public/`) and Android app (`android/`)
+- PWA-friendly web UI (`public/`), Android app (`android/`) and
+  forked YouTube-style client (`android-tube/`, also at
+  Matko802/WatchSharkTube)
 
 ## Server quick start (podman)
 
@@ -47,6 +49,7 @@ APK: `android/app/build/outputs/apk/debug/app-debug.apk`
 - `server.go` — backend (auth, videos, wheels, music, notifications, admin)
 - `public/` — web frontend
 - `android/` — Kotlin Android app
+- `android-tube/` — forked Compose Material 3 YouTube client rewired to this server
 - `Containerfile`, `podman-compose.yml`, `deploy.sh`, `caddy-snippet.txt` — self-hosting
 
 ## License
