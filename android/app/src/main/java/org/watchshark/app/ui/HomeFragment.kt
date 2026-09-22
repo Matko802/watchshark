@@ -71,12 +71,6 @@ class HomeFragment : Fragment() {
             },
         )
         view.findViewById<Button>(R.id.more_btn).setOnClickListener { load(page + 1) }
-        view.findViewById<View>(R.id.bell_btn).setOnClickListener {
-            (activity as? MainActivity)?.openDetail(NotificationsFragment())
-        }
-        view.findViewById<View>(R.id.upload_btn).setOnClickListener {
-            (activity as? MainActivity)?.openDetail(UploadFragment.newInstance("video"))
-        }
         load(1)
     }
 

@@ -25,6 +25,21 @@ class AuthFragment : Fragment() {
         val go: Button = view.findViewById(R.id.auth_go)
         go.setOnClickListener { if (modeLogin) doLogin() else doSignup() }
         view.findViewById<Button>(R.id.auth_switch).setOnClickListener { toggle() }
+        view.findViewById<Button>(R.id.auth_close).setOnClickListener {
+            (activity as? MainActivity)?.showHome()
+        }
+        view.findViewById<Button>(R.id.forgot_btn).setOnClickListener {
+            try {
+                startActivity(
+                    android.content.Intent(
+                        android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse(ApiClient.BASE_URL.trimEnd('/') + "/forgot"),
+                    ),
+                )
+            } catch (e: Exception) {
+                err(apiErrorMessage(e))
+            }
+        }
     }
 
     private fun toggle() {
@@ -32,6 +47,7 @@ class AuthFragment : Fragment() {
         modeLogin = !modeLogin
         v.findViewById<View>(R.id.su_name_wrap).visibility = if (modeLogin) View.GONE else View.VISIBLE
         v.findViewById<View>(R.id.su_email_wrap).visibility = if (modeLogin) View.GONE else View.VISIBLE
+        v.findViewById<View>(R.id.forgot_row).visibility = if (modeLogin) View.VISIBLE else View.GONE
         v.findViewById<Button>(R.id.auth_switch).text = if (modeLogin) "Create account" else "Log in"
         v.findViewById<Button>(R.id.auth_go).text = if (modeLogin) "Log in" else "Create account"
     }
@@ -87,7 +103,6 @@ class AuthFragment : Fragment() {
     }
 
     private fun afterAuth() {
-        // verify session + ban state, then enter
         lifecycleScope.launch {
             try {
                 val me = ApiClient.api.me().user

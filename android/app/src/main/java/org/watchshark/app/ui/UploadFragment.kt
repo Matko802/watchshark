@@ -144,7 +144,7 @@ class UploadFragment : Fragment() {
                 val rkind = res.get("kind")?.asString ?: kind
                 msg.text = "Uploaded!"
                 if (rkind == "music") {
-                    (activity as? MainActivity)?.selectTab(R.id.nav_music)
+                    (activity as? MainActivity)?.showMusic()
                 } else {
                     (activity as? MainActivity)?.openDetail(WatchFragment.newInstance(id))
                 }

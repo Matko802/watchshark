@@ -42,11 +42,15 @@ class SettingsFragment : Fragment() {
                 if (isAdded) (activity as? MainActivity)?.restartToAuth()
             }
         }
+        view.findViewById<Button>(R.id.s_admin).setOnClickListener {
+            (activity as? MainActivity)?.openAdmin()
+        }
         lifecycleScope.launch {
             try {
                 val me = ApiClient.api.me().user ?: return@launch
                 if (!isAdded) return@launch
                 view.findViewById<SwitchMaterial>(R.id.s_notif).isChecked = me.notify_uploads
+                if (me.admin) view.findViewById<Button>(R.id.s_admin).visibility = View.VISIBLE
             } catch (_: Exception) {
             }
         }
