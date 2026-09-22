@@ -429,6 +429,12 @@ md-list-item.unread { --md-list-item-container-color: var(--md-sys-color-seconda
   }
   #bottomnav a.active { color: var(--md-sys-color-on-surface); }
   #bottomnav md-icon { font-size: 24px; width: 24px; height: 24px; }
+  #bottomnav .createbtn {
+    flex: 0 0 auto; width: 48px; height: 48px; border-radius: 50%;
+    background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary);
+    align-self: center; justify-content: center; padding: 0; margin: 0 6px;
+  }
+  .topbar md-text-button[href="/wheels"], .topbar md-text-button[href="/music"] { display: none; }
   main { padding-bottom: 170px; }
   .reel { height: calc(100dvh - 84px - 62px - env(safe-area-inset-bottom)); }
   .qpgrid { grid-template-columns: 1fr; }

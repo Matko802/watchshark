@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Upload — WatchShark</title>
 <link rel="icon" type="image/png" href="/favicon.png?v=1">
-<link rel="stylesheet" href="/styles.css?v=31">
+<link rel="stylesheet" href="/styles.css?v=32">
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Material+Symbols+Outlined&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
 <script type="importmap">{ "imports": { "@material/web/": "https://esm.run/@material/web/" } }</script>
 <script type="module">import '@material/web/all.js';</script>
@@ -51,6 +51,8 @@
 <nav id="bottomnav">
   <a href="/" data-tab="home"><md-icon>home</md-icon><span>Home</span></a>
   <a href="/wheels" data-tab="wheels"><md-icon>movie</md-icon><span>Wheels</span></a>
+  <a href="/upload" class="createbtn" aria-label="Create"><md-icon>add</md-icon></a>
+  <a href="/music" data-tab="music"><md-icon>music_note</md-icon><span>Music</span></a>
   <a href="/settings" data-tab="account" id="navAccount"><md-icon>person</md-icon><span>You</span></a>
 </nav>
 <script>
@@ -63,6 +65,7 @@
   const path = location.pathname;
   if (path === '/') mark('home');
   else if (path === '/wheels') mark('wheels');
+  else if (path === '/music') mark('music');
   else if (path === '/settings' || path === '/admin') mark('account');
   const acc = document.getElementById('navAccount');
   fetch('/api/me', { credentials: 'include' }).then((r) => r.json()).then((j) => {
@@ -82,6 +85,7 @@
   });
 })();
 </script>
+
 
 <script src="/app.js?v=13"></script>
 <script>
