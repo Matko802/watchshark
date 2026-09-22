@@ -49,7 +49,7 @@ APK: `android/app/build/outputs/apk/debug/app-debug.apk`
 - `server.go` — backend (auth, videos, wheels, music, notifications, admin)
 - `public/` — web frontend
 - `android/` — Kotlin Android app
-- `android-tube/` — forked Compose Material 3 YouTube client rewired to this server
+- `android-tube/` — LibreTube fork rewired to this server (also at Matko802/WatchSharkTube)
 - `Containerfile`, `podman-compose.yml`, `deploy.sh`, `caddy-snippet.txt` — self-hosting
 
 ## License
