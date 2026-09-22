@@ -1,7 +1,16 @@
 # WatchShark Android app
 
-Native Kotlin wrapper for the WatchShark media platform with fullscreen video,
-file uploads, in-app navigation and offline error handling.
+Fully native Kotlin app for the WatchShark media platform — no WebView.
+Material 3 UI, ExoPlayer video/audio, Coil image loading, Retrofit networking.
+
+## Screens
+
+- Home feed (Latest / Trending tabs, search, endless grid)
+- Watch (ExoPlayer, likes, follow, comments, edit/delete, quality menu)
+- Wheels (vertical pager, shared ExoPlayer playlist, likes, quality menu)
+- Music (track list, mini player, full player with seek)
+- Upload (video / wheel / music + thumbnail, progress)
+- Channel, Profile, Settings, Admin (ban / unban / delete / restore / approve), Auth, Notifications
 
 ## Requirements
 
