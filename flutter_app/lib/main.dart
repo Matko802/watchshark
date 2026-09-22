@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'site_cache.dart';
 
 const appUrl = 'https://watchshark.duckdns.org';
 
@@ -52,7 +51,6 @@ class _WebShellState extends State<WebShell> {
   bool _error = false;
   bool _fullscreen = false;
   double _progress = 0;
-  final _cache = SiteCache();
 
   Future<bool> _goBack() async {
     if (_fullscreen) {
@@ -128,10 +126,7 @@ class _WebShellState extends State<WebShell> {
                   displayZoomControls: false,
                   thirdPartyCookiesEnabled: true,
                 ),
-                onWebViewCreated: (c) {
-                  _ctrl = c;
-                  _cache.prune();
-                },
+                onWebViewCreated: (c) => _ctrl = c,
                 onLoadStart: (_, __) => setState(() {
                   _loading = true;
                   _error = false;
@@ -150,8 +145,6 @@ class _WebShellState extends State<WebShell> {
                     });
                   }
                 },
-                shouldInterceptRequest: (c, req) =>
-                    _cache.handle(req.url, req.method),
                 androidOnPermissionRequest:
                     (c, origin, resources) async {
                   return PermissionRequestResponse(
