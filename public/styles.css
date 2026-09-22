@@ -435,6 +435,9 @@ md-list-item.unread { --md-list-item-container-color: var(--md-sys-color-seconda
     align-self: center; justify-content: center; padding: 0; margin: 0 6px;
   }
   .topbar md-text-button[href="/wheels"], .topbar md-text-button[href="/music"] { display: none; }
+  #whoami { display: none; }
+  #navAvatar { display: flex; }
+  #bottomnav .navavatar { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; display: block; }
   main { padding-bottom: 170px; }
   .reel { height: calc(100dvh - 84px - 62px - env(safe-area-inset-bottom)); }
   .qpgrid { grid-template-columns: 1fr; }
