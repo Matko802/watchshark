@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 import org.watchshark.app.MainActivity
 import org.watchshark.app.R
 import org.watchshark.app.data.ApiClient
+import org.watchshark.app.data.Updater
 
 class SettingsFragment : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, saved: Bundle?): View {
@@ -44,6 +45,12 @@ class SettingsFragment : Fragment() {
         }
         view.findViewById<Button>(R.id.s_admin).setOnClickListener {
             (activity as? MainActivity)?.openAdmin()
+        }
+        view.findViewById<TextView>(R.id.s_version).text =
+            "Version ${Updater.currentVersion(requireContext())}"
+        view.findViewById<Button>(R.id.s_update).setOnClickListener {
+            msg("Checking…")
+            Updater.checkManual(this) { status -> if (isAdded) msg(status) }
         }
         lifecycleScope.launch {
             try {

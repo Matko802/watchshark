@@ -64,6 +64,7 @@ class MainActivity : AppCompatActivity() {
 
     private var currentUsername: String? = null
     private var currentTab = "home"
+    private var updateChecked = false
 
     fun refreshTopbar() {
         lifecycleScope.launch {
@@ -153,6 +154,13 @@ class MainActivity : AppCompatActivity() {
         supportFragmentManager.beginTransaction()
             .replace(R.id.container, fragment, tag)
             .commit()
+        supportFragmentManager.executePendingTransactions()
+        if (!updateChecked && ApiClient.sessionToken() != null) {
+            updateChecked = true
+            supportFragmentManager.findFragmentByTag(tag)?.let {
+                org.watchshark.app.data.Updater.checkSilent(it)
+            }
+        }
     }
 
 
