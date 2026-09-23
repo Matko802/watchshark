@@ -66,7 +66,7 @@ class ChannelFragment : Fragment() {
                 val res = ApiClient.api.channel(username)
                 if (!isAdded) return@launch
                 user = res.user
-                allVideos = res.videos
+                allVideos = res.videos.orEmpty()
                 v.findViewById<TextView>(R.id.ch_name).text = "@${user.username}"
                 v.findViewById<TextView>(R.id.ch_stats).text =
                     "${fmtNum(user.followers)} followers • ${fmtNum(user.videos)} videos • ${fmtNum(user.views)} views"

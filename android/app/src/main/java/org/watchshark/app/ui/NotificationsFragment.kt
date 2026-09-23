@@ -59,7 +59,7 @@ class NotificationsFragment : Fragment() {
             try {
                 val res = ApiClient.api.notifications()
                 if (!isAdded) return@launch
-                adapter.setItems(res.notifications)
+                adapter.setItems(res.notifications.orEmpty())
             } catch (e: Exception) {
                 if (isAdded) v.snack(httpErrorMessage(e))
             }

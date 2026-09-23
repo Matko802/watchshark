@@ -89,7 +89,7 @@ class HomeFragment : Fragment() {
                 page = p
                 pages = res.pages.toInt()
                 v.findViewById<TextView>(R.id.count).text = "${res.total} videos"
-                if (p == 1) adapter.setItems(res.videos) else adapter.append(res.videos)
+                if (p == 1) adapter.setItems(res.videos.orEmpty()) else adapter.append(res.videos.orEmpty())
                 v.findViewById<Button>(R.id.more_btn).visibility =
                     if (p < pages) View.VISIBLE else View.GONE
             } catch (e: Exception) {

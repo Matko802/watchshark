@@ -39,7 +39,7 @@ class AdminFragment : Fragment() {
             try {
                 val res = ApiClient.api.adminUsers()
                 if (!isAdded) return@launch
-                adapter.setItems(res.users)
+                adapter.setItems(res.users.orEmpty())
             } catch (e: Exception) {
                 if (isAdded) v.snack(httpErrorMessage(e))
             }

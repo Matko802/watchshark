@@ -81,12 +81,14 @@ data class Comment(
 
 data class MeResponse(val user: MeUser?)
 data class VideosResponse(
-    val videos: List<Video> = emptyList(),
+    // The Go backend marshals empty slices as JSON null, so these must
+    // stay nullable even though callers treat them as lists via orEmpty().
+    val videos: List<Video>? = null,
     val page: Long = 1,
     val pages: Long = 0,
     val total: Long = 0
 )
-data class ChannelResponse(val user: ChannelUser, val videos: List<Video> = emptyList())
-data class VideoDetailResponse(val video: Video?, val comments: List<Comment> = emptyList())
-data class NotificationsResponse(val notifications: List<Notif> = emptyList(), val unread: Int = 0)
-data class AdminUsersResponse(val users: List<AdminUser> = emptyList())
+data class ChannelResponse(val user: ChannelUser, val videos: List<Video>? = null)
+data class VideoDetailResponse(val video: Video?, val comments: List<Comment>? = null)
+data class NotificationsResponse(val notifications: List<Notif>? = null, val unread: Int = 0)
+data class AdminUsersResponse(val users: List<AdminUser>? = null)

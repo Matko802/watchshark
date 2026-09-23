@@ -134,7 +134,7 @@ class MusicFragment : Fragment() {
                 )
                 if (!isAdded) return@launch
                 tracks.clear()
-                tracks.addAll(res.videos.filter { it.status == "ready" })
+                tracks.addAll(res.videos.orEmpty().filter { it.status == "ready" })
                 renderSections()
             } catch (e: Exception) {
                 if (isAdded) view?.snack(httpErrorMessage(e))

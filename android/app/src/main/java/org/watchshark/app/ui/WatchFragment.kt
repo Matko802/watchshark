@@ -71,7 +71,7 @@ class WatchFragment : Fragment() {
                 if (!isAdded) return@launch
                 video = res.video
                 render()
-                commentsAdapter.setItems(res.comments)
+                commentsAdapter.setItems(res.comments.orEmpty())
             } catch (e: Exception) {
                 if (isAdded) v.snack(httpErrorMessage(e))
             }
