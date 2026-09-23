@@ -37,10 +37,44 @@ object Updater {
     private const val RELEASES_URL =
         "https://api.github.com/repos/Matko802/watchshark/releases?per_page=30"
 
-    private val http = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .build()
+    /** Silent auto-check at most once per this interval (manual taps bypass it). */
+    private const val CHECK_THROTTLE_MS = 24 * 60 * 60 * 1000L
+    private const val PREFS = "watchshark_update"
+    private const val KEY_LAST_CHECK = "last_check"
+
+    @Volatile
+    private var http: OkHttpClient? = null
+    @Volatile
+    private var appContext: Context? = null
+    private val checking = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /** Must be called once at startup (alongside ApiClient.init). */
+    fun init(ctx: Context) {
+        appContext = ctx.applicationContext
+        if (http == null) {
+            synchronized(this) {
+                if (http == null) {
+                    // HTTP cache: GitHub answers conditional requests with 304,
+                    // which does NOT consume rate limit.
+                    val cache = try {
+                        okhttp3.Cache(File(ctx.cacheDir, "gh_api"), 1L * 1024 * 1024)
+                    } catch (_: Exception) {
+                        null
+                    }
+                    val builder = OkHttpClient.Builder()
+                        .connectTimeout(10, TimeUnit.SECONDS)
+                        .readTimeout(30, TimeUnit.SECONDS)
+                    if (cache != null) builder.cache(cache)
+                    http = builder.build()
+                }
+            }
+        }
+    }
+
+    private fun client(): OkHttpClient {
+        appContext?.let { init(it) }
+        return http!!
+    }
 
     private fun parseVer(v: String): List<Int> {
         val m = Regex("""(\d+)\.(\d+)\.(\d+)""").find(v) ?: return listOf(0, 0, 0)
@@ -78,7 +112,7 @@ object Updater {
                 .header("Accept", "application/vnd.github+json")
                 .get()
                 .build()
-            http.newCall(req).execute().use { resp ->
+            client().newCall(req).execute().use { resp ->
                 if (resp.code == 403) {
                     val reset = resp.header("X-RateLimit-Reset")?.toLongOrNull()
                     val when_ = if (reset != null) {
@@ -132,29 +166,61 @@ object Updater {
 
     /** Silent check (e.g. on launch): only shows a dialog when an update exists. */
     fun checkSilent(host: Fragment) {
+        if (!checking.compareAndSet(false, true)) return
+        if (checkedRecently()) {
+            checking.set(false)
+            return
+        }
         host.lifecycleScope.launch {
-            val result = checkForUpdate()
-            if (result is UpdateCheck.Available && host.isAdded) {
-                promptUpdate(host, result.update)
+            try {
+                val result = checkForUpdate()
+                stampCheck()
+                if (result is UpdateCheck.Available && host.isAdded) {
+                    promptUpdate(host, result.update)
+                }
+            } finally {
+                checking.set(false)
             }
         }
     }
 
     /** Manual check with feedback (status message when up to date or on error). */
     fun checkManual(host: Fragment, onStatus: (String) -> Unit) {
+        // Spam-tapping the button reuses the in-flight check instead of
+        // firing a new API call per tap (GitHub allows 60/hr unauthenticated).
+        if (!checking.compareAndSet(false, true)) {
+            onStatus("Already checking…")
+            return
+        }
         host.lifecycleScope.launch {
-            when (val result = checkForUpdate()) {
-                is UpdateCheck.Available -> {
-                    if (host.isAdded) promptUpdate(host, result.update)
+            try {
+                when (val result = checkForUpdate()) {
+                    is UpdateCheck.Available -> {
+                        if (host.isAdded) promptUpdate(host, result.update)
+                    }
+                    UpdateCheck.UpToDate -> {
+                        if (host.isAdded) onStatus("Already on the latest version")
+                    }
+                    is UpdateCheck.Failed -> {
+                        if (host.isAdded) onStatus(result.reason)
+                    }
                 }
-                UpdateCheck.UpToDate -> {
-                    if (host.isAdded) onStatus("Already on the latest version")
-                }
-                is UpdateCheck.Failed -> {
-                    if (host.isAdded) onStatus(result.reason)
-                }
+            } finally {
+                checking.set(false)
             }
         }
+    }
+
+    private fun prefs(): android.content.SharedPreferences? =
+        appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    private fun checkedRecently(): Boolean {
+        val last = prefs()?.getLong(KEY_LAST_CHECK, 0) ?: 0
+        return System.currentTimeMillis() - last < CHECK_THROTTLE_MS
+    }
+
+    private fun stampCheck() {
+        prefs()?.edit()?.putLong(KEY_LAST_CHECK, System.currentTimeMillis())?.apply()
     }
 
     private fun promptUpdate(host: Fragment, update: AppUpdate) {
@@ -190,7 +256,7 @@ object Updater {
         job = host.lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val req = Request.Builder().url(update.url).get().build()
-                http.newCall(req).execute().use { resp ->
+                client().newCall(req).execute().use { resp ->
                     if (!resp.isSuccessful) throw IllegalStateException("HTTP ${resp.code}")
                     val total = resp.body?.contentLength() ?: update.size
                     val file = File(ctx.cacheDir, "watchshark-update.apk")

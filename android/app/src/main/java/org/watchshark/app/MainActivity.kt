@@ -37,6 +37,7 @@ class MainActivity : AppCompatActivity() {
         setTheme(R.style.Theme_WatchShark)
         super.onCreate(savedInstanceState)
         ApiClient.init(this)
+        org.watchshark.app.data.Updater.init(this)
         setContentView(R.layout.activity_main)
         applyEdgeToEdge()
 

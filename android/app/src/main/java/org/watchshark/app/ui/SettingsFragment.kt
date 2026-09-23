@@ -65,6 +65,7 @@ class SettingsFragment : Fragment() {
 
     private fun msg(s: String) {
         view?.findViewById<TextView>(R.id.s_msg)?.text = s
+        if (isAdded) requireContext().toast(s)
     }
 
     private fun rename() {
