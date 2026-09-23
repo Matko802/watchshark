@@ -27,6 +27,12 @@ data class AppUpdate(
     val size: Long
 )
 
+sealed interface UpdateCheck {
+    data class Available(val update: AppUpdate) : UpdateCheck
+    data object UpToDate : UpdateCheck
+    data class Failed(val reason: String) : UpdateCheck
+}
+
 object Updater {
     private const val RELEASES_URL =
         "https://api.github.com/repos/Matko802/watchshark/releases?per_page=30"
@@ -59,70 +65,95 @@ object Updater {
         BuildConfig.VERSION_NAME
     }
 
-    /** Returns the newest android-v* release newer than the installed app, or null. */
-    suspend fun checkForUpdate(): AppUpdate? = withContext(Dispatchers.IO) {
+    /**
+     * Returns Available / UpToDate / Failed (network, HTTP error, rate limit).
+     * Never throws; callers must surface Failed instead of pretending
+     * everything is up to date.
+     */
+    suspend fun checkForUpdate(): UpdateCheck = withContext(Dispatchers.IO) {
         val current = parseVer(BuildConfig.VERSION_NAME)
-        val req = Request.Builder().url(RELEASES_URL).get().build()
-        http.newCall(req).execute().use { resp ->
-            if (!resp.isSuccessful) return@withContext null
-            val body = resp.body?.string() ?: return@withContext null
-            val releases = JSONArray(body)
-            var best: AppUpdate? = null
-            for (i in 0 until releases.length()) {
-                val r = releases.optJSONObject(i) ?: continue
-                val tag = r.optString("tag_name", "")
-                if (!tag.startsWith("android-v")) continue
-                if (cmpVer(parseVer(tag), current) <= 0) continue
-                val assets = r.optJSONArray("assets") ?: continue
-                var apkUrl = ""
-                var apkSize = 0L
-                for (j in 0 until assets.length()) {
-                    val a = assets.optJSONObject(j) ?: continue
-                    val name = a.optString("name", "")
-                    if (name.endsWith(".apk")) {
-                        apkUrl = a.optString("browser_download_url", "")
-                        apkSize = a.optLong("size", 0)
-                        break
+        try {
+            val req = Request.Builder()
+                .url(RELEASES_URL)
+                .header("Accept", "application/vnd.github+json")
+                .get()
+                .build()
+            http.newCall(req).execute().use { resp ->
+                if (resp.code == 403) {
+                    val reset = resp.header("X-RateLimit-Reset")?.toLongOrNull()
+                    val when_ = if (reset != null) {
+                        val mins = ((reset * 1000 - System.currentTimeMillis()) / 60000)
+                            .coerceAtLeast(1)
+                        " (retry in ~$mins min)"
+                    } else ""
+                    return@withContext UpdateCheck.Failed("GitHub rate limit$when_")
+                }
+                if (!resp.isSuccessful) {
+                    return@withContext UpdateCheck.Failed("Check failed (HTTP ${resp.code})")
+                }
+                val body = resp.body?.string() ?: return@withContext UpdateCheck.Failed(
+                    "Check failed (empty response)"
+                )
+                val releases = JSONArray(body)
+                var best: AppUpdate? = null
+                for (i in 0 until releases.length()) {
+                    val r = releases.optJSONObject(i) ?: continue
+                    val tag = r.optString("tag_name", "")
+                    if (!tag.startsWith("android-v")) continue
+                    if (cmpVer(parseVer(tag), current) <= 0) continue
+                    val assets = r.optJSONArray("assets") ?: continue
+                    var apkUrl = ""
+                    var apkSize = 0L
+                    for (j in 0 until assets.length()) {
+                        val a = assets.optJSONObject(j) ?: continue
+                        val name = a.optString("name", "")
+                        if (name.endsWith(".apk")) {
+                            apkUrl = a.optString("browser_download_url", "")
+                            apkSize = a.optLong("size", 0)
+                            break
+                        }
+                    }
+                    if (apkUrl.isEmpty()) continue
+                    val cand = AppUpdate(
+                        tag.removePrefix("android-v"),
+                        r.optString("body", ""),
+                        apkUrl, apkSize
+                    )
+                    if (best == null || cmpVer(parseVer(cand.version), parseVer(best.version)) > 0) {
+                        best = cand
                     }
                 }
-                if (apkUrl.isEmpty()) continue
-                val cand = AppUpdate(
-                    tag.removePrefix("android-v"),
-                    r.optString("body", ""),
-                    apkUrl, apkSize
-                )
-                if (best == null || cmpVer(parseVer(cand.version), parseVer(best.version)) > 0) {
-                    best = cand
-                }
+                best?.let { UpdateCheck.Available(it) } ?: UpdateCheck.UpToDate
             }
-            best
+        } catch (e: Exception) {
+            UpdateCheck.Failed("Could not check for updates (${e.message ?: "network error"})")
         }
     }
 
     /** Silent check (e.g. on launch): only shows a dialog when an update exists. */
     fun checkSilent(host: Fragment) {
         host.lifecycleScope.launch {
-            val update = try {
-                checkForUpdate()
-            } catch (_: Exception) {
-                null
-            } ?: return@launch
-            if (host.isAdded) promptUpdate(host, update)
+            val result = checkForUpdate()
+            if (result is UpdateCheck.Available && host.isAdded) {
+                promptUpdate(host, result.update)
+            }
         }
     }
 
     /** Manual check with feedback (status message when up to date or on error). */
     fun checkManual(host: Fragment, onStatus: (String) -> Unit) {
         host.lifecycleScope.launch {
-            val update = try {
-                checkForUpdate()
-            } catch (_: Exception) {
-                onStatus("Could not check for updates")
-                return@launch
+            when (val result = checkForUpdate()) {
+                is UpdateCheck.Available -> {
+                    if (host.isAdded) promptUpdate(host, result.update)
+                }
+                UpdateCheck.UpToDate -> {
+                    if (host.isAdded) onStatus("Already on the latest version")
+                }
+                is UpdateCheck.Failed -> {
+                    if (host.isAdded) onStatus(result.reason)
+                }
             }
-            if (!host.isAdded) return@launch
-            if (update == null) onStatus("Already on the latest version")
-            else promptUpdate(host, update)
         }
     }
 
@@ -146,11 +177,17 @@ object Updater {
             .setTitle("Downloading update")
             .setView(view)
             .setCancelable(false)
-            .setNegativeButton("Cancel", null)
             .create()
+        var job: kotlinx.coroutines.Job? = null
+        dialog.setButton(
+            android.content.DialogInterface.BUTTON_NEGATIVE, "Cancel"
+        ) { _, _ ->
+            job?.cancel()
+            dialog.dismiss()
+        }
         dialog.show()
 
-        host.lifecycleScope.launch(Dispatchers.IO) {
+        job = host.lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val req = Request.Builder().url(update.url).get().build()
                 http.newCall(req).execute().use { resp ->
@@ -185,6 +222,7 @@ object Updater {
                     }
                 }
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 withContext(Dispatchers.Main) {
                     bar.isIndeterminate = false
                     label.text = "Download failed: ${e.message ?: "network error"}"
