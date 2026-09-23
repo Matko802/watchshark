@@ -38,6 +38,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         ApiClient.init(this)
         setContentView(R.layout.activity_main)
+        applyEdgeToEdge()
 
         findViewById<View>(R.id.brand_icon).setOnClickListener { showHome() }
         findViewById<View>(R.id.brand_text).setOnClickListener { showHome() }
@@ -74,6 +75,35 @@ class MainActivity : AppCompatActivity() {
     private var currentUsername: String? = null
     private var currentTab = "home"
     private var updateChecked = false
+
+    /**
+     * Pushes the system-bar insets INTO the top/bottom bars (as extra
+     * padding) instead of padding the root. That way the #111111 bars
+     * themselves extend behind the status + gesture bars — no black
+     * strips above the topbar or below the bottom nav.
+     */
+    private fun applyEdgeToEdge() {
+        val density = resources.displayMetrics.density
+        val root: View = findViewById(R.id.root)
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            val bars = insets.getInsets(
+                androidx.core.view.WindowInsetsCompat.Type.systemBars()
+            )
+            findViewById<View>(R.id.topbar)?.setPadding(
+                (8 * density).toInt(),
+                (8 * density).toInt() + bars.top,
+                (8 * density).toInt(),
+                (8 * density).toInt()
+            )
+            findViewById<View>(R.id.nav_row)?.setPadding(
+                0,
+                (9 * density).toInt(),
+                0,
+                (9 * density).toInt() + bars.bottom
+            )
+            insets
+        }
+    }
 
     fun refreshTopbar() {
         lifecycleScope.launch {
