@@ -37,7 +37,7 @@ class WheelsFragment : Fragment() {
 
     override fun onViewCreated(view: View, saved: Bundle?) {
         loadSeen()
-        player = ExoPlayer.Builder(requireContext()).build().also { exo ->
+        player = ApiClient.buildPlayer(requireContext()).also { exo ->
             exo.volume = 0f
             exo.addListener(object : Player.Listener {
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -198,7 +198,8 @@ class WheelsFragment : Fragment() {
             h.playerView.player = player
             h.title.text = vid.title
             h.meta.text = "@${vid.username} • ${fmtNum(vid.views)} views"
-            h.like.setImageResource(if (vid.liked) R.drawable.ic_thumb_up else R.drawable.ic_thumb_up)
+            h.like.setImageResource(if (vid.liked) R.drawable.ic_favorite_fill else R.drawable.ic_favorite_outline)
+            h.like.setColorFilter(if (vid.liked) android.graphics.Color.RED else android.graphics.Color.WHITE)
             h.like.alpha = if (vid.liked) 1.0f else 0.6f
             h.mute.setImageResource(if (muted) R.drawable.ic_volume_off else R.drawable.ic_volume_up)
             h.playerView.setOnClickListener { togglePlayPause() }
@@ -235,6 +236,8 @@ class WheelsFragment : Fragment() {
                     vid.liked = res.get("liked")?.asBoolean == true
                     vid.likes = res.get("likes")?.asLong ?: vid.likes
                     if (isAdded) {
+                        h.like.setImageResource(if (vid.liked) R.drawable.ic_favorite_fill else R.drawable.ic_favorite_outline)
+                        h.like.setColorFilter(if (vid.liked) android.graphics.Color.RED else android.graphics.Color.WHITE)
                         h.like.alpha = if (vid.liked) 1.0f else 0.6f
                     }
                 } catch (e: Exception) {

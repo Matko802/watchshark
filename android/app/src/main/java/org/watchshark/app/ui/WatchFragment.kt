@@ -109,7 +109,7 @@ class WatchFragment : Fragment() {
         val v = view ?: return
         releasePlayer()
         val pv: androidx.media3.ui.PlayerView = v.findViewById(R.id.player)
-        player = ExoPlayer.Builder(requireContext()).build().also { exo ->
+        player = ApiClient.buildPlayer(requireContext()).also { exo ->
             pv.player = exo
             exo.setMediaItem(MediaItem.fromUri(url))
             exo.prepare()

@@ -1,6 +1,10 @@
 package org.watchshark.app.data
 
 import android.content.Context
+import androidx.media3.common.MediaItem
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
@@ -72,4 +76,28 @@ object ApiClient {
         if (path.startsWith("http://") || path.startsWith("https://")) return path
         return BASE_URL.trimEnd('/') + "/" + path.trimStart('/')
     }
+
+    /** Cookie header for the current session, if logged in. */
+    fun authCookie(): String? {
+        val token = sessionToken() ?: return null
+        return "ws_token=$token"
+    }
+
+    /**
+     * ExoPlayer with the session cookie attached to media requests.
+     * The server requires auth for /v/ /t/ streams, and plain
+     * MediaItem.fromUri sends no cookies — without this, shorts and
+     * music fail with 403 and nothing plays.
+     */
+    fun buildPlayer(ctx: Context): ExoPlayer {
+        val props = mutableMapOf<String, String>()
+        authCookie()?.let { props["Cookie"] = it }
+        val dataSource = DefaultHttpDataSource.Factory()
+            .setDefaultRequestProperties(props)
+        return ExoPlayer.Builder(ctx)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSource))
+            .build()
+    }
+
+    fun mediaItem(url: String): MediaItem = MediaItem.fromUri(url)
 }

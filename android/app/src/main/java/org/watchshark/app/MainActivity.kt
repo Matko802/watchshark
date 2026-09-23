@@ -157,22 +157,30 @@ class MainActivity : AppCompatActivity() {
 
 
     private fun markNav() {
-        // Match Flutter BottomNav: active tab icon + label white, idle #A8A8A8.
+        // Match Flutter BottomNav + Material 3: selected tab uses the filled
+        // sharp icon in white, idle tabs use the outlined sharp icon in gray.
         // The You tab is never highlighted (Flutter keeps it idle gray).
-        val tabs = mapOf(
-            "home" to Triple(R.id.nav_home_icon, R.id.nav_home_label, "home"),
-            "wheels" to Triple(R.id.nav_wheels_icon, R.id.nav_wheels_label, "wheels"),
-            "music" to Triple(R.id.nav_music_icon, R.id.nav_music_label, "music"),
+        data class Tab(val iconId: Int, val labelId: Int, val tag: String)
+        val tabs = listOf(
+            Tab(R.id.nav_home_icon, R.id.nav_home_label, "home"),
+            Tab(R.id.nav_wheels_icon, R.id.nav_wheels_label, "wheels"),
+            Tab(R.id.nav_music_icon, R.id.nav_music_label, "music"),
+        )
+        val icons = mapOf(
+            "home" to Pair(R.drawable.ic_home_fill, R.drawable.ic_home),
+            "wheels" to Pair(R.drawable.ic_movie_fill, R.drawable.ic_movie),
+            "music" to Pair(R.drawable.ic_music_note_fill, R.drawable.ic_music_note),
         )
         val active = android.graphics.Color.WHITE
         val idle = android.graphics.Color.parseColor("#A8A8A8")
-        tabs.values.forEach { (iconId, labelId, tag) ->
-            val selected = tag == currentTab
-            (findViewById<View>(iconId) as? ImageView)?.apply {
-                alpha = if (selected) 1.0f else 0.45f
+        tabs.forEach { tab ->
+            val selected = tab.tag == currentTab
+            val (fillIcon, outlineIcon) = icons[tab.tag]!!
+            (findViewById<View>(tab.iconId) as? ImageView)?.apply {
+                setImageResource(if (selected) fillIcon else outlineIcon)
                 setColorFilter(if (selected) active else idle)
             }
-            (findViewById<View>(labelId) as? TextView)?.apply {
+            (findViewById<View>(tab.labelId) as? TextView)?.apply {
                 setTextColor(if (selected) active else idle)
             }
         }

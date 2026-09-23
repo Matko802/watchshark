@@ -55,7 +55,7 @@ class MusicFragment : Fragment() {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = this@MusicFragment.queueAdapter
         }
-        player = ExoPlayer.Builder(requireContext()).build().also { exo ->
+        player = ApiClient.buildPlayer(requireContext()).also { exo ->
             exo.addListener(object : Player.Listener {
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     syncPlayIcons()
@@ -63,7 +63,7 @@ class MusicFragment : Fragment() {
                 }
 
                 override fun onPlaybackStateChanged(state: Int) {
-                    if (state == Player.STATE_ENDED) playTrack((ti + 1) % tracks.size)
+                    if (state == Player.STATE_ENDED && tracks.isNotEmpty()) playTrack((ti + 1) % tracks.size)
                 }
             })
         }
@@ -78,15 +78,15 @@ class MusicFragment : Fragment() {
             },
         )
         view.findViewById<View>(R.id.mini_play).setOnClickListener { toggle() }
-        view.findViewById<View>(R.id.mini_next).setOnClickListener { playTrack((ti + 1) % tracks.size) }
+        view.findViewById<View>(R.id.mini_next).setOnClickListener { if (tracks.isNotEmpty()) playTrack((ti + 1) % tracks.size) }
         view.findViewById<View>(R.id.mini_prev).setOnClickListener {
-            playTrack((ti - 1 + tracks.size) % tracks.size)
+            if (tracks.isNotEmpty()) playTrack((ti - 1 + tracks.size) % tracks.size)
         }
         view.findViewById<View>(R.id.mini_meta).setOnClickListener { setFullVisible(true) }
         view.findViewById<View>(R.id.full_play).setOnClickListener { toggle() }
-        view.findViewById<View>(R.id.full_next).setOnClickListener { playTrack((ti + 1) % tracks.size) }
+        view.findViewById<View>(R.id.full_next).setOnClickListener { if (tracks.isNotEmpty()) playTrack((ti + 1) % tracks.size) }
         view.findViewById<View>(R.id.full_prev).setOnClickListener {
-            playTrack((ti - 1 + tracks.size) % tracks.size)
+            if (tracks.isNotEmpty()) playTrack((ti - 1 + tracks.size) % tracks.size)
         }
         view.findViewById<View>(R.id.full_close).setOnClickListener { setFullVisible(false) }
         view.findViewById<View>(R.id.qp_playall).setOnClickListener { playTrack(0) }
