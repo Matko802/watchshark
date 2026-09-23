@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.PopupMenu
 import android.widget.TextView
+import com.google.android.material.button.MaterialButton
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
@@ -29,6 +30,7 @@ class WheelsFragment : Fragment() {
     private var loading = false
     private var exhausted = false
     private var muted = true
+    private var selectedPos = 0
     private val qualityOverride = mutableMapOf<Long, String>()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, saved: Bundle?): View {
@@ -52,6 +54,12 @@ class WheelsFragment : Fragment() {
         pager.adapter = adapter
         pager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
+                val old = selectedPos
+                selectedPos = position
+                if (old != position) {
+                    adapter.notifyItemChanged(old)
+                    adapter.notifyItemChanged(position)
+                }
                 player?.let { exo ->
                     if (exo.currentMediaItemIndex != position && position < exo.mediaItemCount) {
                         exo.seekTo(position, 0)
@@ -180,10 +188,10 @@ class WheelsFragment : Fragment() {
             val playerView: PlayerView = v.findViewById(R.id.reel_player)
             val title: TextView = v.findViewById(R.id.reel_title)
             val meta: TextView = v.findViewById(R.id.reel_meta)
-            val like: ImageButton = v.findViewById(R.id.reel_like)
-            val mute: ImageButton = v.findViewById(R.id.reel_mute)
-            val comments: ImageButton = v.findViewById(R.id.reel_comments)
-            val quality: ImageButton = v.findViewById(R.id.reel_quality)
+            val like: MaterialButton = v.findViewById(R.id.reel_like)
+            val mute: MaterialButton = v.findViewById(R.id.reel_mute)
+            val comments: MaterialButton = v.findViewById(R.id.reel_comments)
+            val quality: MaterialButton = v.findViewById(R.id.reel_quality)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
@@ -195,13 +203,15 @@ class WheelsFragment : Fragment() {
 
         override fun onBindViewHolder(h: Holder, position: Int) {
             val vid = videos[position]
-            h.playerView.player = player
+            // Single shared player: only the visible page holds the surface,
+            // otherwise the last-bound page steals it and current page is black.
+            h.playerView.player = if (position == selectedPos) player else null
             h.title.text = vid.title
             h.meta.text = "@${vid.username} • ${fmtNum(vid.views)} views"
-            h.like.setImageResource(if (vid.liked) R.drawable.ic_favorite_fill else R.drawable.ic_favorite_outline)
-            h.like.setColorFilter(if (vid.liked) android.graphics.Color.RED else android.graphics.Color.WHITE)
+            h.like.setIconResource(if (vid.liked) R.drawable.ic_favorite_fill else R.drawable.ic_favorite_outline)
+            h.like.iconTint = android.content.res.ColorStateList.valueOf(if (vid.liked) android.graphics.Color.RED else android.graphics.Color.WHITE)
             h.like.alpha = if (vid.liked) 1.0f else 0.6f
-            h.mute.setImageResource(if (muted) R.drawable.ic_volume_off else R.drawable.ic_volume_up)
+            h.mute.setIconResource(if (muted) R.drawable.ic_volume_off else R.drawable.ic_volume_up)
             h.playerView.setOnClickListener { togglePlayPause() }
             h.like.setOnClickListener { toggleLike(vid, h) }
             h.mute.setOnClickListener {
@@ -217,7 +227,8 @@ class WheelsFragment : Fragment() {
 
         override fun onViewAttachedToWindow(holder: Holder) {
             super.onViewAttachedToWindow(holder)
-            holder.playerView.player = player
+            holder.playerView.player =
+                if (holder.bindingAdapterPosition == selectedPos) player else null
         }
 
         override fun onViewDetachedFromWindow(holder: Holder) {
@@ -236,8 +247,8 @@ class WheelsFragment : Fragment() {
                     vid.liked = res.get("liked")?.asBoolean == true
                     vid.likes = res.get("likes")?.asLong ?: vid.likes
                     if (isAdded) {
-                        h.like.setImageResource(if (vid.liked) R.drawable.ic_favorite_fill else R.drawable.ic_favorite_outline)
-                        h.like.setColorFilter(if (vid.liked) android.graphics.Color.RED else android.graphics.Color.WHITE)
+                        h.like.setIconResource(if (vid.liked) R.drawable.ic_favorite_fill else R.drawable.ic_favorite_outline)
+                        h.like.iconTint = android.content.res.ColorStateList.valueOf(if (vid.liked) android.graphics.Color.RED else android.graphics.Color.WHITE)
                         h.like.alpha = if (vid.liked) 1.0f else 0.6f
                     }
                 } catch (e: Exception) {

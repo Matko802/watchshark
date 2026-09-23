@@ -251,8 +251,8 @@ class MusicFragment : Fragment() {
     private fun syncPlayIcons() {
         val playing = player?.isPlaying == true
         val icon = if (playing) R.drawable.ic_pause else R.drawable.ic_play_arrow
-        view?.findViewById<ImageButton>(R.id.mini_play)?.setImageResource(icon)
-        view?.findViewById<ImageButton>(R.id.full_play)?.setImageResource(icon)
+        view?.findViewById<com.google.android.material.button.MaterialButton>(R.id.mini_play)?.setIconResource(icon)
+        view?.findViewById<com.google.android.material.button.MaterialButton>(R.id.full_play)?.setIconResource(icon)
         adapter.playingIdx = ti
         adapter.isPlaying = playing
         adapter.notifyDataSetChanged()
