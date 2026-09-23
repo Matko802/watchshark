@@ -1,0 +1,409 @@
+import 'package:flutter/material.dart';
+import '../api.dart';
+import '../main.dart';
+import 'screens/channel.dart';
+import 'screens/notifications.dart';
+import 'screens/settings.dart';
+import 'screens/auth.dart';
+import 'screens/upload.dart';
+import 'screens/watch.dart';
+import 'screens/wheels.dart';
+import 'screens/music.dart';
+import 'screens/admin.dart';
+
+String timeAgo(String s) {
+  final t = DateTime.tryParse(s.replaceAll(' ', 'T'))?.toLocal();
+  if (t == null) return s;
+  final sec = DateTime.now().difference(t).inSeconds.clamp(0, 1 << 31);
+  if (sec < 60) return sec <= 1 ? '1 second ago' : '$sec seconds ago';
+  final m = sec ~/ 60;
+  if (m < 60) return m == 1 ? '1 minute ago' : '$m minutes ago';
+  final h = m ~/ 60;
+  if (h < 24) return h == 1 ? '1 hour ago' : '$h hours ago';
+  final d = h ~/ 24;
+  if (d < 30) return d == 1 ? '1 day ago' : '$d days ago';
+  return '${(d / 30).floor()} months ago';
+}
+
+class TopBar extends StatelessWidget implements PreferredSizeWidget {
+  final ApiUser? me;
+  final ValueChanged<ApiUser?> onMeChanged;
+  final VoidCallback? onSearchTap;
+
+  const TopBar({super.key, required this.me, required this.onMeChanged, this.onSearchTap});
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      backgroundColor: const Color(0xFF111111),
+      titleSpacing: 8,
+      title: InkWell(
+        onTap: () {
+          Navigator.of(context).popUntil((r) => r.isFirst);
+        },
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset('assets/logo.webp', width: 32, height: 32),
+            const SizedBox(width: 10),
+            const Text('WatchShark', style: TextStyle(fontSize: 18)),
+          ],
+        ),
+      ),
+      actions: [
+        if (me != null) ...[
+          BellButton(me: me!, onMeChanged: onMeChanged),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            color: Colors.white,
+            onPressed: () => Navigator.of(context)
+                .push(MaterialPageRoute(
+                    builder: (_) =>
+                        SettingsScreen(me: me!, onMeChanged: onMeChanged)))
+                .then((_) async => onMeChanged(await api.me())),
+          ),
+          if (me!.admin)
+            TextButton(
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const AdminScreen())),
+              child: const Text('Admin'),
+            ),
+        ] else
+          FilledButton(
+            onPressed: () => showDialog(
+              context: context,
+              builder: (_) => AuthDialog(onMeChanged: onMeChanged),
+            ).then((_) async => onMeChanged(await api.me())),
+            child: const Text('Sign in'),
+          ),
+      ],
+    );
+  }
+}
+
+// Navigation targets live in screens/.
+
+class BellButton extends StatefulWidget {
+  final ApiUser me;
+  final ValueChanged<ApiUser?> onMeChanged;
+  const BellButton({super.key, required this.me, required this.onMeChanged});
+
+  @override
+  State<BellButton> createState() => _BellButtonState();
+}
+
+class _BellButtonState extends State<BellButton> {
+  int _unread = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final n = await api.notifications();
+      if (mounted) setState(() => _unread = n['unread'] as int);
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        IconButton(
+          icon: Icon(
+              _unread > 0 ? Icons.notifications_active : Icons.notifications_outlined,
+              color: Colors.white),
+          onPressed: () => Navigator.of(context)
+              .push(MaterialPageRoute(
+                  builder: (_) => const NotificationsScreen()))
+              .then((_) => _load()),
+        ),
+        if (_unread > 0)
+          Positioned(
+            top: 6,
+            right: 6,
+            child: Container(
+              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+              padding: const EdgeInsets.symmetric(horizontal: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE0E0E0),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Center(
+                child: Text(_unread > 9 ? '9+' : '$_unread',
+                    style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class UserAvatar extends StatelessWidget {
+  final String? url;
+  final double radius;
+  const UserAvatar({super.key, required this.url, this.radius = 14});
+
+  @override
+  Widget build(BuildContext context) {
+    final full = api.full(url);
+    if (full == null) {
+      return Icon(Icons.account_circle,
+          size: radius * 2, color: const Color(0xFFA8A8A8));
+    }
+    final lower = full.toLowerCase();
+    if (lower.endsWith('.webm')) {
+      return Icon(Icons.account_circle,
+          size: radius * 2, color: const Color(0xFFA8A8A8));
+    }
+    return ClipOval(
+      child: Image.network(full,
+          width: radius * 2,
+          height: radius * 2,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Icon(Icons.account_circle,
+              size: radius * 2, color: const Color(0xFFA8A8A8))),
+    );
+  }
+}
+
+class VideoCard extends StatelessWidget {
+  final Video video;
+  const VideoCard({super.key, required this.video});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => WatchScreen(videoId: video.id))),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Container(
+              color: Colors.black,
+              child: video.thumbnail != null
+                  ? Image.network(api.full(video.thumbnail)!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          const Icon(Icons.movie, color: Colors.grey))
+                  : const Center(
+                      child: Icon(Icons.movie, color: Colors.grey)),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 10, 4, 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                UserAvatar(url: video.avatar, radius: 14),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        (video.status != 'ready' ? '⏳ Processing… ' : '') +
+                            (video.title.isEmpty ? 'Untitled' : video.title),
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w500),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '@${video.username} • ${fmtNum(video.views)} views • ${timeAgo(video.createdAt)}',
+                        style: const TextStyle(
+                            color: Color(0xFFA8A8A8), fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class BottomNav extends StatefulWidget {
+  final String current;
+  final ValueChanged<ApiUser?> onMeChanged;
+  const BottomNav({super.key, required this.current, required this.onMeChanged});
+
+  @override
+  State<BottomNav> createState() => _BottomNavState();
+}
+
+class _BottomNavState extends State<BottomNav> {
+  ApiUser? _me;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final me = await api.me();
+    if (mounted) setState(() => _me = me);
+  }
+
+  void _go(Widget page, {bool replace = false}) {
+    if (replace) {
+      Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => page), (r) => r.isFirst);
+    } else {
+      Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => page))
+          .then((_) => _load());
+    }
+  }
+
+  void _accountTap() {
+    final me = _me;
+    if (me == null) {
+      showDialog(
+        context: context,
+        builder: (_) => AuthDialog(onMeChanged: (u) {
+          widget.onMeChanged(u);
+          _load();
+        }),
+      ).then((_) => _load());
+    } else {
+      _go(ChannelScreen(username: me.username));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const active = Colors.white;
+    const idle = Color(0xFFA8A8A8);
+    Widget item({
+      required String tab,
+      required Widget icon,
+      required String label,
+      required VoidCallback onTap,
+    }) {
+      final sel = widget.current == tab;
+      return Expanded(
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 9),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconTheme(
+                  data: IconThemeData(
+                      color: sel ? active : idle, size: 24),
+                  child: icon,
+                ),
+                const SizedBox(height: 3),
+                Text(label,
+                    style: TextStyle(
+                        color: sel ? active : idle,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500)),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF111111),
+        border: Border(top: BorderSide(color: Color(0xFF242424))),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            item(
+              tab: 'home',
+              icon: const Icon(Icons.home),
+              label: 'Home',
+              onTap: () => Navigator.of(context)
+                  .popUntil((r) => r.isFirst),
+            ),
+            item(
+              tab: 'wheels',
+              icon: const Icon(Icons.movie),
+              label: 'Wheels',
+              onTap: () => _go(const WheelsScreen()),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: Material(
+                color: const Color(0xFFF5F5F5),
+                shape: const CircleBorder(),
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: () => _go(UploadScreen(me: _me)),
+                  child: const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Icon(Icons.add,
+                        color: Colors.black, size: 24),
+                  ),
+                ),
+              ),
+            ),
+            item(
+              tab: 'music',
+              icon: const Icon(Icons.music_note),
+              label: 'Music',
+              onTap: () => _go(const MusicScreen()),
+            ),
+            _me == null
+                ? item(
+                    tab: 'account',
+                    icon: const Icon(Icons.person),
+                    label: 'You',
+                    onTap: _accountTap,
+                  )
+                : Expanded(
+                    child: InkWell(
+                      onTap: _accountTap,
+                      child: Padding(
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 9),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            UserAvatar(
+                                url: _me!.avatar, radius: 24),
+                            const SizedBox(height: 3),
+                            Text('You',
+                                style: TextStyle(
+                                    color: widget.current == 'account'
+                                        ? active
+                                        : idle,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+          ],
+        ),
+      ),
+    );
+  }
+}

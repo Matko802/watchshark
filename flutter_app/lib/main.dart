@@ -1,23 +1,44 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'api.dart';
+import 'screens/home.dart';
+import 'screens/auth.dart';
 
-const appUrl = 'https://watchshark.duckdns.org';
+final api = Api();
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    systemNavigationBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-    systemNavigationBarIconBrightness: Brightness.light,
-  ));
   runApp(const WatchSharkApp());
 }
 
-class WatchSharkApp extends StatelessWidget {
+class WatchSharkApp extends StatefulWidget {
   const WatchSharkApp({super.key});
+
+  @override
+  State<WatchSharkApp> createState() => _WatchSharkAppState();
+}
+
+class _WatchSharkAppState extends State<WatchSharkApp> {
+  bool _ready = false;
+  ApiUser? _me;
+
+  @override
+  void initState() {
+    super.initState();
+    _boot();
+  }
+
+  Future<void> _boot() async {
+    final p = await SharedPreferences.getInstance();
+    api.token = p.getString('ws_token');
+    final me = await api.me();
+    if (!mounted) return;
+    setState(() {
+      _me = me;
+      _ready = true;
+    });
+  }
+
+  void _refreshMe(ApiUser? me) => setState(() => _me = me);
 
   @override
   Widget build(BuildContext context) {
@@ -31,166 +52,68 @@ class WatchSharkApp extends StatelessWidget {
         colorScheme: const ColorScheme.dark(
           primary: Color(0xFFF5F5F5),
           onPrimary: Colors.black,
+          surface: Color(0xFF111111),
+          onSurface: Color(0xFFF2F2F2),
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF111111),
+          foregroundColor: Color(0xFFF2F2F2),
         ),
       ),
-      home: const WebShell(),
+      home: !_ready
+          ? const Scaffold(
+              backgroundColor: Colors.black,
+              body: Center(child: CircularProgressIndicator()))
+          : HomeScreen(me: _me, onMeChanged: _refreshMe),
     );
   }
 }
 
-class WebShell extends StatefulWidget {
-  const WebShell({super.key});
-
-  @override
-  State<WebShell> createState() => _WebShellState();
+String banMessage(ApiUser u) {
+  if (u.deleted) {
+    var t = 'Your account has been deleted.';
+    if (u.deletedReason != null && u.deletedReason!.isNotEmpty) {
+      t += '\nReason: ${u.deletedReason}';
+    }
+    return t;
+  }
+  if (u.banned) {
+    final r = (u.banReason != null && u.banReason!.isNotEmpty) ? '\nReason: ${u.banReason}' : '';
+    if (u.banDaysLeft < 0) return 'You have been banned permanently.$r';
+    return 'You have been banned for ${u.banDaysLeft.toStringAsFixed(1)} days.$r';
+  }
+  return '';
 }
 
-class _WebShellState extends State<WebShell> {
-  InAppWebViewController? _ctrl;
-  bool _loading = true;
-  bool _error = false;
-  bool _fullscreen = false;
-  double _progress = 0;
-
-  Future<bool> _goBack() async {
-    if (_fullscreen) {
-      await _exitFullscreen();
-      return false;
-    }
-    if (_ctrl != null && await _ctrl!.canGoBack()) {
-      await _ctrl!.goBack();
-      return false;
-    }
-    return true;
-  }
-
-  Future<void> _enterFullscreen() async {
-    setState(() => _fullscreen = true);
-    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-  }
-
-  Future<void> _exitFullscreen() async {
-    setState(() => _fullscreen = false);
-    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  }
-
-  Future<void> _insetSite() async {
-    final c = _ctrl;
-    if (c == null || !mounted) return;
-    final pad = MediaQuery.of(context).padding;
-    final top = pad.top.round();
-    final bottom = pad.bottom.round();
-    await c.evaluateJavascript(source:
-        "(function(){var st=document.getElementById('ws-insets');"
-        "if(!st){st=document.createElement('style');st.id='ws-insets';document.head.appendChild(st);}"
-        "st.textContent='*{ -webkit-tap-highlight-color:transparent !important;}"
-        ".topbar{padding-top:${top}px!important;}"
-        "#bottomnav{padding-bottom:${bottom}px!important;}"
-        "#ytmbar{padding-bottom:calc(10px + ${bottom}px)!important;}"
-        ".reel{height:calc(100dvh - 84px)!important;}"
-        ".reel-meta{padding-bottom:calc(30px + ${bottom}px)!important;}"
-        "#rseek{bottom:${bottom}px!important;}';})();");
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) async {
-        if (didPop) return;
-        if (await _goBack() && mounted) {
-          SystemNavigator.pop();
-        }
-      },
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        body: Stack(
+Future<void> showBanOverlay(BuildContext context, ApiUser u) {
+  final msg = banMessage(u);
+  if (msg.isEmpty) return Future.value();
+  return showDialog(
+    context: context,
+    barrierDismissible: true,
+    barrierColor: Colors.black87,
+    builder: (ctx) => Dialog(
+      backgroundColor: const Color(0xFF171717),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-              InAppWebView(
-                initialUrlRequest:
-                    URLRequest(url: WebUri(appUrl)),
-                initialSettings: InAppWebViewSettings(
-                  javaScriptEnabled: true,
-                  domStorageEnabled: true,
-                  databaseEnabled: true,
-                  mediaPlaybackRequiresUserGesture: false,
-                  allowFileAccess: true,
-                  cacheEnabled: true,
-                  useHybridComposition: true,
-                  builtInZoomControls: false,
-                  displayZoomControls: false,
-                  verticalScrollBarEnabled: false,
-                  horizontalScrollBarEnabled: false,
-                  thirdPartyCookiesEnabled: true,
-                ),
-                onWebViewCreated: (c) => _ctrl = c,
-                onLoadStart: (_, __) => setState(() {
-                  _loading = true;
-                  _error = false;
-                }),
-                onLoadStop: (_, __) {
-                  setState(() => _loading = false);
-                  _insetSite();
-                },
-                onProgressChanged: (_, p) =>
-                    setState(() => _progress = p / 100),
-                onReceivedError: (c, req, err) {
-                  if (req.isForMainFrame == true) {
-                    setState(() {
-                      _error = true;
-                      _loading = false;
-                    });
-                  }
-                },
-                androidOnPermissionRequest:
-                    (c, origin, resources) async {
-                  return PermissionRequestResponse(
-                    resources: resources,
-                    action: PermissionRequestResponseAction.GRANT,
-                  );
-                },
-                onEnterFullscreen: (c) => _enterFullscreen(),
-                onExitFullscreen: (c) => _exitFullscreen(),
-              ),
-              if (_loading && !_error)
-                LinearProgressIndicator(
-                  value: _progress == 0 ? null : _progress,
-                  backgroundColor: Colors.transparent,
-                  color: Colors.white,
-                ),
-              if (_error)
-                Container(
-                  color: Colors.black,
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('No connection',
-                            style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Could not reach the WatchShark server.',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                        const SizedBox(height: 16),
-                        FilledButton(
-                          onPressed: () => _ctrl?.reload(),
-                          child: const Text('Retry'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
+            const Icon(Icons.block, color: Color(0xFFFF5252), size: 48),
+            const SizedBox(height: 12),
+            const Text('Account restricted',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            Text(msg, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
+            const SizedBox(height: 24),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Close'),
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
 }
