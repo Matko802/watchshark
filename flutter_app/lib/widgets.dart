@@ -392,7 +392,7 @@ class _BottomNavState extends State<BottomNav> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             UserAvatar(
-                                url: _me!.avatar, radius: 24),
+                                url: _me!.avatar, radius: 12),
                             const SizedBox(height: 3),
                             const Text('You',
                                 style: TextStyle(
