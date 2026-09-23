@@ -168,15 +168,19 @@ class _WheelsTabState extends State<WheelsTab> {
             }
             setState(() {});
           },
-          child: Container(
-            color: Colors.black,
-            child: (r.ctrl != null && r.ctrl!.value.isInitialized)
-                ? VideoPlayer(r.ctrl!)
-                : v.thumbnail != null
-                    ? Image.network(api.full(v.thumbnail)!,
-                        fit: BoxFit.contain)
-                    : const SizedBox(),
-          ),
+            child: Container(
+              color: Colors.black,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (v.thumbnail != null)
+                    Image.network(api.full(v.thumbnail)!,
+                        fit: BoxFit.contain),
+                  if (r.ctrl != null && r.ctrl!.value.isInitialized)
+                    ClipRect(child: VideoPlayer(r.ctrl!)),
+                ],
+              ),
+            ),
         ),
         if (r.ctrl != null && r.ctrl!.value.isBuffering)
           const Center(child: CircularProgressIndicator()),

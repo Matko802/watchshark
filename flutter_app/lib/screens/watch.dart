@@ -333,7 +333,7 @@ class _WatchScreenState extends State<WatchScreen> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              if (c.value.isInitialized) VideoPlayer(c),
+              if (c.value.isInitialized) ClipRect(child: VideoPlayer(c)),
               if (c.value.isBuffering && !c.value.isPlaying)
                 const Center(child: CircularProgressIndicator()),
               if (_controls)

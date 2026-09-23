@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -33,23 +34,17 @@ String _fmtSize(int n) {
   return '${(n / 1024).toStringAsFixed(0)} KB';
 }
 
-/// Checks GitHub releases for a newer `flutter-v*` build.
-/// Returns silently when up to date; shows a dialog when an update is found.
+/// Checks GitHub releases for a newer Dart (`flutter-v*` + `dart` APK) build.
 Future<void> checkForUpdate(BuildContext context,
     {bool manual = false}) async {
   try {
     final info = await PackageInfo.fromPlatform();
     final current = _parseVer(info.version);
-    final res = await http.get(Uri.parse(
-        'https://api.github.com/repos/Matko802/watchshark/releases?per_page=30'));
-    if (res.statusCode != 200) {
-      if (manual && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not check for updates')),
-        );
-      }
-      return;
-    }
+    final res = await http
+        .get(Uri.parse(
+            'https://api.github.com/repos/Matko802/watchshark/releases?per_page=30'))
+        .timeout(const Duration(seconds: 10));
+    if (res.statusCode != 200) throw Exception('bad status');
     final releases = (json.decode(res.body) as List).cast<Map>();
     _Update? best;
     for (final r in releases) {
@@ -61,16 +56,15 @@ Future<void> checkForUpdate(BuildContext context,
       Map? apk;
       for (final a in assets) {
         final name = '${a['name'] ?? ''}';
-        if (!name.endsWith('.apk')) continue;
-        if (name.contains('arm64')) {
-          apk = a;
-          if (name.contains('dart')) break;
-        }
-        apk ??= a;
+        if (!name.endsWith('.apk') || !name.contains('arm64')) continue;
+        if (!name.contains('dart')) continue;
+        apk = a;
+        break;
       }
       if (apk == null) continue;
       final cand = _Update(tag, '${r['body'] ?? ''}',
           '${apk['browser_download_url'] ?? ''}', (apk['size'] as int?) ?? 0);
+      if (cand.url.isEmpty) continue;
       if (best == null ||
           _cmpVer(_parseVer(tag), _parseVer(best.version)) > 0) {
         best = cand;
@@ -109,6 +103,12 @@ Future<void> checkForUpdate(BuildContext context,
     );
     if (go != true || !context.mounted) return;
     await _downloadAndInstall(context, update);
+  } on TimeoutException {
+    if (manual && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Update check timed out')),
+      );
+    }
   } catch (_) {
     if (manual && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -117,78 +117,111 @@ Future<void> checkForUpdate(BuildContext context,
     }
   }
 }
-
-Future<void> _downloadAndInstall(BuildContext context, _Update update) async {
-  double progress = 0;
-  bool failed = false;
-  final dlg = showDialog(
+Future<void> _downloadAndInstall(BuildContext context, _Update update) {
+  return showDialog(
     context: context,
     barrierDismissible: false,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setD) {
-        if (!failed) {
-          _run(context, update, (p) {
-            if (ctx.mounted) setD(() => progress = p);
-          }, (err) {
-            if (ctx.mounted) {
-              setD(() => failed = true);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(err)),
-              );
-              Navigator.of(ctx).pop();
-            }
-          });
-        }
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1E1E1E),
-          title: const Text('Downloading update'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              LinearProgressIndicator(value: failed ? 0 : progress),
-              const SizedBox(height: 8),
-              Text('${(progress * 100).round()}%'),
-            ],
-          ),
-        );
-      },
-    ),
+    builder: (ctx) => _DownloadDialog(update: update),
   );
-  await dlg;
 }
 
-bool _started = false;
+class _DownloadDialog extends StatefulWidget {
+  final _Update update;
+  const _DownloadDialog({required this.update});
 
-Future<void> _run(BuildContext context, _Update update,
-    void Function(double) onProgress, void Function(String) onError) async {
-  if (_started) return;
-  _started = true;
-  try {
-    final client = http.Client();
-    final req = http.Request('GET', Uri.parse(update.url));
-    final resp = await client.send(req);
-    final total = resp.contentLength ?? update.size;
-    final dir = await getTemporaryDirectory();
-    final file = File('${dir.path}/watchshark-update.apk');
-    final sink = file.openWrite();
-    var received = 0;
-    await for (final chunk in resp.stream) {
-      received += chunk.length;
-      sink.add(chunk);
-      if (total > 0) onProgress(received / total);
+  @override
+  State<_DownloadDialog> createState() => _DownloadDialogState();
+}
+
+class _DownloadDialogState extends State<_DownloadDialog> {
+  double _progress = 0;
+  int _received = 0;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _start();
+  }
+
+  Future<void> _start() async {
+    try {
+      final client = http.Client();
+      try {
+        final req = http.Request('GET', Uri.parse(widget.update.url));
+        final resp =
+            await client.send(req).timeout(const Duration(seconds: 15));
+        if (resp.statusCode != 200) {
+          throw Exception('HTTP ${resp.statusCode}');
+        }
+        final total = resp.contentLength ?? widget.update.size;
+        final dir = await getTemporaryDirectory();
+        final file = File('${dir.path}/watchshark-update.apk');
+        if (await file.exists()) await file.delete();
+        final sink = file.openWrite();
+        try {
+          await for (final chunk in resp.stream.timeout(
+              const Duration(seconds: 30),
+              onTimeout: (EventSink<List<int>> sink) {
+            sink.close();
+            throw TimeoutException('stalled download');
+          })) {
+            _received += chunk.length;
+            sink.add(chunk);
+            if (total > 0 && mounted) {
+              setState(() => _progress = _received / total);
+            }
+          }
+        } finally {
+          await sink.close();
+        }
+        final result = await OpenFilex.open(
+          file.path,
+          type: 'application/vnd.android.package-archive',
+        );
+        if (result.type != ResultType.done) {
+          throw Exception('Could not open installer (${result.message})');
+        }
+        if (mounted) Navigator.of(context).pop();
+      } finally {
+        client.close();
+      }
+    } on TimeoutException {
+      if (mounted) {
+        setState(() => _error = 'Download timed out');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = e.toString());
+      }
     }
-    await sink.close();
-    client.close();
-    final result = await OpenFilex.open(
-      file.path,
-      type: 'application/vnd.android.package-archive',
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: const Color(0xFF1E1E1E),
+      title: const Text('Downloading update'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          LinearProgressIndicator(
+              value: _error != null
+                  ? 0
+                  : (_progress == 0 ? null : _progress)),
+          const SizedBox(height: 8),
+          Text(_error ??
+              '${(_progress * 100).round()}% • ${_fmtSize(_received)} / ${_fmtSize(widget.update.size)}'),
+        ],
+      ),
+      actions: _error != null
+          ? [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ]
+          : null,
     );
-    if (result.type != ResultType.done) {
-      onError('Could not open installer (${result.message})');
-    }
-  } catch (e) {
-    onError(e.toString());
-  } finally {
-    _started = false;
   }
 }
