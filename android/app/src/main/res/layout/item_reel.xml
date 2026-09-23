@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
+
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/reel_player"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:show_buffering="when_playing"
+        app:use_controller="false" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="vertical"
+        android:padding="12dp"
+        android:background="@drawable/gradient_bottom">
+
+        <TextView
+            android:id="@+id/reel_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textColor="@android:color/white"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/reel_meta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="#DDDDDD"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end|bottom"
+        android:layout_marginBottom="120dp"
+        android:orientation="vertical">
+
+        <com.google.android.material.button.MaterialIconButton
+            android:id="@+id/reel_like"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_thumb_up"
+            android:contentDescription="Like" 
+            app:backgroundTint="#2b2b2b"
+            app:tint="@android:color/white" />
+
+        <com.google.android.material.button.MaterialIconButton
+            android:id="@+id/reel_mute"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="12dp"
+            android:src="@drawable/ic_volume_up"
+            android:contentDescription="Mute" 
+            app:backgroundTint="#2b2b2b"
+            app:tint="@android:color/white" />
+
+        <com.google.android.material.button.MaterialIconButton
+            android:id="@+id/reel_comments"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="12dp"
+            android:src="@drawable/ic_expand_more"
+            android:contentDescription="Comments" 
+            app:backgroundTint="#2b2b2b"
+            app:tint="@android:color/white" />
+
+        <com.google.android.material.button.MaterialIconButton
+            android:id="@+id/reel_quality"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="12dp"
+            android:src="@drawable/ic_settings"
+            android:contentDescription="Quality" 
+            app:backgroundTint="#2b2b2b"
+            app:tint="@android:color/white" />
+    </LinearLayout>
+</FrameLayout>

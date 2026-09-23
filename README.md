@@ -1,7 +1,7 @@
 # WatchShark
 
 Open-source media platform — watch and share videos, wheels (shorts) and music.
-Single Go binary + SQLite + FFmpeg, Material 3 web UI, Dart/Flutter Android app.
+Single Go binary + SQLite + FFmpeg, Material 3 web UI, native Kotlin Android app.
 
 ## Features
 
@@ -31,26 +31,24 @@ Key env vars: `PORT`, `DATA_DIR`, `PUBLIC_DIR`, `JWT_SECRET`, `ADMIN_USER`,
 
 See `deploy.sh` and `caddy-snippet.txt` for the full self-host setup.
 
-## Android app (Flutter)
+## Android app (native Kotlin)
 
-Dart/Flutter app in `flutter_app/` mirroring the website 1:1 — home feed,
-watch with custom player controls, wheels pager, music discover with player,
-upload, channel, settings, admin, auth dialog, notifications.
+Fully native Kotlin app in `android/` — no WebView, no Flutter.
+Material 3 UI, ExoPlayer video/audio, Coil image loading, Retrofit networking.
 
 ```sh
-cd flutter_app
-flutter pub get
-flutter build apk --debug --split-per-abi
+cd android
+./gradlew assembleDebug
 ```
 
-APKs: `flutter_app/build/app/outputs/flutter-apk/app-*-debug.apk`
+APK: `android/app/build/outputs/apk/debug/app-debug.apk`
 (downloads for releases live on the GitHub Releases page).
 
 ## Layout
 
 - `server.go` — backend (auth, videos, wheels, music, notifications, admin)
 - `public/` — web frontend
-- `flutter_app/` — Dart/Flutter Android app (mirrors the website)
+- `android/` — native Kotlin Android app (mirrors the website)
 - `Containerfile`, `podman-compose.yml`, `deploy.sh`, `caddy-snippet.txt` — self-hosting
 
 ## License
