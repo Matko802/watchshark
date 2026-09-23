@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import '../api.dart';
 import '../main.dart';
 import '../update.dart';
 import '../widgets.dart';
-import 'upload.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeTab extends StatefulWidget {
   final ApiUser? me;
   final ValueChanged<ApiUser?> onMeChanged;
-  const HomeScreen({super.key, required this.me, required this.onMeChanged});
+  const HomeTab({super.key, required this.me, required this.onMeChanged});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<HomeTab> createState() => _HomeTabState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeTabState extends State<HomeTab> {
   int _page = 1;
   int _pages = 0;
   int _total = 0;
@@ -62,11 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 2,
-      child: Scaffold(
-      backgroundColor: Colors.black,
-      bottomNavigationBar: BottomNav(current: 'home', onMeChanged: widget.onMeChanged),
-      appBar: TopBar(me: widget.me, onMeChanged: widget.onMeChanged),
-      body: Column(
+      child: Column(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
@@ -77,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 hintText: 'Search',
                 hintStyle: const TextStyle(color: Color(0xFFA8A8A8)),
                 prefixIcon:
-                    const Icon(Icons.search, color: Color(0xFFA8A8A8)),
+                    const Icon(Symbols.search_sharp, color: Color(0xFFA8A8A8)),
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(24)),
                 contentPadding:
@@ -148,18 +144,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
           ),
         ],
-      ),
-      floatingActionButton: widget.me != null
-          ? FloatingActionButton(
-              backgroundColor: const Color(0xFFF5F5F5),
-              foregroundColor: Colors.black,
-              onPressed: () => Navigator.of(context)
-                  .push(MaterialPageRoute(
-                      builder: (_) => UploadScreen(me: widget.me)))
-                  .then((_) => _load(1)),
-              child: const Icon(Icons.add),
-            )
-          : null,
       ),
     );
   }

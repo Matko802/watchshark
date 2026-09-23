@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:video_player/video_player.dart';
 import '../api.dart';
 import '../main.dart';
 import 'channel.dart';
 import 'watch.dart';
+import '../tab_index.dart';
 import '../widgets.dart';
 
-class WheelsScreen extends StatefulWidget {
-  const WheelsScreen({super.key});
+class WheelsTab extends StatefulWidget {
+  const WheelsTab({super.key});
 
   @override
-  State<WheelsScreen> createState() => _WheelsScreenState();
+  State<WheelsTab> createState() => _WheelsTabState();
 }
 
 class _Reel {
@@ -20,7 +22,7 @@ class _Reel {
   _Reel(this.video);
 }
 
-class _WheelsScreenState extends State<WheelsScreen> {
+class _WheelsTabState extends State<WheelsTab> {
   final List<_Reel> _reels = [];
   final List<int> _seen = [];
   final _pageCtrl = PageController();
@@ -33,8 +35,17 @@ class _WheelsScreenState extends State<WheelsScreen> {
   @override
   void initState() {
     super.initState();
+    shellTab.addListener(_onTabHidden);
     _loadSeen();
     _boot();
+  }
+
+  void _onTabHidden() {
+    if (shellTab.value != 1) {
+      for (final r in _reels) {
+        r.ctrl?.pause();
+      }
+    }
   }
 
   Future<void> _boot() async {
@@ -100,6 +111,7 @@ class _WheelsScreenState extends State<WheelsScreen> {
 
   @override
   void dispose() {
+    shellTab.removeListener(_onTabHidden);
     for (final r in _reels) {
       r.ctrl?.dispose();
     }
@@ -124,25 +136,7 @@ class _WheelsScreenState extends State<WheelsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      bottomNavigationBar: BottomNav(current: 'wheels', onMeChanged: (_) {}),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF111111),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset('assets/logo.webp', width: 28, height: 28),
-            const SizedBox(width: 8),
-            const Text('Wheels'),
-          ],
-        ),
-      ),
-      body: _loading
+    return _loading
           ? const Center(child: CircularProgressIndicator())
           : _reels.isEmpty
               ? const Center(child: Text('No videos yet'))
@@ -155,8 +149,7 @@ class _WheelsScreenState extends State<WheelsScreen> {
                     _playAt(i);
                   },
                   itemBuilder: (ctx, i) => _reelPage(_reels[i]),
-                ),
-    );
+                );
   }
 
   Widget _reelPage(_Reel r) {
@@ -229,11 +222,11 @@ class _WheelsScreenState extends State<WheelsScreen> {
           child: Column(
             children: [
               _railBtn(
-                  v.liked ? Icons.favorite : Icons.favorite_border,
+                  v.liked ? Symbols.favorite_sharp : Symbols.favorite_border_sharp,
                   v.liked ? Colors.red : Colors.white, () => _toggleLike(r)),
               const SizedBox(height: 14),
               _railBtn(
-                  _muted ? Icons.volume_off : Icons.volume_up,
+                  _muted ? Symbols.volume_off_sharp : Symbols.volume_up_sharp,
                   Colors.white, () async {
                 setState(() => _muted = !_muted);
                 for (final x in _reels) {
@@ -241,7 +234,7 @@ class _WheelsScreenState extends State<WheelsScreen> {
                 }
               }),
               const SizedBox(height: 14),
-              _railBtn(Icons.open_in_new, Colors.white, () {
+              _railBtn(Symbols.open_in_new_sharp, Colors.white, () {
                 r.ctrl?.pause();
                 Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) => WatchScreen(videoId: v.id)));
@@ -252,7 +245,7 @@ class _WheelsScreenState extends State<WheelsScreen> {
                   padding: const EdgeInsets.all(12),
                   decoration: const BoxDecoration(
                       color: Color(0xFF2B2B2B), shape: BoxShape.circle),
-                  child: const Icon(Icons.settings,
+                  child: const Icon(Symbols.settings_sharp,
                       color: Colors.white, size: 24),
                 ),
                 onSelected: (q) async {

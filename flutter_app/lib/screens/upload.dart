@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import '../api.dart';
 import '../main.dart';
 import 'watch.dart';
@@ -114,7 +115,7 @@ class _UploadScreenState extends State<UploadScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      bottomNavigationBar: BottomNav(current: '', onMeChanged: (_) {}),
+      bottomNavigationBar: BottomNav(current: -1, onTab: (_) {}, onMeChanged: (_) {}),
       appBar: AppBar(
           backgroundColor: const Color(0xFF111111),
           title: const Text('Upload')),
@@ -140,14 +141,14 @@ class _UploadScreenState extends State<UploadScreen>
                   style: const TextStyle(color: Color(0xFFFF5252))),
             OutlinedButton.icon(
               onPressed: _pickFile,
-              icon: const Icon(Icons.folder_open),
+              icon: const Icon(Symbols.folder_open_sharp),
               label:
                   Text(_fileName ?? 'Drag & drop is desktop-only — tap to choose'),
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
               onPressed: _pickThumb,
-              icon: const Icon(Icons.image),
+              icon: const Icon(Symbols.image_sharp),
               label: Text(_thumbPath == null
                   ? 'Choose thumbnail'
                   : 'Thumbnail selected'),
@@ -173,7 +174,7 @@ class _UploadScreenState extends State<UploadScreen>
             if (_busy) const LinearProgressIndicator(),
             FilledButton.icon(
               onPressed: _busy ? null : _up,
-              icon: const Icon(Icons.cloud_upload),
+              icon: const Icon(Symbols.cloud_upload_sharp),
               label: const Text('Upload'),
             ),
             Text(_msg,

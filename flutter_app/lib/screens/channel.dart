@@ -75,7 +75,7 @@ class _ChannelScreenState extends State<ChannelScreen>
     final u = _user;
     return Scaffold(
       backgroundColor: Colors.black,
-      bottomNavigationBar: BottomNav(current: '', onMeChanged: (_) {}),
+      bottomNavigationBar: BottomNav(current: -1, onTab: (_) {}, onMeChanged: (_) {}),
       appBar: AppBar(
           backgroundColor: const Color(0xFF111111),
           title: Text(u == null ? 'Channel' : '@${u.username}')),

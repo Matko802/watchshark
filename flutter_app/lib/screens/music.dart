@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:just_audio/just_audio.dart';
 import '../api.dart';
 import '../main.dart';
 import 'channel.dart';
+import '../tab_index.dart';
 import '../widgets.dart';
 
-class MusicScreen extends StatefulWidget {
-  const MusicScreen({super.key});
+class MusicTab extends StatefulWidget {
+  const MusicTab({super.key});
 
   @override
-  State<MusicScreen> createState() => _MusicScreenState();
+  State<MusicTab> createState() => _MusicTabState();
 }
 
-class _MusicScreenState extends State<MusicScreen>
+class _MusicTabState extends State<MusicTab>
     with SingleTickerProviderStateMixin {
   late TabController _tabs;
   List<Video> _tracks = [];
@@ -28,6 +30,7 @@ class _MusicScreenState extends State<MusicScreen>
   @override
   void initState() {
     super.initState();
+    shellTab.addListener(_onTabHidden);
     _tabs = TabController(length: 2, vsync: this);
     _tabs.addListener(() {
       if (_tabs.indexIsChanging) return;
@@ -54,9 +57,14 @@ class _MusicScreenState extends State<MusicScreen>
 
   @override
   void dispose() {
+    shellTab.removeListener(_onTabHidden);
     _player.dispose();
     _tabs.dispose();
     super.dispose();
+  }
+
+  void _onTabHidden() {
+    if (shellTab.value != 2) _player.pause();
   }
 
   Future<void> _load() async {
@@ -127,53 +135,40 @@ class _MusicScreenState extends State<MusicScreen>
     final fresh10 = fresh.take(10).toList();
     final top10 = top.take(10).toList();
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      bottomNavigationBar: BottomNav(current: 'music', onMeChanged: (_) {}),
-      appBar: AppBar(
-          backgroundColor: const Color(0xFF111111),
-          title: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Image.asset('assets/logo.webp', width: 28, height: 28),
-              const SizedBox(width: 8),
-              const Text('Music'),
-            ],
-          )),
-      body: Column(
-        children: [
-          TabBar(
-            controller: _tabs,
-            labelColor: Colors.white,
-            unselectedLabelColor: const Color(0xFFA8A8A8),
-            indicatorColor: Colors.white,
-            tabs: const [Tab(text: 'Newest'), Tab(text: 'Popular')],
-          ),
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _tracks.isEmpty
-                    ? const Center(child: Text('No music yet'))
-                    : ListView(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        children: [
-                          _sectionHead('Quick picks', true),
-                          ...quick.map(_row),
-                          if (_sort == 'new' && fresh10.isNotEmpty) ...[
-                            _sectionHead('New uploads', false),
-                            _carousel(fresh10),
-                          ],
-                          if (_sort == 'pop' && top10.isNotEmpty) ...[
-                            _sectionHead('Top hits', false),
-                            _carousel(top10),
-                          ],
-                        ],
-                      ),
-          ),
-          if (_ti >= 0 && _tracks.isNotEmpty) _miniBar(),
-          if (_sheetOpen && _ti >= 0) _sheet(),
+    return Column(
+      children: [
+        TabBar(
+          controller: _tabs,
+          labelColor: Colors.white,
+          unselectedLabelColor: const Color(0xFFA8A8A8),
+          indicatorColor: Colors.white,
+          tabs: const [Tab(text: 'Newest'), Tab(text: 'Popular')],
+        ),
+        Expanded(child: _bodyContent(quick, fresh10, top10)),
+        if (_ti >= 0 && _tracks.isNotEmpty) _miniBar(),
+        if (_sheetOpen && _ti >= 0) _sheet(),
+      ],
+    );
+  }
+
+  Widget _bodyContent(
+      List<Video> quick, List<Video> fresh10, List<Video> top10) {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_tracks.isEmpty) return const Center(child: Text('No music yet'));
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 16),
+      children: [
+        _sectionHead('Quick picks', true),
+        ...quick.map(_row),
+        if (_sort == 'new' && fresh10.isNotEmpty) ...[
+          _sectionHead('New uploads', false),
+          _carousel(fresh10),
         ],
-      ),
+        if (_sort == 'pop' && top10.isNotEmpty) ...[
+          _sectionHead('Top hits', false),
+          _carousel(top10),
+        ],
+      ],
     );
   }
 
@@ -191,7 +186,7 @@ class _MusicScreenState extends State<MusicScreen>
             FilledButton(
                 onPressed: () => _play(0), child: const Text('Play all')),
             IconButton(
-              icon: const Icon(Icons.shuffle, color: Colors.white),
+              icon: const Icon(Symbols.shuffle_sharp, color: Colors.white),
               onPressed: () {
                 if (_tracks.isEmpty) return;
                 _play(DateTime.now().millisecond % _tracks.length);
@@ -216,8 +211,8 @@ class _MusicScreenState extends State<MusicScreen>
               ? Image.network(api.full(t.thumbnail)!,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) =>
-                      const Icon(Icons.music_note, color: Colors.grey))
-              : const Icon(Icons.music_note, color: Colors.grey),
+                      const Icon(Symbols.music_note_sharp, color: Colors.grey))
+              : const Icon(Symbols.music_note_sharp, color: Colors.grey),
         ),
       ),
       title: Text(t.title.isEmpty ? 'Untitled' : t.title,
@@ -230,7 +225,7 @@ class _MusicScreenState extends State<MusicScreen>
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(color: Color(0xFFA8A8A8), fontSize: 12)),
       trailing: cur && _playing
-          ? const Icon(Icons.bar_chart, color: Colors.white)
+          ? const Icon(Symbols.bar_chart_sharp, color: Colors.white)
           : null,
       onTap: () {
         if (idx == _ti) {
@@ -277,10 +272,10 @@ class _MusicScreenState extends State<MusicScreen>
                           ? Image.network(api.full(t.thumbnail)!,
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => const Icon(
-                                  Icons.music_note,
+                                  Symbols.music_note_sharp,
                                   color: Colors.grey,
                                   size: 48))
-                          : const Icon(Icons.music_note,
+                          : const Icon(Symbols.music_note_sharp,
                               color: Colors.grey, size: 48),
                     ),
                   ),
@@ -347,9 +342,9 @@ class _MusicScreenState extends State<MusicScreen>
                       ? Image.network(api.full(t.thumbnail)!,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => const Icon(
-                              Icons.music_note,
+                              Symbols.music_note_sharp,
                               color: Colors.grey))
-                      : const Icon(Icons.music_note, color: Colors.grey),
+                      : const Icon(Symbols.music_note_sharp, color: Colors.grey),
                 ),
               ),
               const SizedBox(width: 8),
@@ -372,11 +367,11 @@ class _MusicScreenState extends State<MusicScreen>
                   ),
                 ),
               ),
-              _pillBtn(Icons.skip_previous,
+              _pillBtn(Symbols.skip_previous_sharp,
                   () => _play((_ti - 1 + _tracks.length) % _tracks.length)),
-              _pillBtn(_playing ? Icons.pause : Icons.play_arrow, _toggle,
+              _pillBtn(_playing ? Symbols.pause_sharp : Symbols.play_arrow_sharp, _toggle,
                   white: true, big: true),
-              _pillBtn(Icons.skip_next,
+              _pillBtn(Symbols.skip_next_sharp,
                   () => _play((_ti + 1) % _tracks.length)),
             ],
           ),
@@ -395,7 +390,7 @@ class _MusicScreenState extends State<MusicScreen>
         children: [
           Row(
             children: [
-              _pillBtn(Icons.expand_more,
+              _pillBtn(Symbols.expand_more_sharp,
                   () => setState(() => _sheetOpen = false)),
               const Expanded(
                 child: Text('Now playing',
@@ -419,10 +414,10 @@ class _MusicScreenState extends State<MusicScreen>
                   ? Image.network(api.full(t.thumbnail)!,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => const Icon(
-                          Icons.music_note,
+                          Symbols.music_note_sharp,
                           color: Colors.grey,
                           size: 64))
-                  : const Icon(Icons.music_note,
+                  : const Icon(Symbols.music_note_sharp,
                       color: Colors.grey, size: 64),
             ),
           ),
@@ -467,11 +462,11 @@ class _MusicScreenState extends State<MusicScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _pillBtn(Icons.skip_previous,
+              _pillBtn(Symbols.skip_previous_sharp,
                   () => _play((_ti - 1 + _tracks.length) % _tracks.length)),
-              _pillBtn(_playing ? Icons.pause : Icons.play_arrow, _toggle,
+              _pillBtn(_playing ? Symbols.pause_sharp : Symbols.play_arrow_sharp, _toggle,
                   white: true, big: true),
-              _pillBtn(Icons.skip_next,
+              _pillBtn(Symbols.skip_next_sharp,
                   () => _play((_ti + 1) % _tracks.length)),
             ],
           ),
@@ -501,9 +496,9 @@ class _MusicScreenState extends State<MusicScreen>
                           ? Image.network(api.full(q.thumbnail)!,
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => const Icon(
-                                  Icons.music_note,
+                                  Symbols.music_note_sharp,
                                   color: Colors.grey))
-                          : const Icon(Icons.music_note, color: Colors.grey),
+                          : const Icon(Symbols.music_note_sharp, color: Colors.grey),
                     ),
                   ),
                   title: Text(q.title.isEmpty ? 'Untitled' : q.title,
@@ -515,7 +510,7 @@ class _MusicScreenState extends State<MusicScreen>
                       style: const TextStyle(
                           color: Color(0xFFA8A8A8), fontSize: 12)),
                   trailing: i == _ti && _playing
-                      ? const Icon(Icons.bar_chart,
+                      ? const Icon(Symbols.bar_chart_sharp,
                           color: Colors.white, size: 18)
                       : null,
                   onTap: () {

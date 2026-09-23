@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:video_player/video_player.dart';
 import '../api.dart';
 import '../main.dart';
+import '../tab_index.dart';
 import 'screens/channel.dart';
 import 'screens/notifications.dart';
 import 'screens/settings.dart';
@@ -58,7 +60,7 @@ class TopBar extends StatelessWidget implements PreferredSizeWidget {
         if (me != null) ...[
           BellButton(me: me!, onMeChanged: onMeChanged),
           IconButton(
-            icon: const Icon(Icons.settings_outlined),
+            icon: const Icon(Symbols.settings_sharp),
             color: Colors.white,
             onPressed: () => Navigator.of(context)
                 .push(MaterialPageRoute(
@@ -119,7 +121,7 @@ class _BellButtonState extends State<BellButton> {
       children: [
         IconButton(
           icon: Icon(
-              _unread > 0 ? Icons.notifications_active : Icons.notifications_outlined,
+              _unread > 0 ? Symbols.notifications_active_sharp : Symbols.notifications_sharp,
               color: Colors.white),
           onPressed: () => Navigator.of(context)
               .push(MaterialPageRoute(
@@ -160,7 +162,7 @@ class UserAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final full = api.full(url);
     if (full == null) {
-      return Icon(Icons.account_circle,
+      return Icon(Symbols.account_circle_sharp,
           size: radius * 2, color: const Color(0xFFA8A8A8));
     }
     final lower = full.toLowerCase();
@@ -172,7 +174,7 @@ class UserAvatar extends StatelessWidget {
           width: radius * 2,
           height: radius * 2,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Icon(Icons.account_circle,
+          errorBuilder: (_, __, ___) => Icon(Symbols.account_circle_sharp,
               size: radius * 2, color: const Color(0xFFA8A8A8))),
     );
   }
@@ -198,9 +200,9 @@ class VideoCard extends StatelessWidget {
                   ? Image.network(api.full(video.thumbnail)!,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) =>
-                          const Icon(Icons.movie, color: Colors.grey))
+                          const Icon(Symbols.movie_sharp, color: Colors.grey))
                   : const Center(
-                      child: Icon(Icons.movie, color: Colors.grey)),
+                      child: Icon(Symbols.movie_sharp, color: Colors.grey)),
             ),
           ),
           Padding(
@@ -241,9 +243,15 @@ class VideoCard extends StatelessWidget {
 }
 
 class BottomNav extends StatefulWidget {
-  final String current;
+  /// 0 = home, 1 = wheels, 2 = music, anything else = none highlighted.
+  final int current;
+  final ValueChanged<int> onTab;
   final ValueChanged<ApiUser?> onMeChanged;
-  const BottomNav({super.key, required this.current, required this.onMeChanged});
+  const BottomNav(
+      {super.key,
+      required this.current,
+      required this.onTab,
+      required this.onMeChanged});
 
   @override
   State<BottomNav> createState() => _BottomNavState();
@@ -263,15 +271,10 @@ class _BottomNavState extends State<BottomNav> {
     if (mounted) setState(() => _me = me);
   }
 
-  void _go(Widget page, {bool replace = false}) {
-    if (replace) {
-      Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => page), (r) => r.isFirst);
-    } else {
-      Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => page))
-          .then((_) => _load());
-    }
+  void _goTab(int i) {
+    Navigator.of(context).popUntil((r) => r.isFirst);
+    widget.onTab(i);
+    shellTab.value = i;
   }
 
   void _accountTap() {
@@ -285,7 +288,8 @@ class _BottomNavState extends State<BottomNav> {
         }),
       ).then((_) => _load());
     } else {
-      _go(ChannelScreen(username: me.username));
+      Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => ChannelScreen(username: me.username)));
     }
   }
 
@@ -294,7 +298,7 @@ class _BottomNavState extends State<BottomNav> {
     const active = Colors.white;
     const idle = Color(0xFFA8A8A8);
     Widget item({
-      required String tab,
+      required int tab,
       required Widget icon,
       required String label,
       required VoidCallback onTap,
@@ -336,17 +340,16 @@ class _BottomNavState extends State<BottomNav> {
         child: Row(
           children: [
             item(
-              tab: 'home',
-              icon: const Icon(Icons.home),
+              tab: 0,
+              icon: const Icon(Symbols.home_sharp),
               label: 'Home',
-              onTap: () => Navigator.of(context)
-                  .popUntil((r) => r.isFirst),
+              onTap: () => _goTab(0),
             ),
             item(
-              tab: 'wheels',
-              icon: const Icon(Icons.movie),
+              tab: 1,
+              icon: const Icon(Symbols.movie_sharp),
               label: 'Wheels',
-              onTap: () => _go(const WheelsScreen()),
+              onTap: () => _goTab(1),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -355,25 +358,27 @@ class _BottomNavState extends State<BottomNav> {
                 shape: const CircleBorder(),
                 child: InkWell(
                   customBorder: const CircleBorder(),
-                  onTap: () => _go(UploadScreen(me: _me)),
+                  onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => UploadScreen(me: _me))),
                   child: const Padding(
                     padding: EdgeInsets.all(12),
-                    child: Icon(Icons.add,
+                    child: Icon(Symbols.add_sharp,
                         color: Colors.black, size: 24),
                   ),
                 ),
               ),
             ),
             item(
-              tab: 'music',
-              icon: const Icon(Icons.music_note),
+              tab: 2,
+              icon: const Icon(Symbols.music_note_sharp),
               label: 'Music',
-              onTap: () => _go(const MusicScreen()),
+              onTap: () => _goTab(2),
             ),
             _me == null
                 ? item(
-                    tab: 'account',
-                    icon: const Icon(Icons.person),
+                    tab: -1,
+                    icon: const Icon(Symbols.person_sharp),
                     label: 'You',
                     onTap: _accountTap,
                   )
@@ -389,11 +394,9 @@ class _BottomNavState extends State<BottomNav> {
                             UserAvatar(
                                 url: _me!.avatar, radius: 24),
                             const SizedBox(height: 3),
-                            Text('You',
+                            const Text('You',
                                 style: TextStyle(
-                                    color: widget.current == 'account'
-                                        ? active
-                                        : idle,
+                                    color: idle,
                                     fontSize: 11,
                                     fontWeight: FontWeight.w500)),
                           ],
@@ -444,7 +447,7 @@ class _AvatarVideoState extends State<_AvatarVideo> {
   Widget build(BuildContext context) {
     final c = _ctrl;
     if (c == null || !c.value.isInitialized) {
-      return Icon(Icons.account_circle,
+      return Icon(Symbols.account_circle_sharp,
           size: widget.radius * 2, color: const Color(0xFFA8A8A8));
     }
     return SizedBox(

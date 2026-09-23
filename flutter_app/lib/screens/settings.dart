@@ -92,7 +92,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      bottomNavigationBar: BottomNav(current: '', onMeChanged: widget.onMeChanged),
+      bottomNavigationBar: BottomNav(current: -1, onTab: (_) {}, onMeChanged: widget.onMeChanged),
       appBar: AppBar(
           backgroundColor: const Color(0xFF111111),
           title: Text('@${widget.me.username}')),

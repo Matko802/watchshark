@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import '../api.dart';
 import '../main.dart';
 import '../widgets.dart';
@@ -167,7 +168,7 @@ class _AdminScreenState extends State<AdminScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      bottomNavigationBar: BottomNav(current: '', onMeChanged: (_) {}),
+      bottomNavigationBar: BottomNav(current: -1, onTab: (_) {}, onMeChanged: (_) {}),
       appBar: AppBar(
         backgroundColor: const Color(0xFF111111),
         title: Text('All accounts (${_users.length})'),
@@ -203,7 +204,7 @@ class _AdminScreenState extends State<AdminScreen> {
                   trailing: u.role == 'admin'
                       ? null
                       : IconButton(
-                          icon: const Icon(Icons.settings,
+                          icon: const Icon(Symbols.settings_sharp,
                               color: Colors.white),
                           onPressed: () => _banDialog(u),
                         ),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api.dart';
 import 'screens/home.dart';
+import 'screens/shell.dart';
 import 'screens/auth.dart';
 
 final api = Api();
@@ -64,7 +66,7 @@ class _WatchSharkAppState extends State<WatchSharkApp> {
           ? const Scaffold(
               backgroundColor: Colors.black,
               body: Center(child: CircularProgressIndicator()))
-          : HomeScreen(me: _me, onMeChanged: _refreshMe),
+          : MainShell(me: _me, onMeChanged: _refreshMe),
     );
   }
 }
@@ -100,7 +102,7 @@ Future<void> showBanOverlay(BuildContext context, ApiUser u) {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.block, color: Color(0xFFFF5252), size: 48),
+            const Icon(Symbols.block_sharp, color: Color(0xFFFF5252), size: 48),
             const SizedBox(height: 12),
             const Text('Account restricted',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),

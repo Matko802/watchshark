@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import '../api.dart';
@@ -22,6 +23,7 @@ class _WatchScreenState extends State<WatchScreen> {
   String? _error;
   bool _controls = true;
   bool _muted = false;
+  bool _fullscreen = false;
   double _speed = 1.0;
   String _quality = 'Auto';
   ApiUser? _me;
@@ -90,7 +92,24 @@ class _WatchScreenState extends State<WatchScreen> {
   void dispose() {
     _ctrl?.dispose();
     _commentCtrl.dispose();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     super.dispose();
+  }
+
+  Future<void> _setFullscreen(bool on) async {
+    setState(() => _fullscreen = on);
+    if (on) {
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    } else {
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      await SystemChrome.setPreferredOrientations(
+          [DeviceOrientation.portraitUp]);
+    }
   }
 
   Future<void> _toggleLike() async {
@@ -169,165 +188,25 @@ class _WatchScreenState extends State<WatchScreen> {
       );
     }
     final video = v;
-    final pos = c?.value.position ?? Duration.zero;
-    final dur = c?.value.duration ?? Duration.zero;
-    final playing = c?.value.isPlaying ?? false;
-
+    if (_fullscreen) {
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) _setFullscreen(false);
+        },
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: Center(child: _playerBox()),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
           backgroundColor: const Color(0xFF111111),
           title: const Text('Watch')),
       body: ListView(
-                  children: [
-                    GestureDetector(
-                      onTap: () =>
-                          setState(() => _controls = !_controls),
-                      child: AspectRatio(
-                        aspectRatio: 16 / 9,
-                        child: Container(
-                          color: const Color(0xFF333333),
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              if (c != null && c.value.isInitialized)
-                                VideoPlayer(c),
-                              if (c != null &&
-                                  c.value.isBuffering &&
-                                  !c.value.isPlaying)
-                                const Center(
-                                    child: CircularProgressIndicator()),
-                              if (_controls && c != null)
-                                Container(
-                                  decoration: const BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [
-                                        Colors.transparent,
-                                        Color.fromRGBO(0, 0, 0, 200)
-                                      ],
-                                    ),
-                                  ),
-                                  padding: const EdgeInsets.fromLTRB(
-                                      10, 2, 10, 8),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      Slider(
-                                        value: dur.inMilliseconds > 0
-                                            ? pos.inMilliseconds /
-                                                dur.inMilliseconds *
-                                                1000
-                                            : 0,
-                                        min: 0,
-                                        max: 1000,
-                                        activeColor: Colors.white,
-                                        inactiveColor: Colors.white24,
-                                        onChanged: (x) {
-                                          c.seekTo(Duration(
-                                              milliseconds:
-                                                  (x / 1000 *
-                                                          dur.inMilliseconds)
-                                                      .round()));
-                                        },
-                                      ),
-                                      Row(
-                                        children: [
-                                          _pillBtn(
-                                              playing
-                                                  ? Icons.pause
-                                                  : Icons.play_arrow,
-                                              () => playing
-                                                  ? c.pause()
-                                                  : c.play()),
-                                          _pillBtn(
-                                              _muted
-                                                  ? Icons.volume_off
-                                                  : Icons.volume_up, () async {
-                                            setState(() =>
-                                                _muted = !_muted);
-                                            await c.setVolume(
-                                                _muted ? 0 : 1);
-                                          }),
-                                          Expanded(
-                                            child: Text(
-                                              '${_fmt(pos.inSeconds)} / ${_fmt(dur.inSeconds)}',
-                                              style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 13),
-                                            ),
-                                          ),
-                                          TextButton(
-                                            onPressed: () {
-                                              setState(() {
-                                                _speed = _speeds[
-                                                    (_speeds.indexOf(_speed) +
-                                                            1) %
-                                                        _speeds.length];
-                                              });
-                                              c.setPlaybackSpeed(_speed);
-                                            },
-                                            child: Text(
-                                                '${_speed == _speed.truncateToDouble() ? _speed.toInt() : _speed}x',
-                                                style: const TextStyle(
-                                                    color: Colors.white)),
-                                          ),
-                                          PopupMenuButton<String>(
-                                            child: Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 10),
-                                              child: Text(_quality,
-                                                  style: const TextStyle(
-                                                      color: Colors.white)),
-                                            ),
-                                            onSelected: (q) {
-                                              setState(
-                                                  () => _quality = q);
-                                              _initPlayer();
-                                            },
-                                            itemBuilder: (_) {
-                                              final items = [
-                                                'Auto',
-                                                ...v.renditions.keys,
-                                                'Source'
-                                              ];
-                                              return items
-                                                  .map((q) => PopupMenuItem(
-                                                      value: q,
-                                                      child: Text(q)))
-                                                  .toList();
-                                            },
-                                          ),
-                                          _pillBtn(Icons.fullscreen, () {
-                                            if (MediaQuery.of(context)
-                                                    .orientation ==
-                                                Orientation.portrait) {
-                                              SystemChrome
-                                                  .setPreferredOrientations([
-                                                DeviceOrientation
-                                                    .landscapeLeft,
-                                                DeviceOrientation
-                                                    .landscapeRight,
-                                              ]);
-                                            } else {
-                                              SystemChrome
-                                                  .setPreferredOrientations([
-                                                DeviceOrientation.portraitUp
-                                              ]);
-                                            }
-                                          }),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
+                  children: [                    _playerBox(),
                     Padding(
                       padding: const EdgeInsets.all(12),
                       child: Text(video.title.isEmpty ? 'Untitled' : video.title,
@@ -438,6 +317,133 @@ class _WatchScreenState extends State<WatchScreen> {
     );
   }
 
+  Widget _playerBox() {
+    final c = _ctrl;
+    final video = _video;
+    if (c == null || video == null) return const SizedBox();
+    final pos = c.value.position;
+    final dur = c.value.duration;
+    final playing = c.value.isPlaying;
+    return GestureDetector(
+      onTap: () => setState(() => _controls = !_controls),
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: Container(
+          color: const Color(0xFF333333),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (c.value.isInitialized) VideoPlayer(c),
+              if (c.value.isBuffering && !c.value.isPlaying)
+                const Center(child: CircularProgressIndicator()),
+              if (_controls)
+                Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Color.fromRGBO(0, 0, 0, 200)
+                      ],
+                    ),
+                  ),
+                  padding: const EdgeInsets.fromLTRB(10, 2, 10, 8),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Slider(
+                        value: dur.inMilliseconds > 0
+                            ? pos.inMilliseconds /
+                                dur.inMilliseconds *
+                                1000
+                            : 0,
+                        min: 0,
+                        max: 1000,
+                        activeColor: Colors.white,
+                        inactiveColor: Colors.white24,
+                        onChanged: (x) {
+                          c.seekTo(Duration(
+                              milliseconds: (x / 1000 *
+                                      dur.inMilliseconds)
+                                  .round()));
+                        },
+                      ),
+                      Row(
+                        children: [
+                          _pillBtn(
+                              playing
+                                  ? Symbols.pause_sharp
+                                  : Symbols.play_arrow_sharp,
+                              () => playing ? c.pause() : c.play()),
+                          _pillBtn(
+                              _muted
+                                  ? Symbols.volume_off_sharp
+                                  : Symbols.volume_up_sharp, () async {
+                            setState(() => _muted = !_muted);
+                            await c.setVolume(_muted ? 0 : 1);
+                          }),
+                          Expanded(
+                            child: Text(
+                              '${_fmt(pos.inSeconds)} / ${_fmt(dur.inSeconds)}',
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 13),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              setState(() {
+                                _speed = _speeds[
+                                    (_speeds.indexOf(_speed) + 1) %
+                                        _speeds.length];
+                              });
+                              c.setPlaybackSpeed(_speed);
+                            },
+                            child: Text(
+                                '${_speed == _speed.truncateToDouble() ? _speed.toInt() : _speed}x',
+                                style:
+                                    const TextStyle(color: Colors.white)),
+                          ),
+                          PopupMenuButton<String>(
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 10),
+                              child: Text(_quality,
+                                  style:
+                                      const TextStyle(color: Colors.white)),
+                            ),
+                            onSelected: (q) {
+                              setState(() => _quality = q);
+                              _initPlayer();
+                            },
+                            itemBuilder: (_) {
+                              final items = [
+                                'Auto',
+                                ...video.renditions.keys,
+                                'Source'
+                              ];
+                              return items
+                                  .map((q) => PopupMenuItem(
+                                      value: q, child: Text(q)))
+                                  .toList();
+                            },
+                          ),
+                          _pillBtn(
+                              _fullscreen
+                                  ? Symbols.fullscreen_exit_sharp
+                                  : Symbols.fullscreen_sharp,
+                              () => _setFullscreen(!_fullscreen)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
   Widget _pillBtn(IconData icon, VoidCallback onTap) {
     return Padding(
       padding: const EdgeInsets.only(right: 2),
