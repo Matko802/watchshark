@@ -1,4 +1,5 @@
-data/
+/data/
+!android/app/src/main/java/org/watchshark/app/data/
 backups/
 *.db
 *.db-shm

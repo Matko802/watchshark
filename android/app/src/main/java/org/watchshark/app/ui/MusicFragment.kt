@@ -128,6 +128,7 @@ class MusicFragment : Fragment() {
         lifecycleScope.launch {
             try {
                 val res = ApiClient.api.videos(
+                    q = null,
                     sort = if (sort == "pop") "popular" else "new",
                     page = 1, limit = 48, kind = "music",
                 )
