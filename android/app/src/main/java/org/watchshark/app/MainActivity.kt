@@ -99,7 +99,7 @@ class MainActivity : AppCompatActivity() {
                 0,
                 (9 * density).toInt(),
                 0,
-                (9 * density).toInt() + bars.bottom
+                (7 * density).toInt() + bars.bottom
             )
             insets
         }
@@ -204,9 +204,9 @@ class MainActivity : AppCompatActivity() {
 
 
     private fun markNav() {
-        // Match Flutter BottomNav + Material 3: selected tab uses the filled
-        // sharp icon in white, idle tabs use the outlined sharp icon in gray.
-        // The You tab is never highlighted (Flutter keeps it idle gray).
+        // Match the website bottom nav exactly: icons always stay outlined
+        // sharp; the active tab is only brighter (white vs #A8A8A8).
+        // The You tab is never highlighted.
         data class Tab(val iconId: Int, val labelId: Int, val tag: String)
         val tabs = listOf(
             Tab(R.id.nav_home_icon, R.id.nav_home_label, "home"),
@@ -214,17 +214,16 @@ class MainActivity : AppCompatActivity() {
             Tab(R.id.nav_music_icon, R.id.nav_music_label, "music"),
         )
         val icons = mapOf(
-            "home" to Pair(R.drawable.ic_home_fill, R.drawable.ic_home),
-            "wheels" to Pair(R.drawable.ic_movie_fill, R.drawable.ic_movie),
-            "music" to Pair(R.drawable.ic_music_note_fill, R.drawable.ic_music_note),
+            "home" to R.drawable.ic_home,
+            "wheels" to R.drawable.ic_movie,
+            "music" to R.drawable.ic_music_note,
         )
         val active = android.graphics.Color.WHITE
         val idle = android.graphics.Color.parseColor("#A8A8A8")
         tabs.forEach { tab ->
             val selected = tab.tag == currentTab
-            val (fillIcon, outlineIcon) = icons[tab.tag]!!
             (findViewById<View>(tab.iconId) as? ImageView)?.apply {
-                setImageResource(if (selected) fillIcon else outlineIcon)
+                setImageResource(icons[tab.tag]!!)
                 setColorFilter(if (selected) active else idle)
             }
             (findViewById<View>(tab.labelId) as? TextView)?.apply {

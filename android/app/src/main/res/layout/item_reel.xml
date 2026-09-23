@@ -50,7 +50,7 @@
             android:id="@+id/reel_like"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:src="@drawable/ic_thumb_up"
+            android:src="@drawable/ic_favorite_outline"
             android:contentDescription="Like" 
             app:backgroundTint="#2b2b2b"
             app:tint="@android:color/white" />
@@ -70,7 +70,7 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_marginTop="12dp"
-            android:src="@drawable/ic_expand_more"
+            android:src="@drawable/ic_open_in_new"
             android:contentDescription="Comments" 
             app:backgroundTint="#2b2b2b"
             app:tint="@android:color/white" />
