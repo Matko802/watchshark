@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Forgot password — WatchShark</title>
+<link rel="icon" type="image/png" href="/favicon.png?v=1">
+<link rel="stylesheet" href="/styles.css?v=36">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Material+Symbols+Outlined&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<script type="importmap">{ "imports": { "@material/web/": "https://esm.run/@material/web/" } }</script>
+<script type="module">import '@material/web/all.js';</script>
+<meta property="og:site_name" content="WatchShark">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:title" content="WatchShark">
+<meta property="og:description" content="WatchShark — watch and share videos, wheels and music.">
+<meta property="og:image" content="https://watchshark.duckdns.org/watchshark.webp">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/"><img src="/watchshark.webp?v=2" alt="WatchShark logo"><span>WatchShark</span></a>
+</header>
+<main>
+  <h2>Trouble signing in?</h2>
+  <p class="muted">Enter your account email. We send a reset link, or a fresh confirmation link if you never confirmed.</p>
+  <form method="post" action="/api/auth/forgot" onsubmit="return submitForgot(event)">
+    <div class="nfield">
+      <label for="forgot-email">Email</label>
+      <input placeholder=" " id="forgot-email" name="email" type="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+    </div>
+    <button type="submit" tabindex="-1" aria-hidden="true" style="position:fixed;top:0;left:0;width:8px;height:8px;opacity:.01;pointer-events:none;border:0;padding:0"></button>
+  </form>
+  <div class="row">
+    <md-filled-button onclick="doForgot()"><md-icon slot="icon">mail</md-icon>Send reset link</md-filled-button>
+    <md-outlined-button onclick="doResendEmail()">Resend confirmation</md-outlined-button>
+  </div>
+  <p id="forgot-msg" class="muted"></p>
+</main>
+<script src="/app.js?v=13"></script>
+</body>
+</html>

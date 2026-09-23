@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Upload — WatchShark</title>
+<link rel="icon" type="image/png" href="/favicon.png?v=1">
+<link rel="stylesheet" href="/styles.css?v=36">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Material+Symbols+Outlined&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<script type="importmap">{ "imports": { "@material/web/": "https://esm.run/@material/web/" } }</script>
+<script type="module">import '@material/web/all.js';</script>
+<meta property="og:site_name" content="WatchShark">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:title" content="WatchShark">
+<meta property="og:description" content="WatchShark — watch and share videos, wheels and music.">
+<meta property="og:image" content="https://watchshark.duckdns.org/watchshark.webp">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/"><img src="/watchshark.webp?v=2" alt="WatchShark logo"><span>WatchShark</span></a>
+  <span class="spacer"></span>
+  <md-text-button href="/wheels"><md-icon slot="icon">movie</md-icon>Wheels</md-text-button>
+  <md-text-button href="/music"><md-icon slot="icon">music_note</md-icon>Music</md-text-button>
+  <span id="bellSlot" data-auth="in" style="display:none"></span>
+  <md-icon-button data-auth="in" href="/settings" aria-label="Settings" style="display:none"><md-icon>settings</md-icon></md-icon-button>
+  <md-text-button data-admin href="/admin" style="display:none">Admin</md-text-button>
+</header>
+<main>
+  <h2>Upload</h2>
+  <md-tabs id="kindTabs" aria-label="Upload type">
+    <md-primary-tab>Videos</md-primary-tab>
+    <md-primary-tab>Wheels</md-primary-tab>
+    <md-primary-tab>Music</md-primary-tab>
+  </md-tabs>
+  <div id="drop"><p>Drag &amp; drop a file here or</p>
+    <md-filled-tonal-button onclick="document.getElementById('f').click()"><md-icon slot="icon">folder_open</md-icon>Choose file</md-filled-tonal-button>
+    <input type="file" id="f" accept="video/*" hidden>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <md-filled-tonal-button onclick="document.getElementById('thumbf').click()"><md-icon slot="icon">image</md-icon>Choose thumbnail</md-filled-tonal-button>
+    <img id="thumbprev" style="display:none;width:128px;aspect-ratio:16/9;object-fit:cover;border-radius:8px" alt="">
+  </div>
+  <input type="file" id="thumbf" accept="image/*" hidden>
+  <md-outlined-text-field id="title" label="Title (required)" maxlength="120" class="field"></md-outlined-text-field>
+  <md-outlined-text-field id="desc" label="Description..." type="textarea" rows="3" maxlength="2000" class="field"></md-outlined-text-field>
+  <md-linear-progress id="bar" value="0" style="display:none"></md-linear-progress>
+  <md-filled-button onclick="up()"><md-icon slot="icon">cloud_upload</md-icon>Upload</md-filled-button>
+  <p id="msg"></p>
+</main>
+<nav id="bottomnav">
+  <a href="/" data-tab="home"><md-icon>home</md-icon><span>Home</span></a>
+  <a href="/wheels" data-tab="wheels"><md-icon>movie</md-icon><span>Wheels</span></a>
+  <a href="/upload" class="createbtn" aria-label="Create"><md-icon>add</md-icon></a>
+  <a href="/music" data-tab="music"><md-icon>music_note</md-icon><span>Music</span></a>
+  <a href="/settings" data-tab="account" id="navAccount"><span id="navAvatar"><md-icon>person</md-icon></span><span>You</span></a>
+</nav>
+<script>
+(function() {
+  function mark(tab) {
+    document.querySelectorAll('#bottomnav [data-tab]').forEach((a) => {
+      a.classList.toggle('active', a.dataset.tab === tab);
+    });
+  }
+  const path = location.pathname;
+  if (path === '/') mark('home');
+  else if (path === '/wheels') mark('wheels');
+  else if (path === '/music') mark('music');
+  else if (path === '/settings' || path === '/admin') mark('account');
+  const acc = document.getElementById('navAccount');
+  const navAv = document.getElementById('navAvatar');
+  fetch('/api/me', { credentials: 'include' }).then((r) => r.json()).then((j) => {
+    if (j && j.user) {
+      acc.href = '/channel?user=' + encodeURIComponent(j.user.username);
+      acc.dataset.user = j.user.username;
+      if (navAv) navAv.innerHTML = avatarHtml(j.user.avatar, 'navavatar');
+      const u = new URLSearchParams(location.search).get('user');
+      if (path.startsWith('/channel') && u === j.user.username) mark('account');
+    }
+  }).catch(() => {});
+  acc.addEventListener('click', (e) => {
+    if (!acc.dataset.user) {
+      e.preventDefault();
+      if (typeof openAuth === 'function') openAuth('login');
+      else location.href = '/';
+    }
+  });
+})();
+</script>
+
+
+<script src="/app.js?v=13"></script>
+<script>
+var file = null;
+var thumbFile = null;
+var upKind = 'video';
+var kindManual = false;
+var kinds = ['video', 'wheel', 'music'];
+var drop = document.getElementById('drop'), fi = document.getElementById('f');
+document.getElementById('kindTabs').addEventListener('change', (e) => {
+  upKind = kinds[e.target.activeTabIndex] || 'video';
+  kindManual = true;
+  syncAccept();
+});
+function syncAccept() {
+  fi.accept = upKind === 'music' ? 'audio/*' : 'video/*';
+}
+function setKindTab(i) {
+  upKind = kinds[i] || 'video';
+  document.getElementById('kindTabs').activeTabIndex = i;
+  syncAccept();
+}
+function pickFile(f) {
+  file = f;
+  if (!f) return;
+  drop.querySelector('p').textContent = f.name;
+  if (kindManual) return;
+  if (f.type.startsWith('audio/')) { setKindTab(2); return; }
+  const url = URL.createObjectURL(f);
+  const v = document.createElement('video');
+  v.preload = 'metadata';
+  v.onloadedmetadata = () => {
+    if (!kindManual) setKindTab(v.videoHeight > v.videoWidth ? 1 : 0);
+    URL.revokeObjectURL(url);
+  };
+  v.onerror = () => URL.revokeObjectURL(url);
+  v.src = url;
+}
+['dragover', 'dragenter'].forEach((e) => drop.addEventListener(e, (ev) => { ev.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach((e) => drop.addEventListener(e, (ev) => { ev.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', (ev) => { pickFile(ev.dataTransfer.files[0]); });
+fi.addEventListener('change', () => { pickFile(fi.files[0]); });
+document.getElementById('thumbf').addEventListener('change', () => {
+  thumbFile = document.getElementById('thumbf').files[0] || null;
+  const prev = document.getElementById('thumbprev');
+  if (thumbFile) {
+    prev.src = URL.createObjectURL(thumbFile);
+    prev.style.display = '';
+  } else {
+    prev.removeAttribute('src');
+    prev.style.display = 'none';
+  }
+});
+(async () => {
+  const u = await refreshAuth();
+  if (!u) { alert('Login first'); openAuth('login'); return; }
+  if (isBlockedUser(u)) {
+    document.getElementById('msg').textContent = banMessage(u);
+  }
+})();
+function up() {
+  me().then((u) => {
+    if (isBlockedUser(u)) { alert(banMessage(u)); return; }
+    doUp();
+  });
+}
+function doUp() {
+  if (!file) return alert('Choose a file first');
+  const title = document.getElementById('title').value.trim();
+  if (!title) return alert('Title is required');
+  const fd = new FormData();
+  fd.append('title', title);
+  fd.append('description', document.getElementById('desc').value);
+  fd.append('kind', upKind);
+  fd.append('file', file);
+  if (thumbFile) fd.append('thumb', thumbFile);
+  const bar = document.getElementById('bar');
+  bar.style.display = ''; bar.indeterminate = false; bar.value = 0;
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/videos', true); xhr.withCredentials = true;
+  xhr.upload.onprogress = (ev) => { if (ev.lengthComputable) bar.value = ev.loaded / ev.total; };
+  xhr.onload = () => {
+    try {
+      const j = JSON.parse(xhr.responseText);
+      if (xhr.status >= 200 && xhr.status < 300) {
+        document.getElementById('msg').textContent = 'Uploaded! Redirecting...';
+        location.href = j.kind === 'music' ? '/music' : '/watch?id=' + j.id;
+      } else document.getElementById('msg').textContent = (j.error || 'failed');
+    } catch { document.getElementById('msg').textContent = 'Upload failed'; }
+  };
+  xhr.onerror = () => document.getElementById('msg').textContent = 'Network error';
+  xhr.send(fd);
+}
+</script>
+</body>
+</html>

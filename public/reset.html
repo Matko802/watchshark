@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>New password — WatchShark</title>
+<link rel="icon" type="image/png" href="/favicon.png?v=1">
+<link rel="stylesheet" href="/styles.css?v=36">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Material+Symbols+Outlined&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<script type="importmap">{ "imports": { "@material/web/": "https://esm.run/@material/web/" } }</script>
+<script type="module">import '@material/web/all.js';</script>
+<meta property="og:site_name" content="WatchShark">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:title" content="WatchShark">
+<meta property="og:description" content="WatchShark — watch and share videos, wheels and music.">
+<meta property="og:image" content="https://watchshark.duckdns.org/watchshark.webp">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/"><img src="/watchshark.webp?v=2" alt="WatchShark logo"><span>WatchShark</span></a>
+</header>
+<main>
+  <h2>Set a new password</h2>
+  <form id="form" method="post" action="/api/auth/reset" onsubmit="return submitReset(event)">
+    <md-outlined-text-field id="pw1" name="password" type="password" autocomplete="new-password" label="New password (6+ chars)" class="field"></md-outlined-text-field>
+    <md-outlined-text-field id="pw2" label="Repeat new password" type="password" class="field"></md-outlined-text-field>
+    <input type="password" id="pw1-n" name="password" autocomplete="new-password" tabindex="-1" aria-hidden="true" style="position:fixed;top:0;left:0;width:8px;height:8px;opacity:.01;pointer-events:none;border:0;padding:0">
+    <button type="submit" tabindex="-1" aria-hidden="true" style="position:fixed;top:0;left:0;width:8px;height:8px;opacity:.01;pointer-events:none;border:0;padding:0"></button>
+    <md-filled-button onclick="doReset()"><md-icon slot="icon">lock_reset</md-icon>Save password</md-filled-button>
+  </form>
+  <p id="msg" class="muted"></p>
+</main>
+<script>
+var token = new URLSearchParams(location.search).get('token') || '';
+var resetBusy = false;
+var linkOk = false;
+function submitReset(e) { if (e) e.preventDefault(); doReset(); return false; }
+async function checkLink() {
+  const msg = document.getElementById('msg');
+  if (!token) {
+    msg.textContent = 'Missing reset link.';
+    document.getElementById('form').style.display = 'none';
+    return;
+  }
+  try {
+    const r = await fetch('/api/auth/reset?token=' + encodeURIComponent(token));
+    if (!r.ok) throw 0;
+    linkOk = true;
+    msg.textContent = 'Link confirmed — enter your new password below.';
+  } catch {
+    msg.textContent = 'This link is invalid or expired. Ask for a new one on the forgot-password page.';
+    document.getElementById('form').style.display = 'none';
+  }
+}
+async function doReset() {
+  if (resetBusy) return;
+  if (!linkOk) {
+    document.getElementById('msg').textContent = 'This link is invalid or expired.';
+    return;
+  }
+  resetBusy = true;
+  const a = document.getElementById('pw1').value, b = document.getElementById('pw2').value;
+  const msg = document.getElementById('msg');
+  if (!token) { msg.textContent = 'Missing reset link.'; resetBusy = false; return; }
+  if (a.length < 6) { msg.textContent = 'Password must be 6+ chars.'; resetBusy = false; return; }
+  if (a !== b) { msg.textContent = 'Passwords do not match.'; resetBusy = false; return; }
+  const r = await fetch('/api/auth/reset', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, password: a }),
+  });
+  const j = await r.json();
+  if (!r.ok) { msg.textContent = j.error; resetBusy = false; linkOk = false; return; }
+  document.getElementById('form').style.display = 'none';
+  msg.innerHTML = 'Password saved! <a href="/" style="color:var(--md-sys-color-primary)">Sign in on the home page.</a>';
+}
+checkLink();
+for (const id of ['pw1', 'pw2']) {
+  document.getElementById(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') doReset(); });
+}
+document.getElementById('pw1').addEventListener('input', () => {
+  const n = document.getElementById('pw1-n');
+  if (n && n.value !== document.getElementById('pw1').value) n.value = document.getElementById('pw1').value;
+});
+document.getElementById('pw1-n').addEventListener('input', (e) => {
+  document.getElementById('pw1').value = e.target.value;
+});
+</script>
+</body>
+</html>

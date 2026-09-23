@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wheels — WatchShark</title>
+<link rel="icon" type="image/png" href="/favicon.png?v=1">
+<link rel="stylesheet" href="/styles.css?v=36">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Material+Symbols+Outlined&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="stylesheet" href="/swiper-bundle.min.css?v=1">
+<script type="importmap">{ "imports": { "@material/web/": "https://esm.run/@material/web/" } }</script>
+<script type="module">import '@material/web/all.js';</script>
+<script src="/swiper-bundle.min.js?v=1"></script>
+<meta property="og:site_name" content="WatchShark">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:title" content="WatchShark">
+<meta property="og:description" content="WatchShark — watch and share videos, wheels and music.">
+<meta property="og:image" content="https://watchshark.duckdns.org/watchshark.webp">
+</head>
+<body class="reelbody" data-pjax="1">
+<header class="topbar">
+  <md-icon-button href="/" aria-label="Back"><md-icon>arrow_back</md-icon></md-icon-button>
+  <a class="brand" href="/"><img src="/watchshark.webp?v=2" alt="WatchShark logo"><span>Wheels</span></a>
+  <span class="spacer"></span>
+  <span id="whoami"></span>
+</header>
+<main class="reelmain">
+  <div class="reel" id="reel" tabindex="0">
+    <div class="swiper" id="wswiper"><div class="swiper-wrapper" id="wwrap"></div></div>
+    <md-circular-progress id="rspin" class="rspinner" indeterminate style="display:none"></md-circular-progress>
+    <md-fab id="rbig" class="rbig" variant="primary" size="large" aria-label="Play" style="display:none"><md-icon slot="icon" id="rbigIcon">play_arrow</md-icon></md-fab>
+    <div class="reel-rail" id="rrail" style="display:none">
+      <div class="railitem"><md-icon-button id="rlikeBtn" aria-label="Like"><md-icon id="rlikeOn" class="filled" style="display:none">&#xE87D;</md-icon><md-icon id="rlikeOff">&#xE87E;</md-icon></md-icon-button><span id="rlikeN" style="display:none">0</span></div>
+      <div class="railitem"><md-icon-button id="rfollowBtn" aria-label="Follow"><md-icon id="rfollowIcon">person_add</md-icon></md-icon-button></div>
+      <div class="railitem"><md-icon-button id="rmuteBtn" aria-label="Mute"><md-icon id="rmuteIcon">volume_up</md-icon></md-icon-button></div>
+      <div class="railitem"><md-icon-button id="rprevBtn" aria-label="Previous"><md-icon>skip_previous</md-icon></md-icon-button></div>
+      <div class="railitem"><md-icon-button id="rnextBtn" aria-label="Next"><md-icon>skip_next</md-icon></md-icon-button></div>
+      <div class="railitem"><md-icon-button id="rfullBtn" aria-label="Fullscreen"><md-icon id="rfullIcon">fullscreen</md-icon></md-icon-button></div>
+      <div class="railitem"><md-icon-button id="rsetBtn" aria-label="Quality"><md-icon>settings</md-icon></md-icon-button><span id="rqualN">Auto</span></div>
+    </div>
+    <md-menu id="rsetMenu" anchor="rsetBtn" positioning="popover"></md-menu>
+    <div class="gesture left" id="rgleft"></div>
+    <div class="gesture right" id="rgright"></div>
+    <div class="seek-flash" id="rflash" style="display:none"></div>
+    <div class="reel-meta" id="rmeta" style="display:none">
+      <h3 id="rtitle"></h3>
+      <div class="row">
+        <span id="ruav"></span><b id="ruser"></b><span class="muted" id="rfollowers"></span><span class="muted" id="rviews"></span><span class="muted" id="rtime"></span>
+        <md-text-button id="ropen">Comments<md-icon slot="icon">open_in_new</md-icon></md-text-button>
+      </div>
+    </div>
+    <md-slider id="rseek" class="rseek" min="0" max="1000" step="1" value="0" aria-label="Seek"></md-slider>
+    <div id="rempty" class="rempty" style="display:none">
+      <h2>No videos yet</h2>
+      <md-filled-button href="/">Discover</md-filled-button>
+    </div>
+  </div>
+</main>
+<nav id="bottomnav">
+  <a href="/" data-tab="home"><md-icon>home</md-icon><span>Home</span></a>
+  <a href="/wheels" data-tab="wheels"><md-icon>movie</md-icon><span>Wheels</span></a>
+  <a href="/upload" class="createbtn" aria-label="Create"><md-icon>add</md-icon></a>
+  <a href="/music" data-tab="music"><md-icon>music_note</md-icon><span>Music</span></a>
+  <a href="/settings" data-tab="account" id="navAccount"><span id="navAvatar"><md-icon>person</md-icon></span><span>You</span></a>
+</nav>
+<script>
+(function() {
+  function mark(tab) {
+    document.querySelectorAll('#bottomnav [data-tab]').forEach((a) => {
+      a.classList.toggle('active', a.dataset.tab === tab);
+    });
+  }
+  const path = location.pathname;
+  if (path === '/') mark('home');
+  else if (path === '/wheels') mark('wheels');
+  else if (path === '/music') mark('music');
+  else if (path === '/settings' || path === '/admin') mark('account');
+  const acc = document.getElementById('navAccount');
+  const navAv = document.getElementById('navAvatar');
+  fetch('/api/me', { credentials: 'include' }).then((r) => r.json()).then((j) => {
+    if (j && j.user) {
+      acc.href = '/channel?user=' + encodeURIComponent(j.user.username);
+      acc.dataset.user = j.user.username;
+      if (navAv) navAv.innerHTML = avatarHtml(j.user.avatar, 'navavatar');
+      const u = new URLSearchParams(location.search).get('user');
+      if (path.startsWith('/channel') && u === j.user.username) mark('account');
+    }
+  }).catch(() => {});
+  acc.addEventListener('click', (e) => {
+    if (!acc.dataset.user) {
+      e.preventDefault();
+      if (typeof openAuth === 'function') openAuth('login');
+      else location.href = '/';
+    }
+  });
+})();
+</script>
+
+
+<script src="/app.js?v=13"></script>
+<script>
+window.__boot = function() {
+let VID = null;
+let VDATA = [];
+let seen = [];
+let SW = null;
+let mutedAll = true;
+let loadingBatch = false;
+let exhausted = false;
+function activeVideo() {
+  if (!SW) return null;
+  const slides = document.getElementById('wwrap').children;
+  const el = slides[SW.activeIndex];
+  return el ? el.querySelector('video') : null;
+}
+function pauseOthers() {
+  const cur = activeVideo();
+  document.querySelectorAll('#wwrap video').forEach((v) => {
+    if (v !== cur && !v.paused) v.pause();
+  });
+}
+function loadSeen() {
+  try {
+    const a = JSON.parse(localStorage.getItem('ws_seen') || '[]');
+    if (Array.isArray(a)) seen = a.filter((n) => Number.isInteger(n) && n > 0).slice(-400);
+  } catch { seen = []; }
+}
+function saveSeen() {
+  try { localStorage.setItem('ws_seen', JSON.stringify(seen.slice(-400))); } catch {}
+}
+async function fetchOne() {
+  const q = seen.length ? '?seen=' + seen.slice(-128).join(',') : '';
+  try {
+    const r = await fetch('/api/wheels' + q);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+}
+function wireVideo(v) {
+  v.muted = mutedAll;
+  v.addEventListener('ended', () => {
+    if (v === activeVideo() && SW) SW.slideNext();
+  });
+  v.addEventListener('waiting', () => {
+    if (v === activeVideo()) document.getElementById('rspin').style.display = '';
+  });
+  v.addEventListener('playing', () => {
+    if (v !== activeVideo()) return;
+    pauseOthers();
+    document.getElementById('rspin').style.display = 'none';
+    document.getElementById('rbig').style.display = 'none';
+  });
+  v.addEventListener('timeupdate', () => {
+    if (v === activeVideo()) onTimeReel();
+  });
+  v.addEventListener('loadedmetadata', () => {
+    if (v === activeVideo()) onTimeReel();
+  });
+}
+function appendOne(j) {
+  if (!SW || !j || !j.video || seen.includes(j.video.id)) return false;
+  seen.push(j.video.id);
+  saveSeen();
+  VDATA.push(j.video);
+  const d = document.createElement('div');
+  d.className = 'swiper-slide';
+  d.innerHTML = `<video playsinline preload="metadata" poster="${j.video.thumbnail || ''}" data-src="${j.video.src}"></video>`;
+  const v = d.querySelector('video');
+  wireVideo(v);
+  SW.appendSlide(d);
+  return true;
+}
+async function loadBatch() {
+  if (loadingBatch || exhausted) return false;
+  loadingBatch = true;
+  const got = await Promise.all([fetchOne(), fetchOne(), fetchOne(), fetchOne(), fetchOne()]);
+  let added = 0;
+  for (const j of got) {
+    if (appendOne(j)) added++;
+  }
+  if (!added) exhausted = true;
+  if (exhausted && !endShown) showEndCard();
+  if (SW) SW.update();
+  loadingBatch = false;
+  return added > 0;
+}
+let endShown = false;
+let endCardEl = null;
+let lastWatchAgain = 0;
+function showEndCard() {
+  if (!SW || endShown) return;
+  endShown = true;
+  const d = document.createElement('div');
+  d.className = 'swiper-slide';
+  d.innerHTML = `<div class="rempty" style="position:absolute;inset:0;pointer-events:auto"><h2>You watched all wheels</h2><p class="muted">Fresh wheels, same button.</p><md-filled-button id="watchAgainBtn" style="pointer-events:auto;cursor:pointer">Watch again</md-filled-button></div>`;
+  const btn = d.querySelector('#watchAgainBtn');
+  const go = (e) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    const now = Date.now();
+    if (now - lastWatchAgain < 1500) return;
+    lastWatchAgain = now;
+    watchAgain();
+  };
+  btn.addEventListener('click', go);
+  btn.addEventListener('touchend', go, { passive: false });
+  endCardEl = d;
+  SW.appendSlide(d);
+  SW.update();
+}
+async function watchAgain() {
+  pauseOthers();
+  seen = [];
+  try { localStorage.removeItem('ws_seen'); } catch {}
+  VDATA = [];
+  exhausted = false;
+  endShown = false;
+  if (SW) {
+    SW.removeAllSlides();
+    SW.update();
+  }
+  endCardEl = null;
+  document.getElementById('rspin').style.display = '';
+  await loadBatch();
+  document.getElementById('rspin').style.display = 'none';
+  if (SW && SW.slides.length) {
+    SW.slideTo(0, 0);
+    onSlide();
+  }
+}
+function trimFarSlides() {
+  if (!SW) return;
+  const slides = document.getElementById('wwrap').children;
+  for (let i = 0; i < slides.length; i++) {
+    if (Math.abs(i - SW.activeIndex) > 2) {
+      const w = slides[i].querySelector('video');
+      if (w && w.src) {
+        try { w.pause(); } catch {}
+        w.removeAttribute('src');
+        try { w.load(); } catch {}
+      }
+    }
+  }
+}
+function onSlide() {
+  VID = VDATA[SW.activeIndex] || null;
+  if (!VID) {
+    pauseOthers();
+    document.getElementById('rrail').style.display = 'none';
+    document.getElementById('rmeta').style.display = 'none';
+    document.getElementById('rspin').style.display = 'none';
+    document.getElementById('rbig').style.display = 'none';
+    document.getElementById('rseek').value = 0;
+    return;
+  }
+  renderReelMeta();
+  document.getElementById('rrail').style.display = '';
+  document.getElementById('rmeta').style.display = '';
+  const v = activeVideo();
+  if (v) {
+    if (!v.src && v.dataset.src) {
+      v.preload = 'auto';
+      v.src = v.dataset.src;
+      v.load();
+    }
+    v.muted = mutedAll;
+    document.getElementById('rmuteIcon').textContent = v.muted ? 'volume_off' : 'volume_up';
+    applyReelAutoQuality();
+    onTimeReel();
+    if (localStorage.getItem('ws_autoplay') !== '0') {
+      if (!v.muted) {
+        v.play().then(() => {
+          document.getElementById('rbig').style.display = 'none';
+        }).catch(() => {
+          reelForced = true;
+          v.muted = true;
+          document.getElementById('rmuteIcon').textContent = 'volume_off';
+          v.play().then(() => {
+            document.getElementById('rbig').style.display = 'none';
+          }).catch(() => {
+            document.getElementById('rbigIcon').textContent = 'play_arrow';
+            document.getElementById('rbig').style.display = '';
+          });
+        });
+      } else {
+        v.play().then(() => {
+          document.getElementById('rbig').style.display = 'none';
+        }).catch(() => {
+          document.getElementById('rbigIcon').textContent = 'play_arrow';
+          document.getElementById('rbig').style.display = '';
+        });
+      }
+    } else {
+      pauseOthers();
+      document.getElementById('rbigIcon').textContent = 'play_arrow';
+      document.getElementById('rbig').style.display = '';
+    }
+  }
+  if (SW.activeIndex >= SW.slides.length - 3) loadBatch();
+  warmNeighbors();
+  trimFarSlides();
+}
+function warmNeighbors() {
+  if (!SW) return;
+  const slides = document.getElementById('wwrap').children;
+  [SW.activeIndex - 2, SW.activeIndex - 1, SW.activeIndex + 1, SW.activeIndex + 2].forEach((i) => {
+    const s = slides[i];
+    const w = s ? s.querySelector('video') : null;
+    if (w && !w.src && w.dataset.src) {
+      w.preload = 'auto';
+      w.src = w.dataset.src;
+      w.load();
+    }
+  });
+}
+const RSPEEDS = [1, 1.25, 1.5, 2, 0.5];
+let rspdIdx = 0;
+let rSeeking = false;
+let rClickTimer = null;
+let rFlashTimer = null;
+let reelWheelT = 0;
+let reelForced = false;
+function fmtR(t) {
+  if (!isFinite(t) || t < 0) t = 0;
+  t = Math.floor(t);
+  return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0');
+}
+function isTouchDevice() {
+  return matchMedia('(pointer: coarse)').matches;
+}
+function onTimeReel() {
+  const v = activeVideo();
+  const d = (v && v.duration) || 0, c = (v && v.currentTime) || 0;
+  if (!rSeeking) document.getElementById('rseek').value = d > 0 ? Math.round(c / d * 1000) : 0;
+  document.getElementById('rtime').textContent = fmtR(c) + ' / ' + fmtR(d);
+}
+function reelQualDisplay(label) {
+  if (label === 'Auto' || label === 'Source') return label;
+  const n = parseInt(label, 10);
+  if (n >= 720) return label + ' HD';
+  return label;
+}
+function reelQualOptions() {
+  const o = [{ label: 'Auto', src: null }];
+  if (VID && VID.renditions) {
+    if (VID.renditions['720p']) o.push({ label: '720p', src: VID.renditions['720p'] });
+    if (VID.renditions['480p']) o.push({ label: '480p', src: VID.renditions['480p'] });
+    if (VID.renditions['360p']) o.push({ label: '360p', src: VID.renditions['360p'] });
+  }
+  if (VID) o.push({ label: 'Source', src: VID.src });
+  return o;
+}
+function setReelQualitySrc(src, label) {
+  const v = activeVideo();
+  document.getElementById('rqualN').textContent = reelQualDisplay(label);
+  if (!v || !VID || !src) return;
+  const cur = v.currentSrc || v.src || '';
+  if (cur && (cur === src || cur.endsWith(src))) return;
+  const t = v.currentTime;
+  const playing = !v.paused;
+  v.src = src;
+  v.dataset.src = src;
+  v.currentTime = t;
+  if (playing) v.play().catch(() => {});
+}
+function applyReelAutoQuality() {
+  const o = reelQualOptions();
+  let pick = o[o.length - 1].src;
+  try {
+    const cn = navigator.connection;
+    if (cn && (cn.saveData || cn.effectiveType === 'slow-2g' || cn.effectiveType === '2g' || cn.effectiveType === '3g')) {
+      const low = o.find((x) => x.label === '360p') || o.find((x) => x.label === '480p') || o.find((x) => x.label === '720p');
+      if (low) pick = low.src;
+    }
+  } catch { pick = o[o.length - 1].src; }
+  setReelQualitySrc(pick, 'Auto');
+}
+function openRsetMenu() {
+  if (!VID) return;
+  const m = document.getElementById('rsetMenu');
+  const o = reelQualOptions();
+  const cur = document.getElementById('rqualN').textContent;
+  m.innerHTML = '<div class="pad"><md-text-button id="rspdBtn">Speed: ' + RSPEEDS[rspdIdx] + 'x</md-text-button></div><md-list>'
+    + o.map((opt) =>
+      `<md-list-item><div slot="headline">${esc(reelQualDisplay(opt.label))}</div>`
+      + (cur === reelQualDisplay(opt.label) ? '<md-icon slot="end">check</md-icon>' : '')
+      + '</md-list-item>').join('') + '</md-list>';
+  m.querySelector('#rspdBtn').addEventListener('click', () => {
+    cycleReelSpeed();
+    m.querySelector('#rspdBtn').textContent = 'Speed: ' + RSPEEDS[rspdIdx] + 'x';
+  });
+  m.querySelectorAll('md-list-item').forEach((it, i) => it.addEventListener('click', () => {
+    const opts = reelQualOptions();
+    const opt = opts[i % opts.length];
+    m.close();
+    setReelQualitySrc(opt.src, opt.label);
+  }));
+  m.show();
+}
+function cycleReelSpeed() {
+  rspdIdx = (rspdIdx + 1) % RSPEEDS.length;
+  const v = activeVideo();
+  if (v) v.playbackRate = RSPEEDS[rspdIdx];
+}
+function toggleReelFull() {
+  const el = document.getElementById('reel');
+  if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); return; }
+  if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+}
+function syncReelFullIcon() {
+  document.getElementById('rfullIcon').textContent = document.fullscreenElement ? 'fullscreen_exit' : 'fullscreen';
+}
+function reelFlash(txt) {
+  const f = document.getElementById('rflash');
+  f.textContent = txt;
+  f.style.display = '';
+  clearTimeout(rFlashTimer);
+  rFlashTimer = setTimeout(() => { f.style.display = 'none'; }, 600);
+}
+function reelNudge(d) {
+  const v = activeVideo();
+  if (!v || !VID) return;
+  v.currentTime = Math.min(Math.max(0, v.currentTime + d), v.duration || 0);
+  reelFlash((d > 0 ? '+' : '') + d + 's');
+}
+function bindReelTap(el, d) {
+  let last = 0;
+  el.addEventListener('touchend', (e) => {
+    const now = Date.now();
+    if (now - last < 320) { e.preventDefault(); reelNudge(d); }
+    last = now;
+  }, { passive: false });
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (isTouchDevice()) return;
+    clearTimeout(rClickTimer);
+    rClickTimer = setTimeout(() => toggleReelPlay(), 260);
+  });
+  el.addEventListener('dblclick', (e) => {
+    e.stopPropagation();
+    if (isTouchDevice()) reelNudge(d);
+    else { clearTimeout(rClickTimer); toggleReelFull(); }
+  });
+}
+async function initWheels() {
+  await refreshAuth();
+  loadSeen();
+  if (typeof Swiper === 'undefined') {
+    document.getElementById('rspin').style.display = 'none';
+    document.getElementById('rempty').style.display = '';
+    document.getElementById('rempty').innerHTML = '<h2>Player failed to load</h2><p class="muted">Check connection and retry.</p><md-filled-button onclick="location.reload()">Retry</md-filled-button>';
+    return;
+  }
+  SW = new Swiper('#wswiper', {
+    direction: 'vertical',
+    effect: 'slide',
+    speed: 0,
+    resistanceRatio: 0.85,
+    mousewheel: true,
+  });
+  SW.on('slideChange', onSlide);
+  SW.on('tap', () => toggleReelPlay());
+  SW.on('reachEnd', () => loadBatch());
+  document.getElementById('rspin').style.display = '';
+  const ok = await loadBatch();
+  document.getElementById('rspin').style.display = 'none';
+  if (!ok || !VDATA.length) {
+    document.getElementById('rempty').style.display = '';
+    return;
+  }
+  onSlide();
+}
+function syncReelLike() {
+  document.getElementById('rlikeOn').style.display = VID.liked ? '' : 'none';
+  document.getElementById('rlikeOff').style.display = VID.liked ? 'none' : '';
+  const n = document.getElementById('rlikeN');
+  n.textContent = VID.likes;
+  n.style.display = VID.likes ? '' : 'none';
+}
+function renderReelMeta() {
+  document.getElementById('rtitle').textContent = VID.title;
+  document.getElementById('ruser').innerHTML = `<a class="ulink" href="/channel?user=${esc(VID.username)}">@${esc(VID.username)}</a>`;
+  document.getElementById('rviews').textContent = fmtNum(VID.views) + ' views';
+  document.getElementById('ruav').innerHTML = avatarHtml(VID.avatar, 'pfp-sm');
+  syncReelLike();
+  document.getElementById('rfollowIcon').textContent = VID.following ? 'how_to_reg' : 'person_add';
+  document.getElementById('rfollowers').textContent = VID.followers === 1 ? '1 follower' : VID.followers + ' followers';
+  document.getElementById('ropen').setAttribute('href', '/watch?id=' + VID.id);
+  toggleFollowVis();
+}
+async function toggleFollowVis() {
+  const u = await me();
+  document.getElementById('rfollowBtn').style.display = (!u || (VID && u.id === VID.user_id)) ? 'none' : '';
+}
+function nextReel() { if (SW) SW.slideNext(); }
+function prevReel() { if (SW) SW.slidePrev(); }
+function toggleReelPlay() {
+  const v = activeVideo();
+  if (!VID || !v) return;
+  if (!v.src && v.dataset.src) {
+    v.src = v.dataset.src;
+    v.load();
+  }
+  if (v.paused || v.ended) {
+    pauseOthers();
+    if (reelForced && v.muted) {
+      reelForced = false;
+      v.muted = false;
+      document.getElementById('rmuteIcon').textContent = 'volume_up';
+    }
+    v.play().then(() => {
+      document.getElementById('rbig').style.display = 'none';
+    }).catch(() => {});
+  } else {
+    v.pause();
+    document.getElementById('rbigIcon').textContent = 'play_arrow';
+    document.getElementById('rbig').style.display = '';
+  }
+}
+let reelBusy = false;
+async function reelLike() {
+  if (reelBusy || !VID) return;
+  if (!(await me())) { location.href = '/watch?id=' + VID.id; return; }
+  reelBusy = true;
+  const target = VID;
+  const was = target.liked;
+  target.liked = !was;
+  target.likes = (target.likes || 0) + (target.liked ? 1 : -1);
+  if (target.likes < 0) target.likes = 0;
+  if (VID === target) syncReelLike();
+  try {
+    const r = await fetch('/api/videos/' + target.id + '/like', { method: 'POST', credentials: 'include' });
+    const j = await r.json();
+    if (!r.ok) throw 0;
+    target.liked = j.liked;
+    target.likes = j.likes;
+  } catch {
+    target.liked = was;
+  }
+  if (VID === target) syncReelLike();
+  reelBusy = false;
+}
+async function reelFollow() {
+  if (reelBusy || !VID) return;
+  if (!(await me())) { location.href = '/watch?id=' + VID.id; return; }
+  reelBusy = true;
+  const target = VID;
+  try {
+    const r = await fetch('/api/follow/' + target.user_id, { method: 'POST', credentials: 'include' });
+    const j = await r.json();
+    if (!r.ok) return;
+    target.following = j.following;
+    target.followers = j.followers;
+    if (VID !== target) return;
+    document.getElementById('rfollowIcon').textContent = j.following ? 'how_to_reg' : 'person_add';
+    document.getElementById('rfollowers').textContent = j.followers === 1 ? '1 follower' : j.followers + ' followers';
+  } finally {
+    reelBusy = false;
+  }
+}
+function reelMute() {
+  const v = activeVideo();
+  if (!v) return;
+  reelForced = false;
+  v.muted = !v.muted;
+  mutedAll = v.muted;
+  document.getElementById('rmuteIcon').textContent = v.muted ? 'volume_off' : 'volume_up';
+}
+(function wireReel() {
+  Pjax.on(document, 'keydown', (e) => {
+    const t = (e.target && e.target.tagName) || '';
+    if (t === 'INPUT' || t === 'TEXTAREA' || t === 'BUTTON' || t.startsWith('MD-')) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); nextReel(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); prevReel(); }
+    else if (e.key === ' ') { e.preventDefault(); toggleReelPlay(); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); reelNudge(10); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); reelNudge(-10); }
+    else if (e.key === 'f') toggleReelFull();
+    else if (e.key === 'm') reelMute();
+  });
+  document.getElementById('rbig').addEventListener('click', toggleReelPlay);
+  document.getElementById('rlikeBtn').addEventListener('click', reelLike);
+  document.getElementById('rfollowBtn').addEventListener('click', reelFollow);
+  document.getElementById('rmuteBtn').addEventListener('click', reelMute);
+  document.getElementById('rnextBtn').addEventListener('click', nextReel);
+  document.getElementById('rprevBtn').addEventListener('click', prevReel);
+  document.getElementById('reel').addEventListener('wheel', (e) => {
+    if (!SW || SW.animating) return;
+    if (e.target.closest && e.target.closest('#wswiper')) return;
+    e.preventDefault();
+    const now = Date.now();
+    if (now - reelWheelT < 700) return;
+    reelWheelT = now;
+    if (e.deltaY > 0) SW.slideNext();
+    else if (e.deltaY < 0) SW.slidePrev();
+  }, { passive: false });
+  document.getElementById('rseek').addEventListener('input', () => {
+    const v = activeVideo();
+    if (v && v.duration) v.currentTime = document.getElementById('rseek').value / 1000 * v.duration;
+  });
+  document.getElementById('rseek').addEventListener('pointerdown', () => { rSeeking = true; });
+  Pjax.on(window, 'pointerup', () => { rSeeking = false; });
+  document.getElementById('rfullBtn').addEventListener('click', (e) => { e.stopPropagation(); toggleReelFull(); });
+  document.getElementById('rsetBtn').addEventListener('click', (e) => { e.stopPropagation(); openRsetMenu(); });
+  Pjax.on(document, 'fullscreenchange', syncReelFullIcon);
+  bindReelTap(document.getElementById('rgleft'), -10);
+  bindReelTap(document.getElementById('rgright'), 10);
+  mutedAll = localStorage.getItem('ws_muted') === '1';
+  document.getElementById('rmuteIcon').textContent = mutedAll ? 'volume_off' : 'volume_up';
+  initWheels();
+})();
+window.__destroy = function() {
+  try { document.querySelectorAll('#wwrap video').forEach((v) => { try { v.pause(); } catch {} }); } catch {}
+  try { if (SW) SW.destroy(true, true); } catch {}
+  SW = null;
+};
+};
+window.__boot();
+</script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+name: watchshark
+services:
+  watchshark:
+    container_name: watchshark
+    build:
+      context: .
+      dockerfile: Containerfile
+    image: watchshark:latest
+    ports:
+      - "3001:3000"
+    volumes:
+      - /home/matko/.config/watchshark/data:/data
+    environment:
+      PORT: "3000"
+      JWT_SECRET: "43e0a3b20c71af4171b776b237529eb906d8e486b46853e68080fa5cf5a21cb1"
+      MAX_UPLOAD_MB: "4096"
+      QUOTA_GB: "50"
+      ADMIN_USER: "matkohrad@proton.me"
+      APP_URL: "https://watchshark.duckdns.org"
+      SMTP_HOST: "smtp.gmail.com"
+      SMTP_PORT: "587"
+      SMTP_USER: "matkohrad@gmail.com"
+      SMTP_PASS: "ghlrcrppyqymvfia"
+      SMTP_FROM: "matkohrad@gmail.com"
+    networks:
+      - podman
+      - immich
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  podman:
+    external: true
+  immich:
+    external: true

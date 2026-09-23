@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin — WatchShark</title>
+<link rel="icon" type="image/png" href="/favicon.png?v=1">
+<link rel="stylesheet" href="/styles.css?v=36">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Material+Symbols+Outlined&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<script type="importmap">{ "imports": { "@material/web/": "https://esm.run/@material/web/" } }</script>
+<script type="module">import '@material/web/all.js';</script>
+<meta property="og:site_name" content="WatchShark">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:title" content="WatchShark">
+<meta property="og:description" content="WatchShark — watch and share videos, wheels and music.">
+<meta property="og:image" content="https://watchshark.duckdns.org/watchshark.webp">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/"><img src="/watchshark.webp?v=2" alt="WatchShark logo"><span>WatchShark</span></a>
+  <span class="spacer"></span>
+  <md-text-button href="/wheels"><md-icon slot="icon">movie</md-icon>Wheels</md-text-button>
+  <md-text-button href="/music"><md-icon slot="icon">music_note</md-icon>Music</md-text-button>
+  <span id="bellSlot" data-auth="in" style="display:none"></span>
+  <md-icon-button data-auth="in" href="/settings" aria-label="Settings" style="display:none"><md-icon>settings</md-icon></md-icon-button>
+  <span id="whoami"></span>
+</header>
+<main>
+  <div id="gate"><md-linear-progress indeterminate></md-linear-progress></div>
+  <div id="body" style="display:none">
+    <h2>All accounts <span id="ucount" class="muted"></span></h2>
+    <md-list id="users"></md-list>
+  </div>
+</main>
+<nav id="bottomnav">
+  <a href="/" data-tab="home"><md-icon>home</md-icon><span>Home</span></a>
+  <a href="/wheels" data-tab="wheels"><md-icon>movie</md-icon><span>Wheels</span></a>
+  <a href="/upload" class="createbtn" aria-label="Create"><md-icon>add</md-icon></a>
+  <a href="/music" data-tab="music"><md-icon>music_note</md-icon><span>Music</span></a>
+  <a href="/settings" data-tab="account" id="navAccount"><span id="navAvatar"><md-icon>person</md-icon></span><span>You</span></a>
+</nav>
+<script>
+(function() {
+  function mark(tab) {
+    document.querySelectorAll('#bottomnav [data-tab]').forEach((a) => {
+      a.classList.toggle('active', a.dataset.tab === tab);
+    });
+  }
+  const path = location.pathname;
+  if (path === '/') mark('home');
+  else if (path === '/wheels') mark('wheels');
+  else if (path === '/music') mark('music');
+  else if (path === '/settings' || path === '/admin') mark('account');
+  const acc = document.getElementById('navAccount');
+  const navAv = document.getElementById('navAvatar');
+  fetch('/api/me', { credentials: 'include' }).then((r) => r.json()).then((j) => {
+    if (j && j.user) {
+      acc.href = '/channel?user=' + encodeURIComponent(j.user.username);
+      acc.dataset.user = j.user.username;
+      if (navAv) navAv.innerHTML = avatarHtml(j.user.avatar, 'navavatar');
+      const u = new URLSearchParams(location.search).get('user');
+      if (path.startsWith('/channel') && u === j.user.username) mark('account');
+    }
+  }).catch(() => {});
+  acc.addEventListener('click', (e) => {
+    if (!acc.dataset.user) {
+      e.preventDefault();
+      if (typeof openAuth === 'function') openAuth('login');
+      else location.href = '/';
+    }
+  });
+})();
+</script>
+
+
+<script src="/app.js?v=13"></script>
+<script>
+async function loadAdmin() {
+  const u = await refreshAuth();
+  if (!u || !u.admin) {
+    document.getElementById('gate').innerHTML = '<p class="muted">Admins only.</p>';
+    return;
+  }
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('body').style.display = '';
+  const us = await (await fetch('/api/admin/users', { credentials: 'include' })).json();
+  document.getElementById('ucount').textContent = us.users.length ? `(${us.users.length})` : '';
+  document.getElementById('users').innerHTML = us.users.map((x) => {
+    let status = x.deleted ? 'deleted' : (x.banned ? 'banned' : (x.verified ? 'active' : 'pending'));
+    let extra = '';
+    if (x.deleted && x.deleted_reason) extra = ' • ' + esc(x.deleted_reason);
+    else if (x.banned) {
+      const dl = x.ban_days_left < 0 ? 'permanent' : (Number(x.ban_days_left).toFixed(1) + 'd left');
+      extra = ' • ' + dl + (x.ban_reason ? ' • ' + esc(x.ban_reason) : '');
+    }
+    const isDel = !!x.deleted;
+    const isBan = !!x.banned && !isDel;
+    const isPending = !x.verified && !isDel;
+    const banForm = (isDel || isBan) ? '' : `
+          <div class="nfield">
+            <label for="bd-${x.id}">Ban days</label>
+            <input placeholder=" " id="bd-${x.id}" type="number" min="0" step="0.5" value="7">
+          </div>
+          <div class="nfield">
+            <label for="bh-${x.id}">Ban hours</label>
+            <input placeholder=" " id="bh-${x.id}" type="number" min="0" max="23" step="1" value="0">
+          </div>
+          <div class="nfield">
+            <label for="br-${x.id}">Reason</label>
+            <input placeholder=" " id="br-${x.id}" type="text">
+          </div>
+          <label class="perm"><input id="bp-${x.id}" type="checkbox"> permanent ban</label>`;
+    let actions = `<md-text-button onclick="document.getElementById('adlg-${x.id}').close()">Close</md-text-button>`;
+    if (isDel) {
+      actions = `<md-text-button onclick="restoreUser(${x.id})">Restore</md-text-button>`
+        + actions
+        + `<md-text-button onclick="delUser(${x.id})">Remove</md-text-button>`;
+    } else if (isBan) {
+      actions = `<md-text-button onclick="unbanUser(${x.id})">Unban</md-text-button>`
+        + actions
+        + `<md-text-button onclick="softDelUser(${x.id})">Delete</md-text-button>`
+        + `<md-text-button onclick="delUser(${x.id})">Remove</md-text-button>`;
+    } else {
+      if (isPending) actions = `<md-filled-button onclick="approveUser(${x.id})">Approve</md-filled-button>` + actions;
+      actions = actions
+        + `<md-text-button onclick="softDelUser(${x.id})">Delete</md-text-button>`
+        + `<md-text-button onclick="delUser(${x.id})">Remove</md-text-button>`
+        + `<md-filled-button onclick="banUser(${x.id})">Ban</md-filled-button>`;
+    }
+    const controls = x.role === 'admin' ? '' : `
+      <md-icon-button aria-label="Manage user" onclick="document.getElementById('adlg-${x.id}').show()"><md-icon>settings</md-icon></md-icon-button>
+      <md-dialog id="adlg-${x.id}">
+        <div slot="headline">Manage @${esc(x.username)}</div>
+        <div slot="content">
+          <p class="muted">${status}${extra ? ' • ' + extra : ''}</p>
+          ${banForm}
+        </div>
+        <div slot="actions">
+          ${actions}
+        </div>
+      </md-dialog>`;
+    return `<md-list-item><div slot="headline">${esc(x.username)}${x.role === 'admin' ? ' ⭐' : ''}</div>`
+      + `<div slot="supporting-text">${status} • ${esc(x.created_at)}${extra}</div>`
+      + `<div slot="end">${controls}</div></md-list-item>`;
+  }).join('');
+}
+async function banUser(id) {
+  const days = parseFloat((document.getElementById('bd-' + id) || {}).value || '0');
+  const hours = parseFloat((document.getElementById('bh-' + id) || {}).value || '0');
+  const reason = ((document.getElementById('br-' + id) || {}).value || '').trim();
+  const permanent = !!((document.getElementById('bp-' + id) || {}).checked);
+  if (!permanent && !(days > 0 || hours > 0)) { alert('Give days/hours or tick perm'); return; }
+  if (!reason) { if (!confirm('Ban without reason?')) return; }
+  const r = await fetch('/api/admin/ban', { method: 'POST', credentials: 'include',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, days, hours, reason, permanent }) });
+  if (!r.ok) alert((await r.json()).error || 'Ban failed');
+  loadAdmin();
+}
+async function unbanUser(id) {
+  await fetch('/api/admin/unban', { method: 'POST', credentials: 'include',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+  loadAdmin();
+}
+async function approveUser(id) {
+  const r = await fetch('/api/admin/approve', { method: 'POST', credentials: 'include',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+  if (!r.ok) alert((await r.json()).error || 'Approve failed');
+  loadAdmin();
+}
+async function softDelUser(id) {
+  const reason = prompt('Delete reason (shown to user):') || '';
+  if (!confirm('Delete this account (user will see "account deleted" warning, videos removed)?')) return;
+  const r = await fetch('/api/admin/soft-delete', { method: 'POST', credentials: 'include',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, reason }) });
+  if (!r.ok) alert((await r.json()).error || 'Delete failed');
+  loadAdmin();
+}
+async function restoreUser(id) {
+  await fetch('/api/admin/restore', { method: 'POST', credentials: 'include',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+  loadAdmin();
+}
+async function delUser(id) {
+  if (!confirm('Permanently remove this account and all its videos?')) return;
+  const r = await fetch('/api/admin/users/' + id, { method: 'DELETE', credentials: 'include' });
+  if (!r.ok) alert((await r.json()).error);
+  loadAdmin();
+}
+loadAdmin();
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+build/
+.gradle/
+target/
+data/
+node_modules/
+.git/
+*.go
+go.mod
+go.sum

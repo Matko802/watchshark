@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WatchShark</title>
+<link rel="icon" type="image/png" href="/favicon.png?v=1">
+<link rel="stylesheet" href="/styles.css?v=36">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Material+Symbols+Outlined&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<script type="importmap">{ "imports": { "@material/web/": "https://esm.run/@material/web/" } }</script>
+<script type="module">import '@material/web/all.js';</script>
+<meta property="og:site_name" content="WatchShark">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:title" content="WatchShark">
+<meta property="og:description" content="WatchShark — watch and share videos, wheels and music.">
+<meta property="og:image" content="https://watchshark.duckdns.org/watchshark.webp">
+</head>
+<body data-pjax="1">
+<header class="topbar">
+  <a class="brand" href="/"><img src="/watchshark.webp?v=2" alt="WatchShark logo"><span>WatchShark</span></a>
+  <div class="searchbox collapsed" id="searchbox">
+    <md-icon-button id="searchToggle" aria-label="Search" onclick="toggleSearch()"><md-icon id="searchToggleIcon">search</md-icon></md-icon-button>
+    <md-outlined-text-field id="q" placeholder="Search" class="search">
+      <md-icon slot="leading-icon">search</md-icon>
+    </md-outlined-text-field>
+  </div>
+  <span class="spacer"></span>
+  <md-text-button href="/wheels"><md-icon slot="icon">movie</md-icon>Wheels</md-text-button>
+  <md-text-button href="/music"><md-icon slot="icon">music_note</md-icon>Music</md-text-button>
+  <span id="bellSlot" data-auth="in" style="display:none"></span>
+  <md-icon-button data-auth="in" href="/settings" aria-label="Settings" style="display:none"><md-icon>settings</md-icon></md-icon-button>
+  <md-text-button data-admin href="/admin" style="display:none">Admin</md-text-button>
+  <md-filled-tonal-button data-auth="in" href="/upload" style="display:none">Create<md-icon slot="icon">add</md-icon></md-filled-tonal-button>
+  <span id="whoami"></span>
+  <md-filled-button data-auth="out" onclick="openAuth('login')" style="display:none">Sign in</md-filled-button>
+</header>
+<main>
+  <md-tabs id="sortTabs" aria-label="Sort videos">
+    <md-primary-tab><md-icon slot="icon">new_releases</md-icon>Latest</md-primary-tab>
+    <md-primary-tab><md-icon slot="icon">local_fire_department</md-icon>Trending</md-primary-tab>
+  </md-tabs>
+  <p id="count" class="muted"></p>
+  <div id="grid" class="grid"></div>
+  <div class="center"><md-outlined-button id="more" onclick="load(page+1)">Load more</md-outlined-button></div>
+</main>
+<md-fab data-auth="in" label="Create" class="fab" style="display:none" onclick="location.href='/upload'"><md-icon slot="icon">add</md-icon></md-fab>
+<md-dialog id="authDialog">
+  <div slot="headline">Welcome to WatchShark</div>
+  <div slot="content">
+    <form id="loginPane" method="post" action="/api/auth/login" onsubmit="return submitLogin(event)">
+      <div class="nfield">
+        <label for="login-id">Email</label>
+        <input placeholder=" " id="login-id" name="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+      </div>
+      <div class="nfield">
+        <label for="login-pw">Password</label>
+        <input placeholder=" " id="login-pw" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <div class="auth-row"><md-text-button onclick="location.href='/forgot'">Forgot password?</md-text-button></div>
+      <button type="submit" tabindex="-1" aria-hidden="true" style="position:fixed;top:0;left:0;width:8px;height:8px;opacity:.01;pointer-events:none;border:0;padding:0"></button>
+    </form>
+    <form id="signupPane" method="post" action="/api/auth/signup" onsubmit="return submitSignup(event)" style="display:none">
+      <div class="nfield">
+        <label for="su-name">Handle (a-z, 0-9, _)</label>
+        <input placeholder=" " id="su-name" name="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" minlength="3" maxlength="30" required>
+      </div>
+      <div class="nfield">
+        <label for="su-email">Email</label>
+        <input placeholder=" " id="su-email" name="email" type="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+      </div>
+      <div class="nfield">
+        <label for="su-pw">Password (6+ chars)</label>
+        <input placeholder=" " id="su-pw" name="password" type="password" autocomplete="new-password" minlength="6" required>
+      </div>
+      <button type="submit" tabindex="-1" aria-hidden="true" style="position:fixed;top:0;left:0;width:8px;height:8px;opacity:.01;pointer-events:none;border:0;padding:0"></button>
+    </form>
+    <p id="auth-err" style="color:var(--md-sys-color-error)"></p>
+  </div>
+  <div slot="actions">
+    <md-text-button id="auth-switch" onclick="toggleAuth()">Create account</md-text-button>
+    <md-filled-button id="auth-go" onclick="authGo()">Log in</md-filled-button>
+    <md-text-button onclick="closeAuth()">Close</md-text-button>
+  </div>
+</md-dialog>
+<nav id="bottomnav">
+  <a href="/" data-tab="home"><md-icon>home</md-icon><span>Home</span></a>
+  <a href="/wheels" data-tab="wheels"><md-icon>movie</md-icon><span>Wheels</span></a>
+  <a href="/upload" class="createbtn" aria-label="Create"><md-icon>add</md-icon></a>
+  <a href="/music" data-tab="music"><md-icon>music_note</md-icon><span>Music</span></a>
+  <a href="/settings" data-tab="account" id="navAccount"><span id="navAvatar"><md-icon>person</md-icon></span><span>You</span></a>
+</nav>
+<script>
+(function() {
+  function mark(tab) {
+    document.querySelectorAll('#bottomnav [data-tab]').forEach((a) => {
+      a.classList.toggle('active', a.dataset.tab === tab);
+    });
+  }
+  const path = location.pathname;
+  if (path === '/') mark('home');
+  else if (path === '/wheels') mark('wheels');
+  else if (path === '/music') mark('music');
+  else if (path === '/settings' || path === '/admin') mark('account');
+  const acc = document.getElementById('navAccount');
+  const navAv = document.getElementById('navAvatar');
+  fetch('/api/me', { credentials: 'include' }).then((r) => r.json()).then((j) => {
+    if (j && j.user) {
+      acc.href = '/channel?user=' + encodeURIComponent(j.user.username);
+      acc.dataset.user = j.user.username;
+      if (navAv) navAv.innerHTML = avatarHtml(j.user.avatar, 'navavatar');
+      const u = new URLSearchParams(location.search).get('user');
+      if (path.startsWith('/channel') && u === j.user.username) mark('account');
+    }
+  }).catch(() => {});
+  acc.addEventListener('click', (e) => {
+    if (!acc.dataset.user) {
+      e.preventDefault();
+      if (typeof openAuth === 'function') openAuth('login');
+      else location.href = '/';
+    }
+  });
+})();
+</script>
+
+
+<script src="/app.js?v=13"></script>
+<script>
+window.__boot = function() {
+let page = 1, sort = 'new';
+document.getElementById('sortTabs').addEventListener('change', (e) => {
+  sort = e.target.activeTabIndex === 1 ? 'popular' : 'new';
+  load(1);
+});
+document.getElementById('q').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') load(1);
+  if (e.key === 'Escape') toggleSearch(false);
+});
+function toggleSearch(force) {
+  const box = document.getElementById('searchbox');
+  const open = force !== undefined ? force : box.classList.contains('collapsed');
+  box.classList.toggle('collapsed', !open);
+  box.classList.toggle('expanded', open);
+  document.getElementById('searchToggleIcon').textContent = open ? 'close' : 'search';
+  if (open) setTimeout(() => document.getElementById('q').focus(), 120);
+  else document.getElementById('q').blur();
+}
+document.addEventListener('click', (e) => {
+  const box = document.getElementById('searchbox');
+  if (!box || !box.classList.contains('expanded')) return;
+  if (box.contains(e.target)) return;
+  toggleSearch(false);
+});
+let searchTimer = null;
+document.getElementById('q').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => load(1), 500); });
+async function load(p = 1) {
+  if (p === 1) {
+    page = 1;
+    const g0 = document.getElementById('grid');
+    g0.innerHTML = '';
+    for (let i = 0; i < 6; i++) {
+      const d = document.createElement('div');
+      d.innerHTML = `<div class="skel skel-media"></div><div class="skel skel-line"></div><div class="skel skel-line short"></div>`;
+      g0.appendChild(d);
+    }
+  }
+  const q = document.getElementById('q').value || '';
+  const r = await fetch(`/api/videos?q=${encodeURIComponent(q)}&sort=${sort}&page=${p}&limit=12`);
+  const j = await r.json();
+  if (!document.getElementById('grid')) return;
+  page = p;
+  document.getElementById('count').textContent = j.total + ' videos';
+  document.getElementById('more').style.display = p < j.pages ? '' : 'none';
+  const g = document.getElementById('grid');
+  if (p === 1) g.innerHTML = '';
+  for (const v of j.videos) {
+    const media = v.thumbnail
+      ? `<img class="media" src="${v.thumbnail}" loading="lazy" alt="">`
+      : `<video class="media" src="${v.src}#t=0.5" preload="metadata" muted></video>`;
+    const a = document.createElement('a');
+    a.className = 'cardlink'; a.href = '/watch?id=' + v.id;
+    const badge = v.status && v.status !== 'ready' ? '⏳ Processing… ' : '';
+    a.innerHTML = `<article class="m3card">${media}<div class="meta">${avatarHtml(v.avatar, 'pfp-sm')}<div class="metatext"><h3>${esc(v.title)}</h3>`
+      + `<small>${badge}${esc(v.username)} • ${fmtNum(v.views)} views • <span title="${esc(fmtDate(v.created_at))}">${fmtAge(v.created_at)}</span></small></div></div></article>`;
+    g.appendChild(a);
+  }
+}
+load(1);
+Object.assign(window, { load, toggleSearch });
+};
+window.__boot();
+</script>
+</body>
+</html>
