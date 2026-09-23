@@ -106,12 +106,22 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="#111111"
-        android:gravity="center_vertical"
-        android:minHeight="64dp"
-        android:orientation="horizontal"
-        android:paddingTop="9dp"
-        android:paddingBottom="9dp"
+        android:orientation="vertical"
         android:visibility="gone">
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#242424" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:minHeight="64dp"
+            android:orientation="horizontal"
+            android:paddingTop="9dp"
+            android:paddingBottom="9dp">
 
         <LinearLayout
             android:id="@+id/nav_home"
@@ -128,6 +138,7 @@
                 android:src="@drawable/ic_home" />
 
             <TextView
+                android:id="@+id/nav_home_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
@@ -151,6 +162,7 @@
                 android:src="@drawable/ic_movie" />
 
             <TextView
+                android:id="@+id/nav_wheels_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
@@ -190,6 +202,7 @@
                 android:src="@drawable/ic_music_note" />
 
             <TextView
+                android:id="@+id/nav_music_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
@@ -224,12 +237,14 @@
             </FrameLayout>
 
             <TextView
+                android:id="@+id/nav_you_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
                 android:text="You"
                 android:textColor="#A8A8A8"
                 android:textSize="11sp" />
+        </LinearLayout>
         </LinearLayout>
     </LinearLayout>
 </LinearLayout>

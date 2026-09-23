@@ -157,18 +157,23 @@ class MainActivity : AppCompatActivity() {
 
 
     private fun markNav() {
+        // Match Flutter BottomNav: active tab icon + label white, idle #A8A8A8.
+        // The You tab is never highlighted (Flutter keeps it idle gray).
         val tabs = mapOf(
-            "home" to Pair(R.id.nav_home_icon, R.id.nav_home),
-            "wheels" to Pair(R.id.nav_wheels_icon, R.id.nav_wheels),
-            "music" to Pair(R.id.nav_music_icon, R.id.nav_music)
+            "home" to Triple(R.id.nav_home_icon, R.id.nav_home_label, "home"),
+            "wheels" to Triple(R.id.nav_wheels_icon, R.id.nav_wheels_label, "wheels"),
+            "music" to Triple(R.id.nav_music_icon, R.id.nav_music_label, "music"),
         )
-        // icon tint + label color would need TextView refs; keep simple: highlight handled by avatar state
-        // active tab icons stay white; inactive dimmed
-        listOf("home", "wheels", "music").forEach { t ->
-            val active = t == currentTab
-            val pair = tabs[t] ?: return@forEach
-            (findViewById<View>(pair.first) as? ImageView)?.apply {
-                alpha = if (active) 1.0f else 0.45f
+        val active = android.graphics.Color.WHITE
+        val idle = android.graphics.Color.parseColor("#A8A8A8")
+        tabs.values.forEach { (iconId, labelId, tag) ->
+            val selected = tag == currentTab
+            (findViewById<View>(iconId) as? ImageView)?.apply {
+                alpha = if (selected) 1.0f else 0.45f
+                setColorFilter(if (selected) active else idle)
+            }
+            (findViewById<View>(labelId) as? TextView)?.apply {
+                setTextColor(if (selected) active else idle)
             }
         }
     }
