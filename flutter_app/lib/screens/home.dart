@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../api.dart';
 import '../main.dart';
+import '../update.dart';
 import '../widgets.dart';
 import 'upload.dart';
 
@@ -27,11 +28,12 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _load(1);
-    if (widget.me != null && (widget.me!.banned || widget.me!.deleted)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) showBanOverlay(context, widget.me!);
-      });
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) checkForUpdate(context);
+      if (widget.me != null && (widget.me!.banned || widget.me!.deleted)) {
+        showBanOverlay(context, widget.me!);
+      }
+    });
   }
 
   Future<void> _load(int p) async {

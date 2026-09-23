@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../api.dart';
 import '../main.dart';
+import '../update.dart';
 import '../widgets.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -179,6 +180,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 12),
           OutlinedButton(
               onPressed: _signOut, child: const Text('Sign out')),
+          const SizedBox(height: 12),
+          OutlinedButton(
+              onPressed: () {
+                checkForUpdate(context, manual: true);
+              },
+              child: const Text('Check for updates')),
           Text(_msg,
               style: const TextStyle(color: Color(0xFFA8A8A8))),
         ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
 import '../api.dart';
 import '../main.dart';
 import 'screens/channel.dart';
@@ -164,8 +165,7 @@ class UserAvatar extends StatelessWidget {
     }
     final lower = full.toLowerCase();
     if (lower.endsWith('.webm')) {
-      return Icon(Icons.account_circle,
-          size: radius * 2, color: const Color(0xFFA8A8A8));
+      return ClipOval(child: _AvatarVideo(url: full, radius: radius));
     }
     return ClipOval(
       child: Image.network(full,
@@ -402,6 +402,65 @@ class _BottomNavState extends State<BottomNav> {
                     ),
                   ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AvatarVideo extends StatefulWidget {
+  final String url;
+  final double radius;
+  const _AvatarVideo({required this.url, required this.radius});
+
+  @override
+  State<_AvatarVideo> createState() => _AvatarVideoState();
+}
+
+class _AvatarVideoState extends State<_AvatarVideo> {
+  VideoPlayerController? _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    final c = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+    _ctrl = c;
+    c.initialize().then((_) async {
+      if (!mounted) return;
+      await c.setLooping(true);
+      await c.setVolume(0);
+      await c.play();
+      if (mounted) setState(() {});
+    }).catchError((_) {});
+  }
+
+  @override
+  void dispose() {
+    _ctrl?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = _ctrl;
+    if (c == null || !c.value.isInitialized) {
+      return Icon(Icons.account_circle,
+          size: widget.radius * 2, color: const Color(0xFFA8A8A8));
+    }
+    return SizedBox(
+      width: widget.radius * 2,
+      height: widget.radius * 2,
+      child: FittedBox(
+        fit: BoxFit.cover,
+        clipBehavior: Clip.hardEdge,
+        child: SizedBox(
+          width: c.value.size.width == 0
+              ? widget.radius * 2
+              : c.value.size.width,
+          height: c.value.size.height == 0
+              ? widget.radius * 2
+              : c.value.size.height,
+          child: VideoPlayer(c),
         ),
       ),
     );
