@@ -240,11 +240,15 @@ class _WatchScreenState extends State<WatchScreen> {
                                   : 'Follow'),
                             ),
                           const SizedBox(width: 8),
-                          FilledButton.tonal(
-                            onPressed: _toggleLike,
-                            child: Text(
-                                '${video.liked ? '♥ ' : ''}${fmtNum(video.likes)}'),
-                          ),
+                          v.liked
+                              ? FilledButton(
+                                  onPressed: _toggleLike,
+                                  child: Text(fmtNum(v.likes)),
+                                )
+                              : OutlinedButton(
+                                  onPressed: _toggleLike,
+                                  child: Text(fmtNum(v.likes)),
+                                ),
                         ],
                       ),
                     ),
