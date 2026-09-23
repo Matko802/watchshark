@@ -25,6 +25,15 @@ import org.watchshark.app.ui.loadMedia
 class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Immersive edge-to-edge: draw behind the status + gesture bars and
+        // let the app handle insets (root layout has fitsSystemWindows).
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.statusBarColor = android.graphics.Color.TRANSPARENT
+        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+        androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).apply {
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
+        }
         setTheme(R.style.Theme_WatchShark)
         super.onCreate(savedInstanceState)
         ApiClient.init(this)

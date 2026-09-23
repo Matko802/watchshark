@@ -127,6 +127,7 @@
             android:id="@+id/nav_home"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
             android:layout_weight="1"
             android:gravity="center_horizontal"
             android:orientation="vertical">
@@ -151,6 +152,7 @@
             android:id="@+id/nav_wheels"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
             android:layout_weight="1"
             android:gravity="center_horizontal"
             android:orientation="vertical">
@@ -171,26 +173,29 @@
                 android:textSize="11sp" />
         </LinearLayout>
 
-        <FrameLayout
+        <LinearLayout
             android:id="@+id/nav_create"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
             android:layout_weight="1"
-            android:gravity="center">
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
 
             <ImageView
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:background="@drawable/circle_white"
+                android:contentDescription="Create"
                 android:padding="12dp"
                 android:src="@drawable/ic_add" />
-        </FrameLayout>
+        </LinearLayout>
 
         <LinearLayout
             android:id="@+id/nav_music"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
             android:layout_weight="1"
             android:gravity="center_horizontal"
             android:orientation="vertical">
@@ -215,6 +220,7 @@
             android:id="@+id/nav_you"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
             android:layout_weight="1"
             android:gravity="center_horizontal"
             android:orientation="vertical">
