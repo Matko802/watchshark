@@ -52,6 +52,12 @@ class SettingsFragment : Fragment() {
             msg("Checking…")
             Updater.checkManual(this) { status -> if (isAdded) msg(status) }
         }
+        val crashBtn = view.findViewById<Button>(R.id.s_crash)
+        crashBtn.visibility =
+            if (org.watchshark.app.data.CrashLog.lastCrash(requireContext()) != null) View.VISIBLE else View.GONE
+        crashBtn.setOnClickListener {
+            org.watchshark.app.data.CrashLog.showNow(requireContext())
+        }
         lifecycleScope.launch {
             try {
                 val me = ApiClient.api.me().user ?: return@launch

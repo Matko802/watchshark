@@ -25,7 +25,7 @@ import org.watchshark.app.ui.loadMedia
 class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Immersive edge-to-edge: draw behind the status + gesture bars and
+        org.watchshark.app.data.CrashLog.install(this)
         // let the app handle insets (root layout has fitsSystemWindows).
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = android.graphics.Color.TRANSPARENT
@@ -40,6 +40,9 @@ class MainActivity : AppCompatActivity() {
         org.watchshark.app.data.Updater.init(this)
         setContentView(R.layout.activity_main)
         applyEdgeToEdge()
+        // If the last session crashed, show the report right away so the
+        // user can copy + send it instead of just seeing "app stopped".
+        org.watchshark.app.data.CrashLog.showNow(this)
 
         findViewById<View>(R.id.brand_icon).setOnClickListener { showHome() }
         findViewById<View>(R.id.brand_text).setOnClickListener { showHome() }
