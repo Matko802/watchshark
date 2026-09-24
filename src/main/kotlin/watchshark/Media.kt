@@ -141,10 +141,12 @@ object Media {
         return f.exists() && f.length() > 0
     }
 
-    fun convertThumb(src: String, stem: String): Pair<String, Boolean> {
+    fun convertThumb(src: String, stem: String, outDir: java.io.File? = null): Pair<String, Boolean> {
         if (!probeHasVideo(src)) return Pair("", false)
         val name = "$stem.webp"
-        val out = "${Config.thumbsDir}/$name"
+        val dir = outDir ?: java.io.File(Config.thumbsDir)
+        try { dir.mkdirs() } catch (_: Exception) {}
+        val out = java.io.File(dir, name).absolutePath
         if (!runFFmpeg(listOf("-y", "-i", src, "-vf", "scale=640:-1", "-c:v", "libwebp", "-q:v", "80", out), java.time.Duration.ofSeconds(120))) {
             File(out).delete()
             return Pair("", false)
@@ -313,7 +315,7 @@ object Media {
 
     fun processUpload(id: Long, author: Long, tmp: String, stem: String, customThumb: String) {
         var out = ""
-        val th = "${Config.thumbsDir}/$stem.webp"
+        val th = java.io.File(Config.thumbsForVideoDir(java.io.File(tmp).parentFile ?: java.io.File(Config.videosDir)), "$stem.webp").absolutePath
         val thname = "$stem.webp"
         var fn = ""
         var mt = ""
@@ -361,7 +363,7 @@ object Media {
         }
         var thumb: String? = null
         if (customThumb.isNotEmpty()) {
-            val (name, ok) = convertThumb(customThumb, stem)
+            val (name, ok) = convertThumb(customThumb, stem, Config.thumbsForVideoDir(java.io.File(tmp).parentFile ?: java.io.File(Config.videosDir)))
             if (ok) thumb = name
             File(customThumb).delete()
         }
@@ -384,7 +386,7 @@ object Media {
 
     fun processMusic(id: Long, author: Long, tmp: String, stem: String, customThumb: String) {
         val out = java.io.File(File(tmp).parent, "$stem.ogg").absolutePath
-        val th = "${Config.thumbsDir}/$stem.webp"
+        val th = java.io.File(Config.thumbsForVideoDir(java.io.File(tmp).parentFile ?: java.io.File(Config.videosDir)), "$stem.webp").absolutePath
         val thname = "$stem.webp"
         val tmpF = File(tmp)
         if (!tmpF.exists() || tmpF.length() == 0L) {
@@ -407,7 +409,7 @@ object Media {
         }
         var thumb: String? = null
         if (customThumb.isNotEmpty()) {
-            val (name, good) = convertThumb(customThumb, stem)
+            val (name, good) = convertThumb(customThumb, stem, Config.thumbsForVideoDir(java.io.File(tmp).parentFile ?: java.io.File(Config.videosDir)))
             if (good) thumb = name
             File(customThumb).delete()
         }

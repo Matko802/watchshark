@@ -120,4 +120,16 @@ DROP TABLE IF EXISTS reset_requests;
             }
         }
     }
+
+    fun usernameOf(uid: Long): String? {
+        synchronized(lock) {
+            conn.prepareStatement("SELECT username FROM users WHERE id=?").use { ps ->
+                ps.setLong(1, uid)
+                ps.executeQuery().use { rs ->
+                    if (rs.next()) return rs.getString(1)
+                }
+            }
+        }
+        return null
+    }
 }

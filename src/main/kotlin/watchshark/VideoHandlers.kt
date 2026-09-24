@@ -512,8 +512,9 @@ object VideoHandlers {
         if (title.isEmpty()) title = "Untitled"
 
         val stem = Auth.randHex(16)
-        val partPath = File(Config.videoDirFor(kind), "$stem.part")
-        val thumbTmp = File("${Config.thumbsDir}/$stem.ctmp")
+        val uname = Db.usernameOf(uid) ?: "u"
+        val partPath = File(Config.userVideosDir(uname), "$stem.part")
+        val thumbTmp = File(Config.userThumbsDir(uname), "$stem.ctmp")
 
         // save main file with limit
         try {
