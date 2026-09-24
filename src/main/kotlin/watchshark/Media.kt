@@ -190,15 +190,12 @@ object Media {
         var stem = fn
         val i = stem.lastIndexOf('.')
         if (i >= 0) stem = stem.substring(0, i)
-        File("${Config.videosDir}/${stem}-720p.webm").delete()
-        File("${Config.videosDir}/${stem}-480p.webm").delete()
-        File("${Config.videosDir}/${stem}-360p.webm").delete()
+        for (res in listOf("720p", "480p", "360p")) {
+            try { Config.resolveVideo("$stem-$res.webm").delete() } catch (_: Exception) {}
+        }
     }
 
-    fun spawnRenditions(id: Long, stem: String, src: String, h: Long) {
-        if (h <= 480) return
-        bg.submit { processRenditions(id, stem, src, h) }
-    }
+    private val renditionLocks = java.util.concurrent.ConcurrentHashMap<String, Any>()
 
     fun rendOne(src: String, dst: String, scale: String, br: String): Boolean {
         transcodeSem.acquire()
@@ -212,28 +209,83 @@ object Media {
         }
     }
 
-    fun processRenditions(id: Long, stem: String, src: String, h: Long) {
-        val p720 = "${Config.videosDir}/${stem}-720p.webm"
-        val p480 = "${Config.videosDir}/${stem}-480p.webm"
-        val p360 = "${Config.videosDir}/${stem}-360p.webm"
-        var has720 = false
-        var has480 = false
-        var has360 = false
-        if (h > 720) has720 = rendOne(src, p720, "scale=1280:720:force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2", "2500k")
-        if (h > 480) has480 = rendOne(src, p480, "scale=854:480:force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2", "1000k")
-        if (h > 360) has360 = rendOne(src, p360, "scale=640:360:force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2", "500k")
-        if (!has720 && !has480 && !has360) return
-        val parts = mutableListOf<String>()
-        if (has720 && File(p720).exists()) parts.add("\"720p\":\"/v/${stem}-720p.webm\"")
-        if (has480 && File(p480).exists()) parts.add("\"480p\":\"/v/${stem}-480p.webm\"")
-        if (has360 && File(p360).exists()) parts.add("\"360p\":\"/v/${stem}-360p.webm\"")
-        if (parts.isEmpty()) return
-        synchronized(Db.lock) {
-            Db.conn.prepareStatement("UPDATE videos SET renditions=? WHERE id=?").use { ps ->
-                ps.setString(1, "{${parts.joinToString(",")}}")
-                ps.setLong(2, id)
-                ps.executeUpdate()
+    private fun renditionSpec(res: Int): Pair<String, String>? = when (res) {
+        720 -> "scale=1280:720:force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2" to "2500k"
+        480 -> "scale=854:480:force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2" to "1000k"
+        360 -> "scale=640:360:force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2" to "500k"
+        else -> null
+    }
+
+    /**
+     * Dynamic renditions: serve `/v/<stem>-<res>p.webm`, generating it on
+     * first request and caching on disk (instead of pre-generating a whole
+     * ladder at upload). Concurrent requests for the same file share one job.
+     * Returns the file to serve, or null.
+     */
+    fun ensureRendition(stem: String, res: Int): java.io.File? {
+        val spec = renditionSpec(res) ?: return null
+        val name = "$stem-${res}p.webm"
+        val hit = Config.resolveVideo(name)
+        if (hit.isFile) return hit
+        val src = listOf("$stem.webm", "$stem.mp4")
+            .map { Config.resolveVideo(it) }
+            .firstOrNull { it.isFile } ?: return null
+        val lock = renditionLocks.computeIfAbsent(name) { Any() }
+        synchronized(lock) {
+            try {
+                val again = Config.resolveVideo(name)
+                if (again.isFile) return again
+                val (_, h, ok) = probeDims(src.absolutePath)
+                if (!ok) return null
+                if (h <= res) return src // no upscale; serve the source itself
+                val dst = java.io.File(src.parentFile, name)
+                if (!rendOne(src.absolutePath, dst.absolutePath, spec.first, spec.second)) {
+                    try { dst.delete() } catch (_: Exception) {}
+                    return null
+                }
+                if (!dst.isFile || dst.length() == 0L) {
+                    try { dst.delete() } catch (_: Exception) {}
+                    return null
+                }
+                mergeRenditionDb(stem, res, name)
+                return dst
+            } finally {
+                renditionLocks.remove(name)
             }
+        }
+    }
+
+    private fun mergeRenditionDb(stem: String, res: Int, name: String) {
+        try {
+            synchronized(Db.lock) {
+                var id = 0L
+                var cur: String? = null
+                Db.conn.prepareStatement("SELECT id,renditions FROM videos WHERE filename=? OR filename=?").use { ps ->
+                    ps.setString(1, "$stem.webm")
+                    ps.setString(2, "$stem.mp4")
+                    ps.executeQuery().use { rs ->
+                        if (rs.next()) {
+                            id = rs.getLong(1)
+                            cur = rs.getString(2)
+                        }
+                    }
+                }
+                if (id == 0L) return
+                val entry = "\"${res}p\":\"/v/$name\""
+                val merged = if (cur.isNullOrBlank() || cur == "null") {
+                    "{$entry}"
+                } else {
+                    val t = cur!!.trim()
+                    if (t.contains("\"${res}p\"")) return
+                    if (t.endsWith("}")) t.dropLast(1) + "," + entry + "}" else "{$entry}"
+                }
+                Db.conn.prepareStatement("UPDATE videos SET renditions=? WHERE id=?").use { ps ->
+                    ps.setString(1, merged)
+                    ps.setLong(2, id)
+                    ps.executeUpdate()
+                }
+            }
+        } catch (_: Exception) {
         }
     }
 
@@ -274,7 +326,7 @@ object Media {
                 if (av.vc == "av1" && (av.ac == "" || av.ac == "opus") && (av.fm.contains("webm") || av.fm.contains("matroska")) && tmpF.length() <= 100L * 1024 * 1024) {
                     fn = "$stem.webm"
                     mt = "video/webm"
-                    out = "${Config.videosDir}/$fn"
+                    out = java.io.File(tmpF.parent, fn).absolutePath
                     if (tmpF.renameTo(File(out))) {
                         size = File(out).length()
                         good = true
@@ -283,7 +335,7 @@ object Media {
                     val dur = probeDuration(tmp)
                     fn = "$stem.webm"
                     mt = "video/webm"
-                    out = "${Config.videosDir}/$fn"
+                    out = java.io.File(tmpF.parent, fn).absolutePath
                     var scale = "scale=1280:720:force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2"
                     if (dur > 120.0) scale = "scale=854:480:force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2"
                     transcode(tmp, out, dur, 95L * 1024 * 1024, scale)
@@ -328,11 +380,10 @@ object Media {
             }
         }
         notifyFollowers(id, author)
-        if (vh > 480) spawnRenditions(id, stem, out, vh)
     }
 
     fun processMusic(id: Long, author: Long, tmp: String, stem: String, customThumb: String) {
-        val out = "${Config.videosDir}/$stem.ogg"
+        val out = java.io.File(File(tmp).parent, "$stem.ogg").absolutePath
         val th = "${Config.thumbsDir}/$stem.webp"
         val thname = "$stem.webp"
         val tmpF = File(tmp)
@@ -450,7 +501,7 @@ object Media {
             }
         }
         for (r in rows) {
-            val tmp = File("${Config.videosDir}/${r.fn}")
+            val tmp = Config.resolveVideo(r.fn)
             if (!tmp.exists() || tmp.length() == 0L) {
                 markFailed(r.id)
                 continue
@@ -459,9 +510,8 @@ object Media {
             if (r.kind == "music") bg.submit { processMusic(r.id, r.author, tmp.absolutePath, stem, "") }
             else bg.submit { processUpload(r.id, r.author, tmp.absolutePath, stem, "") }
         }
-        val entries = File(Config.videosDir).listFiles() ?: return
+        val entries = File(Config.videosDir).walkTopDown().filter { it.isFile && it.name.endsWith(".part") }.toList()
         for (e in entries) {
-            if (!e.name.endsWith(".part")) continue
             var found = false
             synchronized(Db.lock) {
                 Db.conn.prepareStatement("SELECT 1 FROM videos WHERE filename=? AND status='processing'").use { ps ->
@@ -504,12 +554,16 @@ object Media {
         }
         var removed = 0
         for ((dir, prefix) in listOf(Config.videosDir to "v:", Config.thumbsDir to "t:", Config.avatarsDir to "a:")) {
-            val entries = File(dir).listFiles() ?: continue
+            val entries = try {
+                File(dir).walkTopDown().filter { it.isFile }.toList()
+            } catch (_: Exception) {
+                continue
+            }
             for (e in entries) {
+                // Key videos by bare filename: they may live in kind subdirs.
                 val nm = e.name
                 if (nm.startsWith(".")) continue
                 if (nm.endsWith(".part")) continue
-                if (!e.isFile) continue
                 if (!keep.contains(prefix + nm)) {
                     if (e.delete()) removed++
                 }
@@ -539,7 +593,7 @@ object Media {
         }
         for (r in rows) {
             var o = "h"
-            val (w, h, ok) = probeDims("${Config.videosDir}/${r.fn}")
+            val (w, h, ok) = probeDims(Config.resolveVideo(r.fn).absolutePath)
             if (ok && h > w) o = "v"
             synchronized(Db.lock) {
                 Db.conn.prepareStatement("UPDATE videos SET orientation=? WHERE id=?").use { ps ->

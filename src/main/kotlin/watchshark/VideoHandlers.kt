@@ -193,7 +193,7 @@ object VideoHandlers {
             HttpUtil.writeErr(ctx, 404, "Not found")
             return
         }
-        File("${Config.videosDir}/$fn").delete()
+        Config.resolveVideo(fn).delete()
         Media.unlinkRenditions(fn)
         if (!th.isNullOrEmpty()) File("${Config.thumbsDir}/$th").delete()
         HttpUtil.writeJson(ctx, 200, mapOf("ok" to true))
@@ -512,7 +512,7 @@ object VideoHandlers {
         if (title.isEmpty()) title = "Untitled"
 
         val stem = Auth.randHex(16)
-        val partPath = File("${Config.videosDir}/$stem.part")
+        val partPath = File(Config.videoDirFor(kind), "$stem.part")
         val thumbTmp = File("${Config.thumbsDir}/$stem.ctmp")
 
         // save main file with limit

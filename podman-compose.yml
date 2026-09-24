@@ -10,6 +10,9 @@ services:
       - "3001:3000"
     volumes:
       - /home/matko/.config/watchshark/data:/data
+      # Live HTML/JS/CSS: edits in ~/watchshark/public apply instantly,
+      # no image rebuild needed (Kotlin reads from disk per request).
+      - ./public:/app/public
     environment:
       PORT: "3000"
       JWT_SECRET: "43e0a3b20c71af4171b776b237529eb906d8e486b46853e68080fa5cf5a21cb1"

@@ -84,7 +84,7 @@ object AdminHandlers {
         }
         if (!changed) return false
         for (i in fns.indices) {
-            File("${Config.videosDir}/${fns[i]}").delete()
+            Config.resolveVideo(fns[i]).delete()
             Media.unlinkRenditions(fns[i])
             if (ths[i].isNotEmpty()) File("${Config.thumbsDir}/${ths[i]}").delete()
         }
@@ -238,7 +238,7 @@ object AdminHandlers {
             return
         }
         for (i in fns.indices) {
-            File("${Config.videosDir}/${fns[i]}").delete()
+            Config.resolveVideo(fns[i]).delete()
             Media.unlinkRenditions(fns[i])
             if (ths[i].isNotEmpty()) File("${Config.thumbsDir}/${ths[i]}").delete()
         }

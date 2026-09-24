@@ -133,7 +133,7 @@ class WatchFragment : Fragment() {
             exo.addListener(ctrlListener)
             exo.setMediaItem(MediaItem.fromUri(url))
             exo.prepare()
-            exo.play()
+            // No autoplay: big play button shows, tap to start (with sound).
             syncCtrlButtons()
         }
         wirePlayerControls(pv)
@@ -212,11 +212,23 @@ class WatchFragment : Fragment() {
     private fun qualityOptions(): List<Pair<String, String?>> {
         val vid = video ?: return listOf("Auto" to null)
         val o = mutableListOf("Auto" to null as String?)
+        fun has(label: String) = o.any { it.first == label }
         vid.renditions?.get("720p")?.let { o.add("720p HD" to it) }
         vid.renditions?.get("480p")?.let { o.add("480p" to it) }
         vid.renditions?.get("360p")?.let { o.add("360p" to it) }
+        // Dynamic renditions generate on first request — always offer them.
+        dynStem(vid.src)?.let { stem ->
+            if (!has("720p HD") && !has("720p")) o.add("720p HD" to "/v/$stem-720p.webm")
+            if (!has("480p")) o.add("480p" to "/v/$stem-480p.webm")
+            if (!has("360p")) o.add("360p" to "/v/$stem-360p.webm")
+        }
         o.add("Source" to vid.src)
         return o
+    }
+
+    private fun dynStem(src: String): String? {
+        val m = Regex("""/v/(.+)\.[a-z0-9]+$""", RegexOption.IGNORE_CASE).find(src) ?: return null
+        return m.groupValues[1].removeSuffix("-720p").removeSuffix("-480p").removeSuffix("-360p")
     }
 
     private fun showQualityMenu(anchor: View) {

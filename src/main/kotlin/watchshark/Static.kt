@@ -110,18 +110,23 @@ object Static {
                 HttpUtil.writeErr(ctx, 404, "Not found")
                 return
             }
-            val base = when (uri[1]) {
-                'v' -> null // resolved per kind subdir below
-                't' -> Config.thumbsDir
-                else -> Config.avatarsDir
-            }
             if (uri[1] == 'v') {
+                // Dynamic rendition: /v/<stem>-<360|480|720>p.webm generates
+                // on first request (cached on disk afterwards).
+                val m = Regex("""^(.+)-(720|480|360)p\.webm$""").matchEntire(nm)
+                if (m != null) {
+                    val f = Media.ensureRendition(m.groupValues[1], m.groupValues[2].toInt())
+                    if (f == null || !f.isFile) {
+                        HttpUtil.writeErr(ctx, 404, "Not found")
+                        return
+                    }
+                    serveMedia(ctx, f.absolutePath, nm, true)
+                    return
+                }
                 val f = Config.resolveVideo(nm)
                 serveMedia(ctx, f.absolutePath, nm, true)
                 return
             }
-            serveMedia(ctx, "$base/$nm", nm, true)
-            return
         }
         if (uri.contains("..")) {
             HttpUtil.writeErr(ctx, 404, "Not found")

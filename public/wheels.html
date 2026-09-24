@@ -107,7 +107,7 @@ let VID = null;
 let VDATA = [];
 let seen = [];
 let SW = null;
-let mutedAll = true;
+let mutedAll = false;
 let loadingBatch = false;
 let exhausted = false;
 function activeVideo() {
@@ -141,9 +141,6 @@ async function fetchOne() {
 }
 function wireVideo(v) {
   v.muted = mutedAll;
-  v.addEventListener('ended', () => {
-    if (v === activeVideo() && SW) SW.slideNext();
-  });
   v.addEventListener('waiting', () => {
     if (v === activeVideo()) document.getElementById('rspin').style.display = '';
   });
@@ -271,34 +268,10 @@ function onSlide() {
     document.getElementById('rmuteIcon').textContent = v.muted ? 'volume_off' : 'volume_up';
     applyReelAutoQuality();
     onTimeReel();
-    if (localStorage.getItem('ws_autoplay') !== '0') {
-      if (!v.muted) {
-        v.play().then(() => {
-          document.getElementById('rbig').style.display = 'none';
-        }).catch(() => {
-          reelForced = true;
-          v.muted = true;
-          document.getElementById('rmuteIcon').textContent = 'volume_off';
-          v.play().then(() => {
-            document.getElementById('rbig').style.display = 'none';
-          }).catch(() => {
-            document.getElementById('rbigIcon').textContent = 'play_arrow';
-            document.getElementById('rbig').style.display = '';
-          });
-        });
-      } else {
-        v.play().then(() => {
-          document.getElementById('rbig').style.display = 'none';
-        }).catch(() => {
-          document.getElementById('rbigIcon').textContent = 'play_arrow';
-          document.getElementById('rbig').style.display = '';
-        });
-      }
-    } else {
-      pauseOthers();
-      document.getElementById('rbigIcon').textContent = 'play_arrow';
-      document.getElementById('rbig').style.display = '';
-    }
+    // No autoplay and no auto-advance: reel stays paused, tap to play.
+    pauseOthers();
+    document.getElementById('rbigIcon').textContent = 'play_arrow';
+    document.getElementById('rbig').style.display = '';
   }
   if (SW.activeIndex >= SW.slides.length - 3) loadBatch();
   warmNeighbors();
@@ -350,6 +323,15 @@ function reelQualOptions() {
     if (VID.renditions['720p']) o.push({ label: '720p', src: VID.renditions['720p'] });
     if (VID.renditions['480p']) o.push({ label: '480p', src: VID.renditions['480p'] });
     if (VID.renditions['360p']) o.push({ label: '360p', src: VID.renditions['360p'] });
+  }
+  if (VID) {
+    const m = (VID.src || '').match(/\/v\/(.+)\.[a-z0-9]+$/i);
+    if (m) {
+      const stem = m[1].replace(/-(720|480|360)p$/, '');
+      for (const r of ['720p', '480p', '360p']) {
+        if (!o.some((x) => x.label === r)) o.push({ label: r, src: `/v/${stem}-${r}.webm` });
+      }
+    }
   }
   if (VID) o.push({ label: 'Source', src: VID.src });
   return o;

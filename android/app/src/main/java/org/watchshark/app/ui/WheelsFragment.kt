@@ -43,12 +43,22 @@ class WheelsFragment : Fragment() {
         player = ApiClient.buildPlayer(requireContext()).also { exo ->
             exo.addListener(object : Player.Listener {
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                    // Only follow natural auto-advance. Reacting to timeline
-                    // changes (items appended) or our own seeks yanks the
-                    // pager and replays/restarts reels.
+                    // No autoplay-next: when a reel ends the playlist would
+                    // auto-advance on its own — hold position and stay paused.
                     if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
-                        val idx = exo.currentMediaItemIndex
-                        view.findViewById<ViewPager2>(R.id.pager).setCurrentItem(idx, false)
+                        val back = (exo.currentMediaItemIndex - 1).coerceAtLeast(0)
+                        exo.seekToDefaultPosition(back)
+                        exo.pause()
+                        exo.playWhenReady = false
+                        view.findViewById<ViewPager2>(R.id.pager).setCurrentItem(back, false)
+                    }
+                }
+
+                override fun onPlaybackStateChanged(state: Int) {
+                    // No autoplay-next: when a reel ends, stop there instead
+                    // of advancing the playlist.
+                    if (state == Player.STATE_ENDED) {
+                        exo.pause()
                     }
                 }
             })
@@ -69,7 +79,7 @@ class WheelsFragment : Fragment() {
                     if (exo.currentMediaItemIndex != position && position < exo.mediaItemCount) {
                         exo.seekTo(position, 0)
                     }
-                    exo.playWhenReady = true
+                    // No autoplay: swiping never starts playback, tap to play.
                 }
                 if (position >= videos.size - 3) loadMore()
             }
@@ -89,7 +99,7 @@ class WheelsFragment : Fragment() {
     private fun srcFor(v: Video): String? {
         val override = qualityOverride[v.id]
         val url = when {
-            override != null -> v.renditions?.get(override) ?: v.src
+            override != null -> v.renditions?.get(override) ?: dynRendition(v, override) ?: v.src
             // Auto (like the website): light renditions first, Source last.
             else -> v.renditions?.get("720p")
                 ?: v.renditions?.get("480p")
@@ -97,6 +107,15 @@ class WheelsFragment : Fragment() {
                 ?: v.src
         }
         return fullUrl(url)
+    }
+
+    /** Dynamic rendition URL (generates on first request server-side). */
+    private fun dynRendition(v: Video, res: String): String? {
+        val stem = Regex("""/v/(.+)\.[a-z0-9]+$""", RegexOption.IGNORE_CASE)
+            .find(v.src)?.groupValues?.get(1)
+            ?.removeSuffix("-720p")?.removeSuffix("-480p")?.removeSuffix("-360p")
+            ?: return null
+        return "/v/$stem-$res.webm"
     }
 
     private fun loadMore() {
@@ -155,14 +174,8 @@ class WheelsFragment : Fragment() {
                     val firstBatch = videos.size == added
                     adapter.notifyDataSetChanged()
                     if (firstBatch) {
-                        // First load only: start at the top. Later batches
-                        // must not touch playback or the current reel
-                        // restarts (looks like repeating) or stalls.
+                        // Prepare only; playback starts on tap (no autoplay).
                         player?.prepare()
-                        player?.seekTo(0, 0)
-                        player?.playWhenReady = true
-                    } else {
-                        player?.playWhenReady = true
                     }
                 }
             } finally {
@@ -269,9 +282,13 @@ class WheelsFragment : Fragment() {
         private fun showQualityMenu(anchor: View, vid: Video) {
             val popup = PopupMenu(requireContext(), anchor)
             val options = mutableListOf("Auto" to null as String?)
+            fun has(label: String) = options.any { it.first == label }
             vid.renditions?.get("720p")?.let { options.add("720p HD" to it) }
             vid.renditions?.get("480p")?.let { options.add("480p" to it) }
             vid.renditions?.get("360p")?.let { options.add("360p" to it) }
+            if (!has("720p HD") && !has("720p")) dynRendition(vid, "720p")?.let { options.add("720p HD" to it) }
+            if (!has("480p")) dynRendition(vid, "480p")?.let { options.add("480p" to it) }
+            if (!has("360p")) dynRendition(vid, "360p")?.let { options.add("360p" to it) }
             options.add("Source" to vid.src)
             options.forEachIndexed { i, (label, _) -> popup.menu.add(0, i, i, label) }
             popup.setOnMenuItemClickListener { item ->

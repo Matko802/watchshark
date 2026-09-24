@@ -472,24 +472,14 @@ function initPlayer(src) {
 }
 function autoPlay() {
   if (!P) return;
+  // No autoplay and no forced mute: big play button shows, sound on.
   P.wantAuto = true;
   P.forceMuted = false;
   P.vid.muted = false;
   syncMuteIcon();
   P.unmute.style.display = 'none';
-  P.vid.play().then(() => {
-    if (P) P.unmute.style.display = 'none';
-  }).catch(() => {
-    if (!P) return;
-    P.forceMuted = true;
-    P.vid.muted = true;
-    syncMuteIcon();
-    P.vid.play().then(() => {
-      if (P) P.unmute.style.display = '';
-    }).catch(() => {
-      if (P) P.unmute.style.display = 'none';
-    });
-  });
+  P.bigIcon.textContent = 'play_arrow';
+  P.bigplay.style.display = '';
 }
 function unmuteGesture() {
   if (!P || !P.forceMuted) return;
@@ -573,6 +563,17 @@ function cycleSpeed() {
   P.speedBtn.textContent = SPEEDS[P.speedIdx] + 'x';
   poke();
 }
+function dynRend(o, src) {
+  // Dynamic renditions: /v/<stem>-<res>p.webm generates on first request,
+  // so offer them even when not pre-generated.
+  const m = src && src.match(/\/v\/(.+)\.[a-z0-9]+$/i);
+  if (!m) return o;
+  const stem = m[1].replace(/-(720|480|360)p$/, '');
+  for (const r of ['720p', '480p', '360p']) {
+    if (!o.some((x) => x.label === r)) o.push({ label: r, src: `/v/${stem}-${r}.webm` });
+  }
+  return o;
+}
 function qualOptions() {
   const o = [{ label: 'Auto', src: null }];
   if (VID.renditions) {
@@ -580,6 +581,7 @@ function qualOptions() {
     if (VID.renditions['480p']) o.push({ label: '480p', src: VID.renditions['480p'] });
     if (VID.renditions['360p']) o.push({ label: '360p', src: VID.renditions['360p'] });
   }
+  dynRend(o, VID.src);
   o.push({ label: 'Source', src: VID.src });
   return o;
 }
