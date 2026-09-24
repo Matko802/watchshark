@@ -22,8 +22,7 @@
 </head>
 <body class="reelbody" data-pjax="1"><div id="bootloader"><div class="boots"></div></div>
 <header class="topbar">
-  <md-icon-button href="/" aria-label="Back"><md-icon>arrow_back</md-icon></md-icon-button>
-  <a class="brand" href="/"><img src="/watchshark.webp?v=2" alt="WatchShark logo"><span>Wheels</span></a>
+  <a class="brand" href="/"><img src="/watchshark.webp?v=2" alt="WatchShark logo"><span>WatchShark</span></a>
   <span class="spacer"></span>
   <span id="whoami"></span>
 </header>
@@ -443,16 +442,10 @@ async function initWheels() {
   }
   SW = new Swiper('#wswiper', {
     direction: 'vertical',
-    effect: 'cube',
-    speed: 450,
+    effect: 'slide',
+    speed: 300,
     resistanceRatio: 0.85,
     mousewheel: true,
-    cubeEffect: {
-      shadow: true,
-      slideShadows: true,
-      shadowOffset: 20,
-      shadowScale: 0.94,
-    },
   });
   SW.on('slideChange', onSlide);
   SW.on('tap', () => toggleReelPlay());
