@@ -239,7 +239,8 @@ function renderComments() {
   }
   const c = cItems[cIdx % cItems.length];
   prev.innerHTML = `<div class="crow">${avatarHtml(c.avatar, 'pfp-sm')}<div class="metatext"><b>${esc(c.username)}</b><p>${esc(c.body)}</p></div></div>`
-    + `<p class="muted">Tap to show all ${cItems.length} comments</p>`;
+    + `<md-outlined-button id="showAllBtn">Show all ${cItems.length} comments</md-outlined-button>`;
+  document.getElementById('showAllBtn').onclick = (e) => { e.stopPropagation(); expandComments(); };
   if (cItems.length > 1) cTimer = setTimeout(nextCmt, 4000);
 }
 function nextCmt() {
@@ -253,6 +254,7 @@ function stopCmtTimer() {
   if (cTimer) { clearTimeout(cTimer); cTimer = null; }
 }
 function expandComments() {
+  stopCmtTimer();
   cCollapsed = false;
   renderComments();
 }
