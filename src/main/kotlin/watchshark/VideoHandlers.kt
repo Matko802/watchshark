@@ -455,7 +455,7 @@ object VideoHandlers {
             sb.append(seen.joinToString(",") { "?" })
             sb.append(")")
         }
-        sb.append(" ORDER BY RANDOM() LIMIT 1")
+        sb.append(" ORDER BY id DESC LIMIT 1")
         var vid = 0L
         var found = false
         synchronized(Db.lock) {

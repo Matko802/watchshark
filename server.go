@@ -1530,7 +1530,7 @@ func handleWheels(w http.ResponseWriter, r *http.Request) {
 		}
 		sb.WriteString(")")
 	}
-	sb.WriteString(" ORDER BY RANDOM() LIMIT 1")
+	sb.WriteString(" ORDER BY id DESC LIMIT 1")
 	var id int64
 	dbMu.Lock()
 	err := db.QueryRow(sb.String(), args...).Scan(&id)
