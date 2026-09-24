@@ -325,7 +325,12 @@ class WatchFragment : Fragment() {
                 video?.liked = res.get("liked")?.asBoolean == true
                 video?.likes = res.get("likes")?.asLong ?: 0
                 syncLike()
-                load()
+                // NOTE: no load() here — reloading would restart playback.
+                // Just refresh the counts line in place.
+                video?.let { vid ->
+                    view?.findViewById<TextView>(R.id.stats)?.text =
+                        "${fmtNum(vid.views)} views • ${fmtAge(vid.created_at)} • ${fmtNum(vid.likes)} likes"
+                }
             } catch (e: Exception) {
                 if (isAdded) view?.snack(httpErrorMessage(e))
             }

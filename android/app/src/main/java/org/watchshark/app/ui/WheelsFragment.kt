@@ -72,23 +72,13 @@ class WheelsFragment : Fragment() {
         loadMore()
     }
 
+    // Seen IDs are session-only, like the website (its _loadSeen is a no-op).
+    // Persisting them permanently exhausts the feed forever once you've
+    // watched everything once — new app starts would show "No wheels yet".
     private fun loadSeen() {
-        try {
-            val raw = requireContext()
-                .getSharedPreferences("ws_seen", 0)
-                .getString("ws_seen", "[]") ?: "[]"
-            raw.removeSurrounding("[", "]").split(",").mapNotNull { it.trim().toLongOrNull() }
-                .takeLast(400).forEach { seen.add(it) }
-        } catch (_: Exception) {
-        }
     }
 
     private fun saveSeen() {
-        try {
-            requireContext().getSharedPreferences("ws_seen", 0).edit()
-                .putString("ws_seen", seen.takeLast(400).toString()).apply()
-        } catch (_: Exception) {
-        }
     }
 
     private fun srcFor(v: Video): String? {
@@ -137,10 +127,12 @@ class WheelsFragment : Fragment() {
                         }
                         if (vid == null || vid.id == 0L || seen.contains(vid.id)) return@repeat
                         seen.add(vid.id)
+                        // Skip unplayable entries entirely: adding a video
+                        // without a media item desyncs pager pages from the
+                        // playlist and leaves black pages.
+                        val url = srcFor(vid) ?: return@repeat
                         videos.add(vid)
-                        srcFor(vid)?.let { url ->
-                            player?.addMediaItem(MediaItem.fromUri(url))
-                        }
+                        player?.addMediaItem(MediaItem.fromUri(url))
                         added++
                     } catch (_: Exception) {
                     }
