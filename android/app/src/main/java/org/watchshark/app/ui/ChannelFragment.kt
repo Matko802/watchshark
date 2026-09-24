@@ -59,6 +59,11 @@ class ChannelFragment : Fragment() {
         load()
     }
 
+    override fun onDestroyView() {
+        view?.findViewById<WebmAvatarView>(R.id.ch_avatar)?.release()
+        super.onDestroyView()
+    }
+
     private fun load() {
         val v = view ?: return
         lifecycleScope.launch {
@@ -70,7 +75,7 @@ class ChannelFragment : Fragment() {
                 v.findViewById<TextView>(R.id.ch_name).text = "@${user.username}"
                 v.findViewById<TextView>(R.id.ch_stats).text =
                     "${fmtNum(user.followers)} followers • ${fmtNum(user.videos)} videos • ${fmtNum(user.views)} views"
-                v.findViewById<ImageView>(R.id.ch_avatar).loadMedia(user.avatar, R.drawable.ic_person)
+                v.findViewById<WebmAvatarView>(R.id.ch_avatar).setAvatar(user.avatar, R.drawable.ic_person)
                 val me = try {
                     ApiClient.api.me().user
                 } catch (_: Exception) {

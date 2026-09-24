@@ -132,14 +132,12 @@ class MainActivity : AppCompatActivity() {
                 findViewById<View>(R.id.top_admin).visibility =
                     if (me.admin) View.VISIBLE else View.GONE
                 findViewById<View>(R.id.signin_btn).visibility = View.GONE
-                val avatar = findViewById<ImageView>(R.id.nav_avatar)
+                val avatar = findViewById<org.watchshark.app.ui.WebmAvatarView>(R.id.nav_avatar)
                 val person = findViewById<ImageView>(R.id.nav_person)
                 if (me.avatar != null) {
                     avatar.visibility = View.VISIBLE
                     person.visibility = View.GONE
-                    avatar.loadMedia(me.avatar, R.drawable.ic_person)
-                    avatar.clipToOutline = true
-                    avatar.outlineProvider = circleOutline()
+                    avatar.setAvatar(me.avatar, R.drawable.ic_person)
                 } else {
                     avatar.visibility = View.GONE
                     person.visibility = View.VISIBLE
@@ -159,6 +157,11 @@ class MainActivity : AppCompatActivity() {
             } catch (_: Exception) {
             }
         }
+    }
+
+    override fun onDestroy() {
+        findViewById<org.watchshark.app.ui.WebmAvatarView>(R.id.nav_avatar)?.release()
+        super.onDestroy()
     }
 
     private fun circleOutline() = object : android.view.ViewOutlineProvider() {

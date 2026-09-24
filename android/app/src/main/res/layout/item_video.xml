@@ -28,7 +28,7 @@
             android:padding="8dp"
             android:gravity="center_vertical">
 
-            <ImageView
+            <org.watchshark.app.ui.WebmAvatarView
                 android:id="@+id/avatar"
                 android:layout_width="32dp"
                 android:layout_height="32dp"

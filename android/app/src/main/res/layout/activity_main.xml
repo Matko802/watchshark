@@ -232,11 +232,11 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp">
 
-                <ImageView
-                    android:id="@+id/nav_avatar"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:visibility="gone" />
+                <org.watchshark.app.ui.WebmAvatarView
+                android:id="@+id/nav_avatar"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:visibility="gone" />
 
                 <ImageView
                     android:id="@+id/nav_person"

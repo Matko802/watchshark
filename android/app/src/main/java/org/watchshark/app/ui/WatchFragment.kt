@@ -5,16 +5,21 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.slider.Slider
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaType
@@ -86,7 +91,7 @@ class WatchFragment : Fragment() {
         v.findViewById<TextView>(R.id.stats).text =
             "${fmtNum(vid.views)} views • ${fmtAge(vid.created_at)} • ${fmtNum(vid.likes)} likes"
         v.findViewById<TextView>(R.id.desc).text = vid.description ?: ""
-        v.findViewById<ImageView>(R.id.avatar).loadMedia(vid.avatar, R.drawable.ic_person)
+        v.findViewById<WebmAvatarView>(R.id.avatar).setAvatar(vid.avatar, R.drawable.ic_person)
         syncLike()
         lifecycleScope.launch {
             try {
@@ -108,9 +113,33 @@ class WatchFragment : Fragment() {
     private fun startPlayer(url: String) {
         val v = view ?: return
         releasePlayer()
-        val pv: androidx.media3.ui.PlayerView = v.findViewById(R.id.player)
+        val pv: PlayerView = v.findViewById(R.id.player)
+        pv.useController = true
+        pv.controllerShowTimeoutMs = 3000
+        pv.controllerHideOnTouch = true
+        val playBtn: ImageButton = pv.findViewById(R.id.web_play)
+        val muteBtn: ImageButton = pv.findViewById(R.id.web_mute)
+        val vol: Slider = pv.findViewById(R.id.web_vol)
+        val big: MaterialButton = v.findViewById(R.id.web_bigplay)
+        vol.value = 100f
+        vol.addOnChangeListener { _, value, _ ->
+            player?.volume = value / 100f
+            syncCtrlButtons()
+        }
+        playBtn.setOnClickListener {
+            player?.let { if (it.isPlaying) it.pause() else it.play() }
+        }
+        big.setOnClickListener { player?.play() }
+        muteBtn.setOnClickListener {
+            player?.let {
+                it.volume = if (it.volume == 0f) 1f else 0f
+                vol.value = it.volume * 100
+                syncCtrlButtons()
+            }
+        }
         player = ApiClient.buildPlayer(requireContext()).also { exo ->
             pv.player = exo
+            exo.addListener(ctrlListener)
             exo.setMediaItem(MediaItem.fromUri(url))
             exo.prepare()
             exo.play()
@@ -122,6 +151,48 @@ class WatchFragment : Fragment() {
         pv.findViewById<android.widget.Button>(R.id.exo_speed)?.setOnClickListener { anchor ->
             cycleSpeed(anchor as android.widget.Button)
         }
+        ctrlHandler.post(ctrlTick)
+    }
+
+    private val ctrlHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val ctrlTick = object : Runnable {
+        override fun run() {
+            updateCtrlTime()
+            ctrlHandler.postDelayed(this, 500)
+        }
+    }
+
+    private val ctrlListener = object : Player.Listener {
+        override fun onIsPlayingChanged(isPlaying: Boolean) = syncCtrlButtons()
+        override fun onPlaybackStateChanged(state: Int) = syncCtrlButtons()
+    }
+
+    private fun syncCtrlButtons() {
+        val v = view ?: return
+        val exo = player
+        val playing = exo?.isPlaying == true
+        val pv: PlayerView? = v.findViewById(R.id.player)
+        pv?.findViewById<ImageButton>(R.id.web_play)?.setImageResource(
+            if (playing) R.drawable.ic_pause else R.drawable.ic_play_arrow
+        )
+        val muted = (exo?.volume ?: 1f) == 0f
+        pv?.findViewById<ImageButton>(R.id.web_mute)?.setImageResource(
+            if (muted) R.drawable.ic_volume_off else R.drawable.ic_volume_up
+        )
+        v.findViewById<View>(R.id.web_bigplay)?.visibility =
+            if (playing) View.GONE else View.VISIBLE
+        updateCtrlTime()
+    }
+
+    private fun updateCtrlTime() {
+        val v = view ?: return
+        val exo = player ?: return
+        val d = exo.duration
+        if (d <= 0 || d == C.TIME_UNSET) return
+        val c = exo.currentPosition.coerceAtLeast(0)
+        v.findViewById<PlayerView>(R.id.player)
+            ?.findViewById<TextView>(R.id.web_time)?.text =
+            "${fmtDur(c / 1000)} / ${fmtDur(d / 1000)}"
     }
 
     private val SPEEDS = floatArrayOf(1f, 1.25f, 1.5f, 2f, 0.5f)
@@ -167,19 +238,56 @@ class WatchFragment : Fragment() {
     }
 
     private fun toggleFullscreen() {
-        val act = activity ?: return
-        val decor = act.window.decorView
-        val controller = androidx.core.view.WindowInsetsControllerCompat(act.window, decor)
-        if (act.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
-            act.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-            controller.show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-        } else {
-            act.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-            controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        if (fsDialog != null) {
+            exitFullscreen()
+            return
         }
+        val act = activity ?: return
+        val exo = player ?: return
+        val pv: PlayerView = view?.findViewById(R.id.player) ?: return
+        act.requestedOrientation =
+            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        // Fullscreen shows video only — no controls, no overlays (tap toggles
+        // play silently, back exits), like fullscreen playback without chrome.
+        val fsView = PlayerView(act).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            setBackgroundColor(android.graphics.Color.BLACK)
+            useController = false
+            setOnClickListener {
+                exo.let { if (it.isPlaying) it.pause() else it.play() }
+            }
+        }
+        val dialog = android.app.Dialog(act, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
+        dialog.setContentView(fsView)
+        dialog.setOnDismissListener { if (fsDialog != null) exitFullscreen() }
+        pv.player = null
+        fsView.player = exo
+        fsPlayerView = fsView
+        fsDialog = dialog
+        dialog.show()
     }
 
+    private fun exitFullscreen() {
+        val d = fsDialog ?: return
+        fsDialog = null
+        fsPlayerView?.player = null
+        fsPlayerView = null
+        view?.findViewById<PlayerView>(R.id.player)?.player = player
+        if (d.isShowing) d.dismiss()
+        activity?.requestedOrientation =
+            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+    }
+
+    private var fsDialog: android.app.Dialog? = null
+    private var fsPlayerView: PlayerView? = null
+
     private fun releasePlayer() {
+        if (fsDialog != null) exitFullscreen()
+        ctrlHandler.removeCallbacks(ctrlTick)
+        player?.removeListener(ctrlListener)
         player?.release()
         player = null
     }
@@ -190,6 +298,7 @@ class WatchFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        view?.findViewById<WebmAvatarView>(R.id.avatar)?.release()
         releasePlayer()
         super.onDestroyView()
     }
@@ -306,7 +415,7 @@ class WatchFragment : Fragment() {
     class CommentsAdapter(private val items: MutableList<Comment>) :
         RecyclerView.Adapter<CommentsAdapter.Holder>() {
         class Holder(v: View) : RecyclerView.ViewHolder(v) {
-            val avatar: ImageView = v.findViewById(R.id.c_avatar)
+            val avatar: WebmAvatarView = v.findViewById(R.id.c_avatar)
             val user: TextView = v.findViewById(R.id.c_user)
             val body: TextView = v.findViewById(R.id.c_body)
             val time: TextView = v.findViewById(R.id.c_time)
@@ -321,7 +430,7 @@ class WatchFragment : Fragment() {
 
         override fun onBindViewHolder(h: Holder, position: Int) {
             val c = items[position]
-            h.avatar.loadMedia(c.avatar, R.drawable.ic_person)
+            h.avatar.setAvatar(c.avatar, R.drawable.ic_person)
             h.user.text = "@${c.username}"
             h.body.text = c.body
             h.time.text = fmtAge(c.created_at)
@@ -331,6 +440,11 @@ class WatchFragment : Fragment() {
             items.clear()
             items.addAll(list)
             notifyDataSetChanged()
+        }
+
+        override fun onViewRecycled(h: Holder) {
+            h.avatar.release()
+            super.onViewRecycled(h)
         }
     }
 }
