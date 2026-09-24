@@ -176,10 +176,12 @@ function appendOne(j) {
 async function loadBatch() {
   if (loadingBatch || exhausted) return false;
   loadingBatch = true;
-  const got = await Promise.all([fetchOne(), fetchOne(), fetchOne(), fetchOne(), fetchOne()]);
+  // Sequential fetches: each one sees the ids appended by the previous,
+  // so parallel duplicates can never slip in.
   let added = 0;
-  for (const j of got) {
-    if (appendOne(j)) added++;
+  for (let i = 0; i < 5; i++) {
+    const j = await fetchOne();
+    if (j && appendOne(j)) added++;
   }
   if (!added) exhausted = true;
   if (exhausted && !endShown) showEndCard();
