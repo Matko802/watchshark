@@ -43,8 +43,13 @@ class WheelsFragment : Fragment() {
         player = ApiClient.buildPlayer(requireContext()).also { exo ->
             exo.addListener(object : Player.Listener {
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                    val idx = exo.currentMediaItemIndex
-                    view.findViewById<ViewPager2>(R.id.pager).setCurrentItem(idx, false)
+                    // Only follow natural auto-advance. Reacting to timeline
+                    // changes (items appended) or our own seeks yanks the
+                    // pager and replays/restarts reels.
+                    if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
+                        val idx = exo.currentMediaItemIndex
+                        view.findViewById<ViewPager2>(R.id.pager).setCurrentItem(idx, false)
+                    }
                 }
             })
         }
@@ -147,10 +152,13 @@ class WheelsFragment : Fragment() {
                         v.snack("You're all caught up")
                     }
                 } else {
+                    val firstBatch = videos.size == added
                     adapter.notifyDataSetChanged()
-                    player?.prepare()
-                    // YouTube-style: autoplay with sound.
-                    if (player?.currentMediaItemIndex == 0 || videos.size <= added) {
+                    if (firstBatch) {
+                        // First load only: start at the top. Later batches
+                        // must not touch playback or the current reel
+                        // restarts (looks like repeating) or stalls.
+                        player?.prepare()
                         player?.seekTo(0, 0)
                         player?.playWhenReady = true
                     } else {
