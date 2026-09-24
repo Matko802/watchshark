@@ -96,7 +96,7 @@ class AdminFragment : Fragment() {
                 val dl = if (u.ban_days_left < 0) "permanent" else "%.1fd left".format(u.ban_days_left)
                 extra = " • $dl" + if (u.ban_reason.isNotEmpty()) " • ${u.ban_reason}" else ""
             }
-            h.status.text = "$status • ${u.created_at}$extra"
+            h.status.text = "$status • ${fmtDateTime(u.created_at)}$extra"
             if (isAdmin) {
                 h.banRow.visibility = View.GONE
                 h.approve.visibility = View.GONE

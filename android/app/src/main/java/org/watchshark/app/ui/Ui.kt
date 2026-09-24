@@ -87,6 +87,20 @@ fun fmtDur(sec: Long): String {
     return "$m:${s.toString().padStart(2, '0')}"
 }
 
+/** Server timestamps are UTC — render absolute time in the device timezone. */
+fun fmtDateTime(s: String?): String {
+    if (s.isNullOrEmpty()) return ""
+    return try {
+        val utc = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        }
+        val t = utc.parse(s.replace('T', ' ').substringBefore('.')) ?: return s
+        SimpleDateFormat("d MMM yyyy, HH:mm", Locale.US).format(t)
+    } catch (e: Exception) {
+        s
+    }
+}
+
 fun Context.toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
 
 fun android.view.View.snack(msg: String) =

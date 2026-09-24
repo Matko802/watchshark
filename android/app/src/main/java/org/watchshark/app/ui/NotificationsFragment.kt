@@ -89,7 +89,7 @@ class NotificationsFragment : Fragment() {
                 h.body.text = n.text
             } else {
                 h.title.text = "@${n.username} uploaded: ${n.title}"
-                h.body.text = n.created_at
+                h.body.text = fmtAge(n.created_at)
             }
             h.title.alpha = if (n.read) 0.6f else 1.0f
             h.itemView.setOnClickListener { onTap(n) }

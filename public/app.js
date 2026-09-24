@@ -266,8 +266,14 @@ function esc(s) {
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   }[c]));
 }
+/** Server timestamps are UTC ("YYYY-MM-DD HH:MM:SS") — anchor them so the client converts to local time. */
+function utcMs(s) {
+  const t = String(s).replace(' ', 'T').replace(/Z$/, '') + 'Z';
+  const ms = Date.parse(t);
+  return isNaN(ms) ? NaN : ms;
+}
 function fmtAge(s) {
-  const t = Date.parse(String(s).replace(' ', 'T').replace(/Z$/, ''));
+  const t = utcMs(s);
   if (isNaN(t)) return String(s);
   const sec = Math.max(0, Math.floor((Date.now() - t) / 1000));
   if (sec < 60) return sec <= 1 ? '1 second ago' : sec + ' seconds ago';
@@ -287,12 +293,12 @@ function fmtAge(s) {
   return y === 1 ? '1 year ago' : y + ' years ago';
 }
 function fmtDate(s) {
-  const t = Date.parse(String(s).replace(' ', 'T').replace(/Z$/, ''));
+  const t = utcMs(s);
   if (isNaN(t)) return String(s);
   return new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 function fmtAgeDual(s) {
-  const t = Date.parse(String(s).replace(' ', 'T').replace(/Z$/, ''));
+  const t = utcMs(s);
   if (isNaN(t)) return String(s);
   return fmtAge(s) + ' · ' + fmtDate(s);
 }
