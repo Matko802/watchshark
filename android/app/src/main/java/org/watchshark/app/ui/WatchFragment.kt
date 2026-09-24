@@ -106,7 +106,13 @@ class WatchFragment : Fragment() {
             } catch (_: Exception) {
             }
         }
-        startPlayer(fullUrl(vid.src) ?: return)
+        startPlayer(fullUrl(autoSrc(vid)) ?: return)
+    }
+
+    /** Auto quality (like the website): prefer light renditions over Source. */
+    private fun autoSrc(vid: Video): String {
+        val r = vid.renditions
+        return r?.get("720p") ?: r?.get("480p") ?: r?.get("360p") ?: vid.src
     }
 
     private fun startPlayer(url: String) {

@@ -13,10 +13,33 @@ import java.util.TimeZone
 
 fun fullUrl(path: String?): String? = ApiClient.fullUrl(path)
 
+@Volatile
+private var videoLoader: coil.ImageLoader? = null
+
+/** ImageLoader with video-frame decoding, so .webm thumbnails render too. */
+fun videoImageLoader(ctx: Context): coil.ImageLoader {
+    return videoLoader ?: synchronized(UiLock) {
+        videoLoader ?: coil.ImageLoader.Builder(ctx.applicationContext)
+            .components { add(coil.decode.VideoFrameDecoder.Factory()) }
+            .crossfade(true)
+            .build()
+            .also { videoLoader = it }
+    }
+}
+
+private object UiLock
+
 fun ImageView.loadMedia(path: String?, placeholder: Int = R.drawable.ic_movie) {
     val url = fullUrl(path)
     if (url == null) {
         setImageResource(placeholder)
+    } else if (WebmAvatarView.isWebm(path)) {
+        // Coil core can't decode webm — use the video-frame decoder.
+        load(url, videoImageLoader(context)) {
+            placeholder(placeholder)
+            error(placeholder)
+            crossfade(true)
+        }
     } else {
         load(url) {
             placeholder(placeholder)

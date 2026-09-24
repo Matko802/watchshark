@@ -95,7 +95,11 @@ class WheelsFragment : Fragment() {
         val override = qualityOverride[v.id]
         val url = when {
             override != null -> v.renditions?.get(override) ?: v.src
-            else -> v.src
+            // Auto (like the website): light renditions first, Source last.
+            else -> v.renditions?.get("720p")
+                ?: v.renditions?.get("480p")
+                ?: v.renditions?.get("360p")
+                ?: v.src
         }
         return fullUrl(url)
     }

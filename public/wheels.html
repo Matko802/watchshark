@@ -365,7 +365,10 @@ function setReelQualitySrc(src, label) {
 }
 function applyReelAutoQuality() {
   const o = reelQualOptions();
-  let pick = o[o.length - 1].src;
+  let pick = (o.find((x) => x.label === '720p')
+    || o.find((x) => x.label === '480p')
+    || o.find((x) => x.label === '360p')
+    || o[o.length - 1]).src;
   try {
     const cn = navigator.connection;
     if (cn && (cn.saveData || cn.effectiveType === 'slow-2g' || cn.effectiveType === '2g' || cn.effectiveType === '3g')) {

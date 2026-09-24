@@ -560,9 +560,17 @@ function qualOptions() {
   o.push({ label: 'Source', src: VID.src });
   return o;
 }
+function autoPick(o) {
+  // Prefer light renditions so playback starts fast and doesn't stall:
+  // 720p -> 480p -> 360p -> Source. Source originals can be gigabytes.
+  return o.find((x) => x.label === '720p')
+    || o.find((x) => x.label === '480p')
+    || o.find((x) => x.label === '360p')
+    || o[o.length - 1];
+}
 function applyAutoQuality() {
   const o = qualOptions();
-  let pick = o[o.length - 1].src;
+  let pick = autoPick(o).src;
   try {
     const c = navigator.connection;
     if (c && (c.saveData || c.effectiveType === 'slow-2g' || c.effectiveType === '2g' || c.effectiveType === '3g')) {

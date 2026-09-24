@@ -11,8 +11,8 @@ android {
         applicationId = "org.watchshark.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 10622
-        versionName = "1.6.22"
+        versionCode = 10623
+        versionName = "1.6.23"
         buildConfigField("String", "APP_URL", "\"https://watchshark.duckdns.org\"")
     }
 
@@ -48,4 +48,5 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.4.1")
     implementation("androidx.media3:media3-ui:1.4.1")
     implementation("io.coil-kt:coil:2.6.0")
+    implementation("io.coil-kt:coil-video:2.6.0")
 }

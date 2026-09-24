@@ -52,7 +52,8 @@ class WebmAvatarView @JvmOverloads constructor(
 
     fun setAvatar(path: String?, placeholder: Int = R.drawable.ic_person) {
         if (isWebm(path)) {
-            image.setImageResource(placeholder)
+            // Static first frame underneath; replaced by animation on READY.
+            image.loadMedia(path, placeholder)
             image.visibility = View.VISIBLE
             playerView.visibility = View.GONE
             val exo = player ?: ApiClient.buildPlayer(context).also { player = it }.apply {
