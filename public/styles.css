@@ -92,7 +92,7 @@ body {
   font-family: Roboto, system-ui, sans-serif;
 }
 .topbar {
-  position: sticky; top: 0; z-index: 10;
+  position: sticky; top: 0; z-index: 30;
   display: flex; align-items: center; gap: 12px;
   padding: 8px 16px;
   background: var(--md-sys-color-surface-container);
