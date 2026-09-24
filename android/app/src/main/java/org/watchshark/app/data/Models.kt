@@ -43,7 +43,8 @@ data class ChannelUser(
     var followers: Long = 0,
     val videos: Long = 0,
     val views: Long = 0,
-    var following: Boolean = false
+    var following: Boolean = false,
+    val online: Boolean = false
 )
 
 data class AdminUser(
@@ -57,7 +58,9 @@ data class AdminUser(
     @SerializedName("ban_reason") val ban_reason: String = "",
     @SerializedName("banned_until") val banned_until: Long = 0,
     val deleted: Boolean = false,
-    @SerializedName("deleted_reason") val deleted_reason: String = ""
+    @SerializedName("deleted_reason") val deleted_reason: String = "",
+    val avatar: String? = null,
+    val online: Boolean = false
 )
 
 data class Notif(
@@ -78,7 +81,8 @@ data class Comment(
     val username: String = "",
     val avatar: String? = null,
     @SerializedName("parent_id") val parentId: Long? = null,
-    @SerializedName("parent_username") val parentUsername: String? = null
+    @SerializedName("parent_username") val parentUsername: String? = null,
+    val online: Boolean = false
 )
 
 data class MeResponse(val user: MeUser?)

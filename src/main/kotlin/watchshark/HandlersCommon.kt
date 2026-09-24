@@ -7,7 +7,12 @@ object HandlersCommon {
     fun authUser(ctx: Context): Triple<Long, String, Boolean> {
         val tok = ctx.cookie("ws_token") ?: return Triple(0, "", false)
         if (tok.isEmpty()) return Triple(0, "", false)
-        return Auth.verifyToken(tok)
+        val res = Auth.verifyToken(tok)
+        if (res.third) {
+            // Presence heartbeat (throttled inside).
+            try { Db.touchSeen(res.first) } catch (_: Exception) {}
+        }
+        return res
     }
 
     fun setAuthCookie(ctx: Context, id: Long, username: String) {

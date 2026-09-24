@@ -25,7 +25,9 @@ class AdminFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, saved: Bundle?) {
-        adapter = AdminAdapter(mutableListOf(), lifecycleScope) { reload() }
+        adapter = AdminAdapter(mutableListOf(), lifecycleScope, { reload() }) { name ->
+            (activity as? org.watchshark.app.MainActivity)?.openChannel(name)
+        }
         view.findViewById<RecyclerView>(R.id.admin_list).apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = this@AdminFragment.adapter
@@ -50,8 +52,11 @@ class AdminFragment : Fragment() {
         private val items: MutableList<AdminUser>,
         private val scope: kotlinx.coroutines.CoroutineScope,
         private val onChanged: () -> Unit,
+        private val onOpen: (String) -> Unit = {},
     ) : RecyclerView.Adapter<AdminAdapter.Holder>() {
         class Holder(v: View) : RecyclerView.ViewHolder(v) {
+            val avatar: WebmAvatarView = v.findViewById(R.id.u_avatar)
+            val row: View = v.findViewById(R.id.u_row)
             val name: TextView = v.findViewById(R.id.u_name)
             val status: TextView = v.findViewById(R.id.u_status)
             val banRow: View = v.findViewById(R.id.u_banrow)
@@ -75,6 +80,9 @@ class AdminFragment : Fragment() {
         override fun onBindViewHolder(h: Holder, position: Int) {
             val u = items[position]
             val isAdmin = u.role == "admin"
+            h.avatar.setAvatar(u.avatar, R.drawable.ic_person)
+            h.avatar.setOnline(u.online)
+            h.row.setOnClickListener { onOpen(u.username) }
             h.name.text = u.username + if (isAdmin) " ⭐" else ""
             val status = when {
                 u.deleted -> "deleted"
@@ -184,6 +192,11 @@ class AdminFragment : Fragment() {
             items.clear()
             items.addAll(list)
             notifyDataSetChanged()
+        }
+
+        override fun onViewRecycled(h: Holder) {
+            h.avatar.release()
+            super.onViewRecycled(h)
         }
 
     }

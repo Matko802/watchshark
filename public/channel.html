@@ -195,7 +195,7 @@ async function initChannel() {
   CHAN = j.user;
   document.getElementById('gate').style.display = 'none';
   document.getElementById('body').style.display = '';
-  document.getElementById('cpic').innerHTML = avatarHtml(CHAN.avatar, 'pfp-lg');
+  document.getElementById('cpic').innerHTML = avatarStatusHtml(CHAN.avatar, 'pfp-lg', CHAN.online);
   document.getElementById('cname').textContent = CHAN.username;
   document.getElementById('csub').textContent = '@' + CHAN.username + ' • ' + fmtNum(CHAN.followers) + ' followers • ' + CHAN.videos + ' videos';
   document.getElementById('cmore').textContent = fmtFull(CHAN.views) + ' total views • joined ' + CHAN.created_at;

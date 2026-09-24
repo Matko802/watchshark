@@ -48,7 +48,8 @@ DROP TABLE IF EXISTS reset_requests;
                 "ALTER TABLE videos ADD COLUMN orientation TEXT DEFAULT 'h'",
                 "ALTER TABLE videos ADD COLUMN renditions TEXT DEFAULT NULL",
                 "ALTER TABLE videos ADD COLUMN kind TEXT DEFAULT NULL",
-                "ALTER TABLE comments ADD COLUMN parent_id INTEGER DEFAULT NULL"
+                "ALTER TABLE comments ADD COLUMN parent_id INTEGER DEFAULT NULL",
+                "ALTER TABLE users ADD COLUMN last_seen INTEGER DEFAULT 0"
             )
             for (col in alters) {
                 try {
@@ -119,6 +120,32 @@ DROP TABLE IF EXISTS reset_requests;
                 return rs.getLong(1)
             }
         }
+    }
+
+    /** Online presence: online = active in the last 5 minutes. */
+    private val seenWrite = java.util.concurrent.ConcurrentHashMap<Long, Long>()
+
+    fun touchSeen(uid: Long) {
+        if (uid <= 0) return
+        val now = System.currentTimeMillis() / 1000
+        val last = seenWrite.putIfAbsent(uid, now) ?: 0L
+        if (now - last < 300 && last != 0L) return
+        seenWrite[uid] = now
+        try {
+            synchronized(lock) {
+                conn.prepareStatement("UPDATE users SET last_seen=? WHERE id=?").use { ps ->
+                    ps.setLong(1, now)
+                    ps.setLong(2, uid)
+                    ps.executeUpdate()
+                }
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    fun isOnline(lastSeen: Long): Boolean {
+        if (lastSeen <= 0) return false
+        return System.currentTimeMillis() / 1000 - lastSeen < 300
     }
 
     fun usernameOf(uid: Long): String? {

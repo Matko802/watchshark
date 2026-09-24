@@ -112,7 +112,7 @@ object VideoHandlers {
         }
         val comments = mutableListOf<Map<String, Any?>>()
         synchronized(Db.lock) {
-            Db.conn.prepareStatement("SELECT c.id,c.body,c.created_at,u.username,u.avatar,c.parent_id,pu.username FROM comments c JOIN users u ON u.id=c.user_id LEFT JOIN comments pc ON pc.id=c.parent_id LEFT JOIN users pu ON pu.id=pc.user_id WHERE c.video_id=? ORDER BY c.id DESC LIMIT 50").use { ps ->
+            Db.conn.prepareStatement("SELECT c.id,c.body,c.created_at,u.username,u.avatar,c.parent_id,pu.username,u.last_seen FROM comments c JOIN users u ON u.id=c.user_id LEFT JOIN comments pc ON pc.id=c.parent_id LEFT JOIN users pu ON pu.id=pc.user_id WHERE c.video_id=? ORDER BY c.id DESC LIMIT 50").use { ps ->
                 ps.setLong(1, id)
                 ps.executeQuery().use { rs ->
                     while (rs.next()) {
@@ -126,7 +126,8 @@ object VideoHandlers {
                                 "username" to (rs.getString(4) ?: ""),
                                 "avatar" to if (!av.isNullOrEmpty()) "/a/$av" else null,
                                 "parent_id" to pid,
-                                "parent_username" to pun
+                                "parent_username" to pun,
+                                "online" to Db.isOnline(rs.getLong(8))
                             )
                         )
                     }
@@ -818,15 +819,17 @@ object VideoHandlers {
         var nW = 0L
         var nM = 0L
         var following = false
+        var chanOnline = false
         val ids = mutableListOf<Long>()
         var found = false
         synchronized(Db.lock) {
-            Db.conn.prepareStatement("SELECT id,username,avatar,created_at FROM users WHERE lower(username)=?").use { ps ->
+            Db.conn.prepareStatement("SELECT id,username,avatar,created_at,last_seen FROM users WHERE lower(username)=?").use { ps ->
                 ps.setString(1, clean.lowercase())
                 ps.executeQuery().use { rs ->
                     if (rs.next()) {
                         uid = rs.getLong(1); un = rs.getString(2) ?: ""; av = rs.getString(3); ca = rs.getString(4) ?: ""
                         found = true
+                        chanOnline = Db.isOnline(rs.getLong(5))
                     }
                 }
             }
@@ -869,6 +872,7 @@ object VideoHandlers {
         val user = mapOf(
             "id" to uid, "username" to un, "avatar" to avatar, "created_at" to ca,
             "followers" to followers, "videos" to nvideos, "views" to views, "following" to following,
+            "online" to chanOnline,
             "counts" to mapOf("video" to nV, "wheel" to nW, "music" to nM)
         )
         val videos = mutableListOf<Any?>()

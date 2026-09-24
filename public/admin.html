@@ -142,7 +142,7 @@ async function loadAdmin() {
           ${actions}
         </div>
       </md-dialog>`;
-    return `<md-list-item><div slot="headline">${esc(x.username)}${x.role === 'admin' ? ' ⭐' : ''}</div>`
+    return `<md-list-item><div slot="start">${avatarStatusHtml(x.avatar, 'pfp-sm', x.online)}</div><div slot="headline"><a class="ulink" href="/channel?user=${encodeURIComponent(x.username)}">${esc(x.username)}</a>${x.role === 'admin' ? ' ⭐' : ''}</div>`
       + `<div slot="supporting-text">${status} • ${esc(x.created_at)}${extra}</div>`
       + `<div slot="end">${controls}</div></md-list-item>`;
   }).join('');

@@ -26,6 +26,14 @@ function avatarHtml(file, cls) {
   if (file.endsWith('.webm')) return `<video class="${cls}" src="${file}" autoplay loop muted playsinline></video>`;
   return `<img class="${cls}" src="${file}" alt="">`;
 }
+/** Online presence dot (green = active in last 5 min, grey = offline). */
+function statusDot(online) {
+  return `<span class="onlinedot${online ? ' on' : ''}"></span>`;
+}
+/** Avatar with presence dot overlay. */
+function avatarStatusHtml(avatar, cls, online) {
+  return `<span class="avwrap">${avatarHtml(avatar, cls)}${statusDot(online)}</span>`;
+}
 async function doLogout() {
   await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
   location.reload();

@@ -61,7 +61,6 @@ class MusicFragment : Fragment() {
                 page = p
                 pages = res.pages.toInt()
                 val ready = res.videos.orEmpty().filter { it.status == "ready" }
-                v.findViewById<TextView>(R.id.count).text = "${res.total} tracks"
                 if (p == 1) adapter.setItems(ready) else adapter.append(ready)
                 v.findViewById<Button>(R.id.more_btn).visibility =
                     if (p < pages) View.VISIBLE else View.GONE

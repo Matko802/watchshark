@@ -76,6 +76,7 @@ class ChannelFragment : Fragment() {
                 v.findViewById<TextView>(R.id.ch_stats).text =
                     "${fmtNum(user.followers)} followers • ${fmtNum(user.videos)} videos • ${fmtNum(user.views)} views"
                 v.findViewById<WebmAvatarView>(R.id.ch_avatar).setAvatar(user.avatar, R.drawable.ic_person)
+                v.findViewById<WebmAvatarView>(R.id.ch_avatar).setOnline(user.online)
                 val me = try {
                     ApiClient.api.me().user
                 } catch (_: Exception) {

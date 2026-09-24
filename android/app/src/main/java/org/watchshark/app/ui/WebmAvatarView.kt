@@ -79,6 +79,34 @@ class WebmAvatarView @JvmOverloads constructor(
         releasePlayer()
     }
 
+    /**
+     * Online presence dot (green = active, grey = offline).
+     * Hidden by default — home feed never shows it.
+     */
+    private var dotView: View? = null
+
+    fun setOnline(online: Boolean) {
+        var dot = dotView
+        if (dot == null) {
+            dot = View(context).apply {
+                val s = (11 * resources.displayMetrics.density).toInt()
+                val m = (1 * resources.displayMetrics.density).toInt()
+                layoutParams = LayoutParams(s, s).apply {
+                    gravity = android.view.Gravity.END or android.view.Gravity.BOTTOM
+                    marginEnd = m
+                    bottomMargin = m
+                }
+                background = androidx.core.content.ContextCompat.getDrawable(context, R.drawable.dot_bg)
+            }
+            addView(dot)
+            dotView = dot
+        }
+        dot.visibility = View.VISIBLE
+        val color = if (online) android.graphics.Color.parseColor("#35D05A")
+        else android.graphics.Color.parseColor("#6E6E6E")
+        dot.backgroundTintList = android.content.res.ColorStateList.valueOf(color)
+    }
+
     private fun releasePlayer() {
         playerView.player = null
         player?.release()

@@ -496,6 +496,7 @@ class WatchFragment : Fragment() {
         override fun onBindViewHolder(h: Holder, position: Int) {
             val (c, depth) = rows[position]
             h.avatar.setAvatar(c.avatar, R.drawable.ic_person)
+            h.avatar.setOnline(c.online)
             h.user.text = "@${c.username}"
             val prefix = if (c.parentUsername != null) "↳ @${c.parentUsername} " else ""
             h.body.text = prefix + c.body

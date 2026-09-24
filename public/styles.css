@@ -156,6 +156,8 @@ md-icon { --md-icon-font: 'Material Symbols Sharp'; font-size: 24px; width: 24px
 .rempty { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 12px; align-items: center; justify-content: center; background: var(--md-sys-color-surface-container-low); }
 .spacer { flex: 1; }
 #whoami { color: var(--md-sys-color-on-surface-variant); }
+#chanTabs { margin: 4px 0 16px; position: relative; z-index: 1; }
+#chanTabs + #grid, #sortTabs + #grid { position: relative; z-index: 0; }
 main { max-width: 1200px; margin: 0 auto; padding: 20px 16px 96px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
 .cardlink { text-decoration: none; color: inherit; }
@@ -459,3 +461,8 @@ md-list-item.unread { --md-list-item-container-color: var(--md-sys-color-seconda
   border: 4px solid #242424; border-top-color: #fff;
   animation: boots 0.9s linear infinite; }
 @keyframes boots { to { transform: rotate(360deg); } }
+.avwrap { position: relative; display: inline-flex; flex-shrink: 0; }
+.onlinedot { position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px;
+  border-radius: 50%; background: #6e6e6e; border: 2px solid #000; }
+.onlinedot.on { background: #35d05a; }
+.pfp-lg + .onlinedot, .avwrap .pfp-lg ~ .onlinedot { width: 16px; height: 16px; border-width: 3px; }

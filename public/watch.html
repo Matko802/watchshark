@@ -202,7 +202,7 @@ function startReply(id, username) {
 function commentHTML(c) {
   const kids = (c._replies || []).map(commentHTML).join('');
   const who = c.parent_username ? `<span class="muted">↳ @${esc(c.parent_username)} </span>` : '';
-  const item = `<md-list-item><div slot="start">${avatarHtml(c.avatar, 'pfp-sm')}</div><div slot="headline"><a class="ulink" href="/channel?user=${esc(c.username)}">${esc(c.username)}</a></div>`
+  const item = `<md-list-item><div slot="start">${avatarStatusHtml(c.avatar, 'pfp-sm', c.online)}</div><div slot="headline"><a class="ulink" href="/channel?user=${esc(c.username)}">${esc(c.username)}</a></div>`
     + `<div slot="supporting-text">${who}${esc(c.body)}</div>`
     + `<div slot="trailing-supporting-text">${esc(c.created_at)} <md-text-button onclick="startReply(${c.id}, '${esc(c.username)}')">Reply</md-text-button></div></md-list-item>`;
   return item + (kids ? `<div style="margin-left:36px">${kids}</div>` : '');
@@ -238,7 +238,7 @@ function renderComments() {
     return;
   }
   const c = cItems[cIdx % cItems.length];
-  prev.innerHTML = `<div class="crow">${avatarHtml(c.avatar, 'pfp-sm')}<div class="metatext"><b>${esc(c.username)}</b><p>${esc(c.body)}</p></div></div>`
+  prev.innerHTML = `<div class="crow">${avatarStatusHtml(c.avatar, 'pfp-sm', c.online)}<div class="metatext"><b>${esc(c.username)}</b><p>${esc(c.body)}</p></div></div>`
     + `<md-outlined-button id="showAllBtn">Show all ${cItems.length} comments</md-outlined-button>`;
   document.getElementById('showAllBtn').onclick = (e) => { e.stopPropagation(); expandComments(); };
   if (cItems.length > 1) cTimer = setTimeout(nextCmt, 4000);

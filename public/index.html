@@ -42,7 +42,6 @@
     <md-primary-tab><md-icon slot="icon">new_releases</md-icon>Latest</md-primary-tab>
     <md-primary-tab><md-icon slot="icon">local_fire_department</md-icon>Trending</md-primary-tab>
   </md-tabs>
-  <p id="count" class="muted"></p>
   <div id="grid" class="grid"></div>
   <div class="center"><md-outlined-button id="more" onclick="load(page+1)">Load more</md-outlined-button></div>
 </main>
@@ -170,7 +169,6 @@ async function load(p = 1) {
   const j = await r.json();
   if (!document.getElementById('grid')) return;
   page = p;
-  document.getElementById('count').textContent = j.total + ' videos';
   document.getElementById('more').style.display = p < j.pages ? '' : 'none';
   const g = document.getElementById('grid');
   if (p === 1) g.innerHTML = '';
