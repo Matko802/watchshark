@@ -57,6 +57,7 @@ class UploadFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, saved: Bundle?) {
+        view.clearBottomBar()
         val tabs: TabLayout = view.findViewById(R.id.kind_tabs)
         val kinds = arrayOf("video", "wheel", "music")
         tabs.getTabAt(kinds.indexOf(kind).coerceAtLeast(0))?.select()

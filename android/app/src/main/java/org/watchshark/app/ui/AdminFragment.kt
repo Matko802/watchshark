@@ -31,6 +31,7 @@ class AdminFragment : Fragment() {
         view.findViewById<RecyclerView>(R.id.admin_list).apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = this@AdminFragment.adapter
+            clearBottomBar()
         }
         reload()
     }

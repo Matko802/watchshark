@@ -51,6 +51,7 @@ class WatchFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, saved: Bundle?) {
+        view.clearBottomBar()
         commentsAdapter = CommentsAdapter { c -> askReply(c) }
         view.findViewById<RecyclerView>(R.id.comments).apply {
             layoutManager = LinearLayoutManager(requireContext())

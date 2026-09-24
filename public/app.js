@@ -204,6 +204,8 @@ async function pjaxSwap(url, push) {
     document.body.className = doc.body.className;
     document.body.innerHTML = doc.body.innerHTML;
     hideBoot();
+    applyBlurPref();
+    ensureSidebar();
     await refreshAuth();
     initBell();
     for (const code of codes) {
@@ -223,7 +225,50 @@ function hideBoot() {
   const b = document.getElementById('bootloader');
   if (b) b.remove();
 }
+/** Blur effects toggle (translucent bars); default on. */
+function applyBlurPref() {
+  try {
+    document.body.classList.toggle('no-blur', localStorage.getItem('ws_blur') === '0');
+  } catch {}
+}
+applyBlurPref();
 document.addEventListener('DOMContentLoaded', () => setTimeout(hideBoot, 1500));
+/** Desktop left nav like YouTube (injected, desktop widths only). */
+function ensureSidebar() {
+  if (window.innerWidth < 1000) return;
+  const bare = ['/forgot', '/reset', '/verify'].some((p) => location.pathname.startsWith(p));
+  if (bare) return;
+  if (document.getElementById('sidebar')) {
+    markSidebar();
+    return;
+  }
+  const aside = document.createElement('aside');
+  aside.id = 'sidebar';
+  aside.innerHTML = `<nav>
+    <a href="/" data-side="home"><md-icon>home</md-icon><span>Home</span></a>
+    <a href="/wheels" data-side="wheels"><md-icon>movie</md-icon><span>Wheels</span></a>
+    <a href="/music" data-side="music"><md-icon>music_note</md-icon><span>Music</span></a>
+    <a href="/upload" data-auth="in" style="display:none"><md-icon>add</md-icon><span>Create</span></a>
+    <a href="/settings" data-side="account"><md-icon>person</md-icon><span>You</span></a>
+    <a href="/settings" data-auth="in" style="display:none"><md-icon>settings</md-icon><span>Settings</span></a>
+    <a href="/admin" data-admin style="display:none"><md-icon>admin_panel_settings</md-icon><span>Admin</span></a>
+  </nav>`;
+  document.body.appendChild(aside);
+  document.body.classList.add('has-sidebar');
+  markSidebar();
+  if (typeof refreshAuth === 'function') refreshAuth();
+}
+function markSidebar() {
+  const path = location.pathname;
+  const tab = path === '/' ? 'home'
+    : path === '/wheels' ? 'wheels'
+    : path === '/music' ? 'music'
+    : (path === '/settings' || path === '/admin') ? 'account' : '';
+  document.querySelectorAll('#sidebar [data-side]').forEach((a) => {
+    a.classList.toggle('active', a.dataset.side === tab);
+  });
+}
+document.addEventListener('DOMContentLoaded', () => { ensureSidebar(); applyBlurPref(); });
 function pjaxBar(show) {  let bar = document.getElementById('pjaxbar');
   if (show) {
     if (!bar) {

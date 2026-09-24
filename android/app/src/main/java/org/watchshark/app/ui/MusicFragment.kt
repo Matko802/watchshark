@@ -30,6 +30,8 @@ class MusicFragment : Fragment() {
         adapter = VideoAdapter(mutableListOf(), {}, R.layout.item_video_square)
         val grid: RecyclerView = view.findViewById(R.id.grid)
         grid.layoutManager = GridLayoutManager(requireContext(), gridSpan(requireContext()))
+        grid.clearBottomBar()
+        view.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.grid).clearBottomBar()
         grid.adapter = adapter
 
         view.findViewById<TabLayout>(R.id.tabs).addOnTabSelectedListener(

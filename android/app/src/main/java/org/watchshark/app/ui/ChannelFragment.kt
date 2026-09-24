@@ -44,6 +44,8 @@ class ChannelFragment : Fragment() {
         adapter = VideoAdapter(mutableListOf())
         val grid: RecyclerView = view.findViewById(R.id.ch_grid)
         grid.layoutManager = GridLayoutManager(requireContext(), gridSpan(requireContext()))
+        grid.clearBottomBar()
+        view.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.ch_grid).clearBottomBar()
         grid.adapter = adapter
         view.findViewById<TabLayout>(R.id.ch_tabs).addOnTabSelectedListener(
             object : TabLayout.OnTabSelectedListener {

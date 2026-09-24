@@ -22,6 +22,7 @@ class AuthFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, saved: Bundle?) {
+        view.clearBottomBar()
         val go: Button = view.findViewById(R.id.auth_go)
         go.setOnClickListener { if (modeLogin) doLogin() else doSignup() }
         view.findViewById<Button>(R.id.auth_switch).setOnClickListener { toggle() }

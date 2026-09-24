@@ -1,6 +1,7 @@
 package org.watchshark.app.ui
 
 import android.content.Context
+import android.view.View
 import android.widget.ImageView
 import android.widget.Toast
 import coil.load
@@ -12,6 +13,16 @@ import java.util.Locale
 import java.util.TimeZone
 
 fun fullUrl(path: String?): String? = ApiClient.fullUrl(path)
+
+/**
+ * Clears space above the overlaid blur bar so scroll content never hides
+ * behind it (content still slides underneath for the frosted effect).
+ */
+fun View.clearBottomBar() {
+    val px = (110 * resources.displayMetrics.density).toInt()
+    setPadding(paddingLeft, paddingTop, paddingRight, paddingBottom + px)
+    (this as? android.view.ViewGroup)?.clipToPadding = false
+}
 
 /** YouTube-style feed: single stripe on phones, grid on wide screens. */
 fun gridSpan(ctx: Context): Int {

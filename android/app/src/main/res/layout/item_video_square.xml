@@ -12,7 +12,7 @@
         android:background="#000000"
         android:scaleType="centerCrop"
         android:contentDescription="@string/thumb_desc"
-        app:shapeAppearanceOverlay="@style/ShapeAppearance.WatchShark.Square" />
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.WatchShark.Rounded12" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -40,6 +40,7 @@
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
                 android:maxLines="2"
+                android:minLines="2"
                 android:textColor="@android:color/white"
                 android:textSize="14sp"
                 android:textStyle="bold" />

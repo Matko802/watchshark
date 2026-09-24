@@ -37,6 +37,8 @@ class HomeFragment : Fragment() {
         adapter = VideoAdapter(mutableListOf())
         val grid: RecyclerView = view.findViewById(R.id.grid)
         grid.layoutManager = GridLayoutManager(requireContext(), gridSpan(requireContext()))
+        grid.clearBottomBar()
+        view.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.grid).clearBottomBar()
         grid.adapter = adapter
 
         val search: TextInputEditText = view.findViewById(R.id.search)

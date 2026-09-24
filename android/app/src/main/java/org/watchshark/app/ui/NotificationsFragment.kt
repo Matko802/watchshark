@@ -40,6 +40,7 @@ class NotificationsFragment : Fragment() {
         view.findViewById<RecyclerView>(R.id.notif_list).apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = this@NotificationsFragment.adapter
+            clearBottomBar()
         }
         view.findViewById<Button>(R.id.mark_read).setOnClickListener {
             lifecycleScope.launch {

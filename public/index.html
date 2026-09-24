@@ -33,7 +33,7 @@
   <span id="bellSlot" data-auth="in" style="display:none"></span>
   <md-icon-button data-auth="in" href="/settings" aria-label="Settings" style="display:none"><md-icon>settings</md-icon></md-icon-button>
   <md-text-button data-admin href="/admin" style="display:none">Admin</md-text-button>
-  <md-filled-tonal-button data-auth="in" href="/upload" style="display:none">Create<md-icon slot="icon">add</md-icon></md-filled-tonal-button>
+  <a class="createcircle" data-auth="in" href="/upload" style="display:none" aria-label="Create"><md-icon>add</md-icon></a>
   <span id="whoami"></span>
   <md-filled-button data-auth="out" onclick="openAuth('login')" style="display:none">Sign in</md-filled-button>
 </header>
@@ -42,7 +42,7 @@
     <md-primary-tab><md-icon slot="icon">new_releases</md-icon>Latest</md-primary-tab>
     <md-primary-tab><md-icon slot="icon">local_fire_department</md-icon>Trending</md-primary-tab>
   </md-tabs>
-  <div id="grid" class="grid"></div>
+  <div id="grid" class="grid stripe"></div>
   <div class="center"><md-outlined-button id="more" onclick="load(page+1)">Load more</md-outlined-button></div>
 </main>
 <md-dialog id="authDialog">
