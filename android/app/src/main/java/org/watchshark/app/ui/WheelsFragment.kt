@@ -32,6 +32,7 @@ class WheelsFragment : Fragment() {
     private var exhausted = false
     private var muted = false
     private var selectedPos = 0
+    private var prepared = false
     private val qualityOverride = mutableMapOf<Long, String>()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, saved: Bundle?): View {
@@ -170,14 +171,15 @@ class WheelsFragment : Fragment() {
                     if (videos.isEmpty()) {
                         v.findViewById<View>(R.id.empty).visibility = View.VISIBLE
                     } else {
-                        v.snack("You're all caught up")
+                        // End card like the website (no toast).
+                        adapter.notifyDataSetChanged()
                     }
                 } else {
-                    val firstBatch = videos.size == added
                     adapter.notifyDataSetChanged()
-                    if (firstBatch) {
+                    if (!prepared) {
                         player?.prepare()
                         player?.seekTo(0, 0)
+                        prepared = true
                     }
                     player?.playWhenReady = true
                 }
@@ -186,6 +188,19 @@ class WheelsFragment : Fragment() {
                 if (isAdded) v.findViewById<View>(R.id.spin).visibility = View.GONE
             }
         }
+    }
+
+    private fun watchAgain() {
+        seen.clear()
+        videos.clear()
+        selectedPos = 0
+        exhausted = false
+        prepared = false
+        player?.stop()
+        player?.clearMediaItems()
+        adapter.notifyDataSetChanged()
+        view?.findViewById<ViewPager2>(R.id.pager)?.setCurrentItem(0, false)
+        loadMore()
     }
 
     override fun onPause() {
@@ -204,7 +219,7 @@ class WheelsFragment : Fragment() {
         super.onDestroyView()
     }
 
-    inner class ReelAdapter : RecyclerView.Adapter<ReelAdapter.Holder>() {
+    inner class ReelAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         inner class Holder(v: View) : RecyclerView.ViewHolder(v) {
             val playerView: PlayerView = v.findViewById(R.id.reel_player)
             val thumb: ImageView = v.findViewById(R.id.reel_thumb)
@@ -216,14 +231,30 @@ class WheelsFragment : Fragment() {
             val quality: MaterialButton = v.findViewById(R.id.reel_quality)
         }
 
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
-            val v = LayoutInflater.from(parent.context).inflate(R.layout.item_reel, parent, false)
-            return Holder(v)
+        inner class EndHolder(v: View) : RecyclerView.ViewHolder(v) {
+            val again: View = v.findViewById(R.id.end_again)
         }
 
-        override fun getItemCount() = videos.size
+        override fun getItemViewType(position: Int): Int =
+            if (position < videos.size) 0 else 1
 
-        override fun onBindViewHolder(h: Holder, position: Int) {
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+            val inflater = LayoutInflater.from(parent.context)
+            if (viewType == 1) {
+                return EndHolder(inflater.inflate(R.layout.item_reel_end, parent, false))
+            }
+            return Holder(inflater.inflate(R.layout.item_reel, parent, false))
+        }
+
+        override fun getItemCount() =
+            videos.size + if (exhausted && videos.isNotEmpty()) 1 else 0
+
+        override fun onBindViewHolder(h: RecyclerView.ViewHolder, position: Int) {
+            if (h is EndHolder) {
+                h.again.setOnClickListener { watchAgain() }
+                return
+            }
+            h as Holder
             val vid = videos[position]
             // Single shared player: only the visible page holds the surface,
             // otherwise the last-bound page steals it and current page is black.
@@ -250,14 +281,18 @@ class WheelsFragment : Fragment() {
             h.quality.setOnClickListener { showQualityMenu(h.quality, vid) }
         }
 
-        override fun onViewAttachedToWindow(holder: Holder) {
+        override fun onViewAttachedToWindow(holder: RecyclerView.ViewHolder) {
             super.onViewAttachedToWindow(holder)
-            holder.playerView.player =
-                if (holder.bindingAdapterPosition == selectedPos) player else null
+            if (holder is Holder) {
+                holder.playerView.player =
+                    if (holder.bindingAdapterPosition == selectedPos) player else null
+            }
         }
 
-        override fun onViewDetachedFromWindow(holder: Holder) {
-            if (holder.playerView.player != null) holder.playerView.player = null
+        override fun onViewDetachedFromWindow(holder: RecyclerView.ViewHolder) {
+            if (holder is Holder && holder.playerView.player != null) {
+                holder.playerView.player = null
+            }
             super.onViewDetachedFromWindow(holder)
         }
 
