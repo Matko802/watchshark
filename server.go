@@ -210,6 +210,8 @@ func serveMedia(w http.ResponseWriter, r *http.Request, full, name string, immut
 	w.Header().Set("Content-Type", ct)
 	if len(immutable) > 0 && immutable[0] {
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	} else {
+		w.Header().Set("Cache-Control", "no-cache")
 	}
 	http.ServeContent(w, r, name, fi.ModTime(), f)
 }

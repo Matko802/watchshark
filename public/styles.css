@@ -353,6 +353,7 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px 16px 96px; }
   .searchbox.expanded .search { width: min(280px, 55vw); max-width: min(280px, 55vw); }
   #whoami .who span { display: none; }
   main { padding: 12px 0 96px; }
+  .topbar .createcircle { display: none; }
   .grid { grid-template-columns: 1fr; gap: 20px; padding: 0 12px; }
   .m3card .media { border-radius: 12px; }
   .m3card .meta { padding: 8px 12px 12px; }

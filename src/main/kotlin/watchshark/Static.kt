@@ -25,8 +25,12 @@ object Static {
         ctx.header("X-Content-Type-Options", "nosniff")
         // Media filenames are content hashes — immutable forever, safe to
         // cache hard (YouTube-style edge/client caching for instant revisits).
+        // Everything else (HTML/CSS/JS) must revalidate so edits go live
+        // on plain refresh without rebuilds or hard-refreshes.
         if (immutable) {
             ctx.header("Cache-Control", "public, max-age=31536000, immutable")
+        } else {
+            ctx.header("Cache-Control", "no-cache")
         }
         val isHead = ctx.method().name == "HEAD"
         if (isHead) {
