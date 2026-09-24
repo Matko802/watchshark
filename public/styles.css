@@ -161,6 +161,7 @@ md-icon { --md-icon-font: 'Material Symbols Sharp'; font-size: 24px; width: 24px
 main { max-width: 1200px; margin: 0 auto; padding: 20px 16px 96px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
 .cardlink { text-decoration: none; color: inherit; }
+.cardlink:focus, .cardlink:focus-visible { outline: none; }
 .m3card {
   background: transparent;
   box-shadow: none;
@@ -346,8 +347,9 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px 16px 96px; }
   .searchbox { margin: 0; }
   .searchbox.expanded .search { width: min(280px, 55vw); max-width: min(280px, 55vw); }
   #whoami .who span { display: none; }
-  main { padding: 12px 12px 96px; }
-  .grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  main { padding: 12px 0 96px; }
+  .grid { grid-template-columns: 1fr; gap: 20px; padding: 0 12px; }
+  .m3card .media { border-radius: 0; }
   .m3card .meta { padding: 8px 12px 12px; }
   .m3card h3 { font-size: 14px; }
   .player-wrap { border-radius: 0; margin: 0 -12px; width: calc(100% + 24px); }

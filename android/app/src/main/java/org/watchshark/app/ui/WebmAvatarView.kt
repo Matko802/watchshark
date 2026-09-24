@@ -29,12 +29,19 @@ class WebmAvatarView @JvmOverloads constructor(
         View.inflate(context, R.layout.view_webm_avatar, this)
         image = findViewById(R.id.ava_image)
         playerView = findViewById(R.id.ava_player)
-        clipToOutline = true
-        outlineProvider = object : android.view.ViewOutlineProvider() {
+        // Clip the picture layers round, but NOT this container: the
+        // presence dot straddles the outer edge.
+        clipChildren = false
+        clipToPadding = false
+        val oval = object : android.view.ViewOutlineProvider() {
             override fun getOutline(view: View, outline: android.graphics.Outline) {
                 outline.setOval(0, 0, view.width, view.height)
             }
         }
+        image.clipToOutline = true
+        image.outlineProvider = oval
+        playerView.clipToOutline = true
+        playerView.outlineProvider = oval
     }
 
     private val avatarListener = object : Player.Listener {
@@ -89,8 +96,10 @@ class WebmAvatarView @JvmOverloads constructor(
         var dot = dotView
         if (dot == null) {
             dot = View(context).apply {
-                val s = (11 * resources.displayMetrics.density).toInt()
-                val m = (1 * resources.displayMetrics.density).toInt()
+                val s = (12 * resources.displayMetrics.density).toInt()
+                // Negative margins: the dot straddles the avatar edge,
+                // half outside like standard presence badges.
+                val m = (-4 * resources.displayMetrics.density).toInt()
                 layoutParams = LayoutParams(s, s).apply {
                     gravity = android.view.Gravity.END or android.view.Gravity.BOTTOM
                     marginEnd = m

@@ -36,7 +36,7 @@ class HomeFragment : Fragment() {
     override fun onViewCreated(view: View, saved: Bundle?) {
         adapter = VideoAdapter(mutableListOf())
         val grid: RecyclerView = view.findViewById(R.id.grid)
-        grid.layoutManager = GridLayoutManager(requireContext(), 2)
+        grid.layoutManager = GridLayoutManager(requireContext(), gridSpan(requireContext()))
         grid.adapter = adapter
 
         val search: TextInputEditText = view.findViewById(R.id.search)

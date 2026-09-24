@@ -212,14 +212,30 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showRoot(fragment: Fragment, tag: String) {
+        val order = listOf("home", "wheels", "music")
+        val oldIdx = order.indexOf(currentTab)
+        val newIdx = order.indexOf(tag)
         currentTab = tag
         findViewById<View>(R.id.topbar).visibility = View.VISIBLE
         findViewById<View>(R.id.bottomnav).visibility = View.VISIBLE
         markNav()
         refreshTopbar()
         supportFragmentManager.popBackStackImmediate(null, 1)
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.container, fragment, tag)
+        val tx = supportFragmentManager.beginTransaction()
+        if (oldIdx >= 0 && newIdx >= 0 && oldIdx != newIdx) {
+            if (newIdx > oldIdx) {
+                tx.setCustomAnimations(
+                    R.anim.slide_in_right, R.anim.slide_out_left,
+                    R.anim.slide_in_left, R.anim.slide_out_right
+                )
+            } else {
+                tx.setCustomAnimations(
+                    R.anim.slide_in_left, R.anim.slide_out_right,
+                    R.anim.slide_in_right, R.anim.slide_out_left
+                )
+            }
+        }
+        tx.replace(R.id.container, fragment, tag)
             .commit()
         supportFragmentManager.executePendingTransactions()
         if (!updateChecked && ApiClient.sessionToken() != null) {
@@ -234,7 +250,7 @@ class MainActivity : AppCompatActivity() {
     private fun markNav() {
         // Match the website bottom nav exactly: icons always stay outlined
         // sharp; the active tab is only brighter (white vs #A8A8A8).
-        // The You tab is never highlighted.
+        // The You tab highlights too when it's the current tab.
         data class Tab(val iconId: Int, val labelId: Int, val tag: String)
         val tabs = listOf(
             Tab(R.id.nav_home_icon, R.id.nav_home_label, "home"),
@@ -258,16 +274,38 @@ class MainActivity : AppCompatActivity() {
                 setTextColor(if (selected) active else idle)
             }
         }
+        // You tab: person/avatar icon + label highlight when selected.
+        val youSelected = currentTab == "you"
+        (findViewById<View>(R.id.nav_person) as? ImageView)?.apply {
+            alpha = 1.0f
+            setColorFilter(if (youSelected) active else idle)
+        }
+        (findViewById<View>(R.id.nav_avatar))?.apply {
+            alpha = if (youSelected) 1.0f else 0.85f
+        }
+        (findViewById<View>(R.id.nav_you_label) as? TextView)?.apply {
+            setTextColor(if (youSelected) active else idle)
+        }
     }
 
     /** Push a detail screen (watch, channel, upload, settings, admin, notifications). */
     fun openDetail(fragment: Fragment) {
         supportFragmentManager.beginTransaction()
+            .setCustomAnimations(
+                R.anim.slide_in_right, R.anim.slide_out_left,
+                R.anim.slide_in_left, R.anim.slide_out_right
+            )
             .replace(R.id.container, fragment)
             .addToBackStack(null)
             .commit()
     }
 
     fun openAdmin() = openDetail(AdminFragment())
-    fun openChannel(name: String) = openDetail(ChannelFragment.newInstance(name))
+    fun openChannel(name: String) {
+        if (name == currentUsername) {
+            currentTab = "you"
+            markNav()
+        }
+        openDetail(ChannelFragment.newInstance(name))
+    }
 }

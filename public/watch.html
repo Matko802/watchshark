@@ -237,11 +237,10 @@ function renderComments() {
     prev.innerHTML = '<p class="muted">No comments yet.</p>';
     return;
   }
-  const c = cItems[cIdx % cItems.length];
+  const c = cItems[0];
   prev.innerHTML = `<div class="crow">${avatarStatusHtml(c.avatar, 'pfp-sm', c.online)}<div class="metatext"><b>${esc(c.username)}</b><p>${esc(c.body)}</p></div></div>`
     + `<md-outlined-button id="showAllBtn">Show all ${cItems.length} comments</md-outlined-button>`;
   document.getElementById('showAllBtn').onclick = (e) => { e.stopPropagation(); expandComments(); };
-  if (cItems.length > 1) cTimer = setTimeout(nextCmt, 4000);
 }
 function nextCmt() {
   cTimer = null;

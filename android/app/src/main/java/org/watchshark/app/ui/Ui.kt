@@ -13,6 +13,12 @@ import java.util.TimeZone
 
 fun fullUrl(path: String?): String? = ApiClient.fullUrl(path)
 
+/** YouTube-style feed: single stripe on phones, grid on wide screens. */
+fun gridSpan(ctx: Context): Int {
+    val dp = ctx.resources.displayMetrics.widthPixels / ctx.resources.displayMetrics.density
+    return (dp / 400).toInt().coerceAtLeast(1)
+}
+
 @Volatile
 private var videoLoader: coil.ImageLoader? = null
 

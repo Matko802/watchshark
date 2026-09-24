@@ -409,7 +409,9 @@ object AuthHandlers {
                     "admin" to Auth.isAdmin(id, un), "avatar" to av,
                     "notify_uploads" to (notif != 0), "since" to since,
                     "banned" to st.banned, "ban_days_left" to st.daysLeft, "ban_reason" to st.reason,
-                    "deleted" to st.deleted, "deleted_reason" to st.delReason
+                    "deleted" to st.deleted, "deleted_reason" to st.delReason,
+                    // The requester just hit the API: online by definition.
+                    "online" to true
                 )
             )
         )

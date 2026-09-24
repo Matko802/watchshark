@@ -29,7 +29,7 @@ class MusicFragment : Fragment() {
     override fun onViewCreated(view: View, saved: Bundle?) {
         adapter = VideoAdapter(mutableListOf(), {}, R.layout.item_video_square)
         val grid: RecyclerView = view.findViewById(R.id.grid)
-        grid.layoutManager = GridLayoutManager(requireContext(), 2)
+        grid.layoutManager = GridLayoutManager(requireContext(), gridSpan(requireContext()))
         grid.adapter = adapter
 
         view.findViewById<TabLayout>(R.id.tabs).addOnTabSelectedListener(

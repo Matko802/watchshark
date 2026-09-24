@@ -32,7 +32,8 @@ data class MeUser(
     @SerializedName("ban_days_left") val ban_days_left: Double = 0.0,
     @SerializedName("ban_reason") val ban_reason: String? = null,
     val deleted: Boolean = false,
-    @SerializedName("deleted_reason") val deleted_reason: String? = null
+    @SerializedName("deleted_reason") val deleted_reason: String? = null,
+    val online: Boolean = false
 )
 
 data class ChannelUser(

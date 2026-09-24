@@ -43,7 +43,7 @@ class ChannelFragment : Fragment() {
     override fun onViewCreated(view: View, saved: Bundle?) {
         adapter = VideoAdapter(mutableListOf())
         val grid: RecyclerView = view.findViewById(R.id.ch_grid)
-        grid.layoutManager = GridLayoutManager(requireContext(), 2)
+        grid.layoutManager = GridLayoutManager(requireContext(), gridSpan(requireContext()))
         grid.adapter = adapter
         view.findViewById<TabLayout>(R.id.ch_tabs).addOnTabSelectedListener(
             object : TabLayout.OnTabSelectedListener {
