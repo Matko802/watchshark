@@ -41,8 +41,10 @@ object Updater {
     private const val TAG_URL_PREFIX =
         "https://github.com/Matko802/watchshark/releases/tag/"
 
-    /** Silent auto-check at most once per this interval (manual taps bypass it). */
-    private const val CHECK_THROTTLE_MS = 24 * 60 * 60 * 1000L
+    /** Silent auto-check at most once per this interval. */
+    private const val SILENT_COOLDOWN_MS = 24 * 60 * 60 * 1000L
+    /** Manual taps share a shorter cooldown so spamming can't hammer GitHub. */
+    private const val MANUAL_COOLDOWN_MS = 60 * 60 * 1000L
     private const val PREFS = "watchshark_update"
     private const val KEY_LAST_CHECK = "last_check"
 
@@ -159,14 +161,16 @@ object Updater {
     /** Silent check (e.g. on launch): only shows a dialog when an update exists. */
     fun checkSilent(host: Fragment) {
         if (!checking.compareAndSet(false, true)) return
-        if (checkedRecently()) {
+        if (cooledDown(SILENT_COOLDOWN_MS)) {
             checking.set(false)
             return
         }
         host.lifecycleScope.launch {
             try {
                 val result = checkForUpdate()
-                stampCheck()
+                if (result is UpdateCheck.Available || result is UpdateCheck.UpToDate) {
+                    stampCheck()
+                }
                 if (result is UpdateCheck.Available && host.isAdded) {
                     promptUpdate(host, result.update)
                 }
@@ -179,18 +183,25 @@ object Updater {
     /** Manual check with feedback (status message when up to date or on error). */
     fun checkManual(host: Fragment, onStatus: (String) -> Unit) {
         // Spam-tapping the button reuses the in-flight check instead of
-        // firing a new API call per tap (GitHub allows 60/hr unauthenticated).
+        // firing a new call per tap, plus a cooldown between checks.
         if (!checking.compareAndSet(false, true)) {
             onStatus("Already checking…")
+            return
+        }
+        if (cooledDown(MANUAL_COOLDOWN_MS)) {
+            checking.set(false)
+            onStatus("Already checked — up to date")
             return
         }
         host.lifecycleScope.launch {
             try {
                 when (val result = checkForUpdate()) {
                     is UpdateCheck.Available -> {
+                        stampCheck()
                         if (host.isAdded) promptUpdate(host, result.update)
                     }
                     UpdateCheck.UpToDate -> {
+                        stampCheck()
                         if (host.isAdded) onStatus("Already on the latest version")
                     }
                     is UpdateCheck.Failed -> {
@@ -206,9 +217,10 @@ object Updater {
     private fun prefs(): android.content.SharedPreferences? =
         appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    private fun checkedRecently(): Boolean {
+    /** True if a successful check happened within [windowMs] (failures don't count). */
+    private fun cooledDown(windowMs: Long): Boolean {
         val last = prefs()?.getLong(KEY_LAST_CHECK, 0) ?: 0
-        return System.currentTimeMillis() - last < CHECK_THROTTLE_MS
+        return System.currentTimeMillis() - last < windowMs
     }
 
     private fun stampCheck() {

@@ -95,6 +95,12 @@ class MainActivity : AppCompatActivity() {
         if (findViewById<View>(R.id.topbar).visibility == View.VISIBLE) {
             refreshTopbar()
         }
+        // Automatic update check when coming back (throttled to once a day).
+        if (!ApiClient.sessionToken().isNullOrEmpty()) {
+            supportFragmentManager.findFragmentById(R.id.container)?.let { frag ->
+                if (frag.isAdded) org.watchshark.app.data.Updater.checkSilent(frag)
+            }
+        }
     }
 
     private var currentUsername: String? = null
