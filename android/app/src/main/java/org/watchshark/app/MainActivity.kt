@@ -61,12 +61,33 @@ class MainActivity : AppCompatActivity() {
             if (name != null) openChannel(name) else showAuth()
         }
         if (savedInstanceState == null) {
-            if (ApiClient.sessionToken().isNullOrEmpty()) {
-                showAuth()
-            } else {
-                showHome()
+            if (!handleShortcut(intent)) {
+                if (ApiClient.sessionToken().isNullOrEmpty()) {
+                    showAuth()
+                } else {
+                    showHome()
+                }
             }
         }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleShortcut(intent)
+    }
+
+    /** Launcher shortcut routing (long-press app icon). Returns true if handled. */
+    private fun handleShortcut(intent: android.content.Intent?): Boolean {
+        when (intent?.action) {
+            "org.watchshark.app.action.HOME" -> showHome()
+            "org.watchshark.app.action.WHEELS" -> showWheels()
+            "org.watchshark.app.action.MUSIC" -> showMusic()
+            "org.watchshark.app.action.UPLOAD" ->
+                openDetail(UploadFragment.newInstance("video"))
+            else -> return false
+        }
+        return true
     }
 
     override fun onResume() {

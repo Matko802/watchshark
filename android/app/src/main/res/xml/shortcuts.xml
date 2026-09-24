@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="home"
+        android:enabled="true"
+        android:icon="@drawable/ic_home"
+        android:shortcutShortLabel="@string/sh_home">
+        <intent
+            android:action="org.watchshark.app.action.HOME"
+            android:targetPackage="org.watchshark.app"
+            android:targetClass="org.watchshark.app.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="wheels"
+        android:enabled="true"
+        android:icon="@drawable/ic_movie"
+        android:shortcutShortLabel="@string/sh_wheels">
+        <intent
+            android:action="org.watchshark.app.action.WHEELS"
+            android:targetPackage="org.watchshark.app"
+            android:targetClass="org.watchshark.app.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="music"
+        android:enabled="true"
+        android:icon="@drawable/ic_music_note"
+        android:shortcutShortLabel="@string/sh_music">
+        <intent
+            android:action="org.watchshark.app.action.MUSIC"
+            android:targetPackage="org.watchshark.app"
+            android:targetClass="org.watchshark.app.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="upload"
+        android:enabled="true"
+        android:icon="@drawable/ic_add"
+        android:shortcutShortLabel="@string/sh_upload">
+        <intent
+            android:action="org.watchshark.app.action.UPLOAD"
+            android:targetPackage="org.watchshark.app"
+            android:targetClass="org.watchshark.app.MainActivity" />
+    </shortcut>
+</shortcuts>

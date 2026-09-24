@@ -1,5 +1,9 @@
 <resources>
     <string name="app_name">WatchShark</string>
+    <string name="sh_home">Home</string>
+    <string name="sh_wheels">Wheels</string>
+    <string name="sh_music">Music</string>
+    <string name="sh_upload">Upload</string>
     <string name="error_title">No connection</string>
     <string name="error_body">Could not reach the WatchShark server. Check your connection and try again.</string>
     <string name="retry">Retry</string>

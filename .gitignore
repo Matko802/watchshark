@@ -8,6 +8,10 @@ backups/
 *.apk
 *.aab
 local.properties
+*.jks
+*.keystore
+*.p12
+*.key
 .gradle/
 .kotlin/
 build/
