@@ -19,7 +19,6 @@ import androidx.media3.ui.PlayerView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.slider.Slider
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaType
@@ -117,26 +116,8 @@ class WatchFragment : Fragment() {
         pv.useController = true
         pv.controllerShowTimeoutMs = 3000
         pv.controllerHideOnTouch = true
-        val playBtn: ImageButton = pv.findViewById(R.id.web_play)
-        val muteBtn: ImageButton = pv.findViewById(R.id.web_mute)
-        val vol: Slider = pv.findViewById(R.id.web_vol)
         val big: MaterialButton = v.findViewById(R.id.web_bigplay)
-        vol.value = 100f
-        vol.addOnChangeListener { _, value, _ ->
-            player?.volume = value / 100f
-            syncCtrlButtons()
-        }
-        playBtn.setOnClickListener {
-            player?.let { if (it.isPlaying) it.pause() else it.play() }
-        }
         big.setOnClickListener { player?.play() }
-        muteBtn.setOnClickListener {
-            player?.let {
-                it.volume = if (it.volume == 0f) 1f else 0f
-                vol.value = it.volume * 100
-                syncCtrlButtons()
-            }
-        }
         player = ApiClient.buildPlayer(requireContext()).also { exo ->
             pv.player = exo
             exo.addListener(ctrlListener)
@@ -144,14 +125,28 @@ class WatchFragment : Fragment() {
             exo.prepare()
             exo.play()
         }
-        pv.setFullscreenButtonClickListener { toggleFullscreen() }
+        wirePlayerControls(pv)
+        ctrlHandler.post(ctrlTick)
+    }
+
+    /** Wire the web-like controller buttons of a PlayerView (inline or fullscreen). */
+    private fun wirePlayerControls(pv: PlayerView) {
+        pv.findViewById<ImageButton>(R.id.web_play)?.setOnClickListener {
+            player?.let { if (it.isPlaying) it.pause() else it.play() }
+        }
+        pv.findViewById<ImageButton>(R.id.web_mute)?.setOnClickListener {
+            player?.let {
+                it.volume = if (it.volume == 0f) 1f else 0f
+                syncCtrlButtons()
+            }
+        }
         pv.findViewById<android.widget.Button>(R.id.exo_qual)?.setOnClickListener { anchor ->
             showQualityMenu(anchor)
         }
         pv.findViewById<android.widget.Button>(R.id.exo_speed)?.setOnClickListener { anchor ->
             cycleSpeed(anchor as android.widget.Button)
         }
-        ctrlHandler.post(ctrlTick)
+        pv.setFullscreenButtonClickListener { toggleFullscreen() }
     }
 
     private val ctrlHandler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -168,32 +163,36 @@ class WatchFragment : Fragment() {
     }
 
     private fun syncCtrlButtons() {
-        val v = view ?: return
         val exo = player
         val playing = exo?.isPlaying == true
-        val pv: PlayerView? = v.findViewById(R.id.player)
-        pv?.findViewById<ImageButton>(R.id.web_play)?.setImageResource(
-            if (playing) R.drawable.ic_pause else R.drawable.ic_play_arrow
-        )
         val muted = (exo?.volume ?: 1f) == 0f
-        pv?.findViewById<ImageButton>(R.id.web_mute)?.setImageResource(
-            if (muted) R.drawable.ic_volume_off else R.drawable.ic_volume_up
-        )
-        v.findViewById<View>(R.id.web_bigplay)?.visibility =
+        playerViews().forEach { pv ->
+            pv.findViewById<ImageButton>(R.id.web_play)?.setImageResource(
+                if (playing) R.drawable.ic_pause else R.drawable.ic_play_arrow
+            )
+            pv.findViewById<ImageButton>(R.id.web_mute)?.setImageResource(
+                if (muted) R.drawable.ic_volume_off else R.drawable.ic_volume_up
+            )
+        }
+        view?.findViewById<View>(R.id.web_bigplay)?.visibility =
             if (playing) View.GONE else View.VISIBLE
         updateCtrlTime()
     }
 
     private fun updateCtrlTime() {
-        val v = view ?: return
         val exo = player ?: return
         val d = exo.duration
         if (d <= 0 || d == C.TIME_UNSET) return
         val c = exo.currentPosition.coerceAtLeast(0)
-        v.findViewById<PlayerView>(R.id.player)
-            ?.findViewById<TextView>(R.id.web_time)?.text =
-            "${fmtDur(c / 1000)} / ${fmtDur(d / 1000)}"
+        playerViews().forEach { pv ->
+            pv.findViewById<TextView>(R.id.web_time)?.text =
+                "${fmtDur(c / 1000)} / ${fmtDur(d / 1000)}"
+        }
     }
+
+    /** Inline player view plus the fullscreen one when open. */
+    private fun playerViews(): List<PlayerView> =
+        listOfNotNull(view?.findViewById(R.id.player), fsPlayerView)
 
     private val SPEEDS = floatArrayOf(1f, 1.25f, 1.5f, 2f, 0.5f)
     private var speedIdx = 0
@@ -247,26 +246,19 @@ class WatchFragment : Fragment() {
         val pv: PlayerView = view?.findViewById(R.id.player) ?: return
         act.requestedOrientation =
             android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-        // Fullscreen shows video only — no controls, no overlays (tap toggles
-        // play silently, back exits), like fullscreen playback without chrome.
-        val fsView = PlayerView(act).apply {
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-            setBackgroundColor(android.graphics.Color.BLACK)
-            useController = false
-            setOnClickListener {
-                exo.let { if (it.isPlaying) it.pause() else it.play() }
-            }
-        }
+        // Fullscreen keeps the same web-like controls (seek, play, mute,
+        // time, speed, quality, exit-fullscreen).
+        val fsView = android.view.LayoutInflater.from(act)
+            .inflate(R.layout.view_fs_player, null) as PlayerView
         val dialog = android.app.Dialog(act, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
         dialog.setContentView(fsView)
         dialog.setOnDismissListener { if (fsDialog != null) exitFullscreen() }
         pv.player = null
         fsView.player = exo
+        wirePlayerControls(fsView)
         fsPlayerView = fsView
         fsDialog = dialog
+        syncCtrlButtons()
         dialog.show()
     }
 
@@ -306,7 +298,14 @@ class WatchFragment : Fragment() {
     private fun syncLike() {
         val vid = video ?: return
         view?.findViewById<MaterialButton>(R.id.like_btn)?.apply {
-            text = "${if (vid.liked) "♥ " else ""}${fmtNum(vid.likes)}"
+            text = fmtNum(vid.likes)
+            setIconResource(
+                if (vid.liked) R.drawable.ic_favorite_fill else R.drawable.ic_favorite_outline
+            )
+            iconTint = android.content.res.ColorStateList.valueOf(
+                if (vid.liked) android.graphics.Color.RED
+                else context.getColor(android.R.color.white)
+            )
         }
     }
 

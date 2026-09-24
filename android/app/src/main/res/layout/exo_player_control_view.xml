@@ -45,15 +45,6 @@
             android:src="@drawable/ic_volume_up"
             android:tint="@android:color/white" />
 
-        <com.google.android.material.slider.Slider
-            android:id="@+id/web_vol"
-            android:layout_width="100dp"
-            android:layout_height="wrap_content"
-            android:valueFrom="0"
-            android:valueTo="100"
-            android:value="100"
-            android:stepSize="1" />
-
         <TextView
             android:id="@+id/web_time"
             android:layout_width="wrap_content"
