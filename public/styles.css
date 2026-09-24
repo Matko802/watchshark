@@ -203,7 +203,7 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px 16px 96px; }
 .player-wrap.hide .controls { opacity: 0; pointer-events: none; }
 .player-wrap.hide { cursor: none; }
 .player-wrap.loading, .player-wrap.loading .player-video { background: #333; }
-.watchmain { display: flex; gap: 24px; align-items: flex-start; flex-direction: row-reverse; max-width: 1750px; }
+.watchmain { display: flex; gap: 24px; align-items: flex-start; max-width: 1750px; }
 .watchcol { flex: 1; min-width: 0; }
 .watchrail { flex: 0 0 clamp(300px, 28vw, 402px); min-width: 0; }
 .upnext { display: flex; gap: 10px; margin-bottom: 14px; align-items: flex-start; }

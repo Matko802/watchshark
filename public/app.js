@@ -248,10 +248,6 @@ function ensureSidebar() {
     <a href="/" data-side="home"><md-icon>home</md-icon><span>Home</span></a>
     <a href="/wheels" data-side="wheels"><md-icon>movie</md-icon><span>Wheels</span></a>
     <a href="/music" data-side="music"><md-icon>music_note</md-icon><span>Music</span></a>
-    <a href="/upload" data-auth="in" style="display:none"><md-icon>add</md-icon><span>Create</span></a>
-    <a href="/settings" data-side="account"><md-icon>person</md-icon><span>You</span></a>
-    <a href="/settings" data-auth="in" style="display:none"><md-icon>settings</md-icon><span>Settings</span></a>
-    <a href="/admin" data-admin style="display:none"><md-icon>admin_panel_settings</md-icon><span>Admin</span></a>
   </nav>`;
   document.body.appendChild(aside);
   document.body.classList.add('has-sidebar');
