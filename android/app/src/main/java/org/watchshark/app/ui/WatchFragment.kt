@@ -133,7 +133,7 @@ class WatchFragment : Fragment() {
             exo.addListener(ctrlListener)
             exo.setMediaItem(MediaItem.fromUri(url))
             exo.prepare()
-            // No autoplay: big play button shows, user taps to start (with sound).
+            exo.play()
             syncCtrlButtons()
         }
         wirePlayerControls(pv)

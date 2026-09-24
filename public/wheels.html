@@ -265,14 +265,38 @@ function onSlide() {
       v.src = v.dataset.src;
       v.load();
     }
-    v.muted = false;
-    document.getElementById('rmuteIcon').textContent = 'volume_up';
+    v.muted = mutedAll;
+    document.getElementById('rmuteIcon').textContent = v.muted ? 'volume_off' : 'volume_up';
     applyReelAutoQuality();
     onTimeReel();
-    // No autoplay and no forced mute: reel starts paused with sound on.
-    pauseOthers();
-    document.getElementById('rbigIcon').textContent = 'play_arrow';
-    document.getElementById('rbig').style.display = '';
+    if (localStorage.getItem('ws_autoplay') !== '0') {
+      if (!v.muted) {
+        v.play().then(() => {
+          document.getElementById('rbig').style.display = 'none';
+        }).catch(() => {
+          reelForced = true;
+          v.muted = true;
+          document.getElementById('rmuteIcon').textContent = 'volume_off';
+          v.play().then(() => {
+            document.getElementById('rbig').style.display = 'none';
+          }).catch(() => {
+            document.getElementById('rbigIcon').textContent = 'play_arrow';
+            document.getElementById('rbig').style.display = '';
+          });
+        });
+      } else {
+        v.play().then(() => {
+          document.getElementById('rbig').style.display = 'none';
+        }).catch(() => {
+          document.getElementById('rbigIcon').textContent = 'play_arrow';
+          document.getElementById('rbig').style.display = '';
+        });
+      }
+    } else {
+      pauseOthers();
+      document.getElementById('rbigIcon').textContent = 'play_arrow';
+      document.getElementById('rbig').style.display = '';
+    }
   }
   if (SW.activeIndex >= SW.slides.length - 3) loadBatch();
   warmNeighbors();

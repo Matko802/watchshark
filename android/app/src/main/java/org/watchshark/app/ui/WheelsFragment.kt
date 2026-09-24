@@ -64,8 +64,7 @@ class WheelsFragment : Fragment() {
                     if (exo.currentMediaItemIndex != position && position < exo.mediaItemCount) {
                         exo.seekTo(position, 0)
                     }
-                    // No autoplay: stay paused, tap the reel to play.
-                    exo.playWhenReady = false
+                    exo.playWhenReady = true
                 }
                 if (position >= videos.size - 3) loadMore()
             }
@@ -150,8 +149,13 @@ class WheelsFragment : Fragment() {
                 } else {
                     adapter.notifyDataSetChanged()
                     player?.prepare()
-                    // No autoplay: reels start paused with sound on, tap to play.
-                    player?.playWhenReady = false
+                    // YouTube-style: autoplay with sound.
+                    if (player?.currentMediaItemIndex == 0 || videos.size <= added) {
+                        player?.seekTo(0, 0)
+                        player?.playWhenReady = true
+                    } else {
+                        player?.playWhenReady = true
+                    }
                 }
             } finally {
                 loading = false

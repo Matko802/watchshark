@@ -472,14 +472,24 @@ function initPlayer(src) {
 }
 function autoPlay() {
   if (!P) return;
-  // No autoplay and no forced mute: show the big play button, sound on.
   P.wantAuto = true;
   P.forceMuted = false;
   P.vid.muted = false;
   syncMuteIcon();
   P.unmute.style.display = 'none';
-  P.bigIcon.textContent = 'play_arrow';
-  P.bigplay.style.display = '';
+  P.vid.play().then(() => {
+    if (P) P.unmute.style.display = 'none';
+  }).catch(() => {
+    if (!P) return;
+    P.forceMuted = true;
+    P.vid.muted = true;
+    syncMuteIcon();
+    P.vid.play().then(() => {
+      if (P) P.unmute.style.display = '';
+    }).catch(() => {
+      if (P) P.unmute.style.display = 'none';
+    });
+  });
 }
 function unmuteGesture() {
   if (!P || !P.forceMuted) return;
