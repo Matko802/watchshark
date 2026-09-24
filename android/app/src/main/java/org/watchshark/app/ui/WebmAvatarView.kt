@@ -37,14 +37,28 @@ class WebmAvatarView @JvmOverloads constructor(
         }
     }
 
+    private val avatarListener = object : Player.Listener {
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            // Only cover the placeholder once frames actually render —
+            // otherwise a failed stream leaves a black square.
+            playerView.visibility =
+                if (playbackState == Player.STATE_READY) View.VISIBLE else View.GONE
+        }
+
+        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            playerView.visibility = View.GONE
+        }
+    }
+
     fun setAvatar(path: String?, placeholder: Int = R.drawable.ic_person) {
         if (isWebm(path)) {
             image.setImageResource(placeholder)
             image.visibility = View.VISIBLE
-            playerView.visibility = View.VISIBLE
+            playerView.visibility = View.GONE
             val exo = player ?: ApiClient.buildPlayer(context).also { player = it }.apply {
                 repeatMode = Player.REPEAT_MODE_ONE
                 volume = 0f
+                addListener(avatarListener)
             }
             val url = ApiClient.fullUrl(path) ?: return
             if (exo.currentMediaItem?.localConfiguration?.uri.toString() != url) {
