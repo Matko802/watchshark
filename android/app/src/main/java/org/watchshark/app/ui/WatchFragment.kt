@@ -140,12 +140,6 @@ class WatchFragment : Fragment() {
         pv.findViewById<ImageButton>(R.id.web_play)?.setOnClickListener {
             player?.let { if (it.isPlaying) it.pause() else it.play() }
         }
-        pv.findViewById<ImageButton>(R.id.web_mute)?.setOnClickListener {
-            player?.let {
-                it.volume = if (it.volume == 0f) 1f else 0f
-                syncCtrlButtons()
-            }
-        }
         pv.findViewById<android.widget.Button>(R.id.exo_qual)?.setOnClickListener { anchor ->
             showQualityMenu(anchor)
         }
@@ -171,13 +165,9 @@ class WatchFragment : Fragment() {
     private fun syncCtrlButtons() {
         val exo = player
         val playing = exo?.isPlaying == true
-        val muted = (exo?.volume ?: 1f) == 0f
         playerViews().forEach { pv ->
             pv.findViewById<ImageButton>(R.id.web_play)?.setImageResource(
                 if (playing) R.drawable.ic_pause else R.drawable.ic_play_arrow
-            )
-            pv.findViewById<ImageButton>(R.id.web_mute)?.setImageResource(
-                if (muted) R.drawable.ic_volume_off else R.drawable.ic_volume_up
             )
         }
         view?.findViewById<View>(R.id.web_bigplay)?.visibility =
@@ -259,6 +249,18 @@ class WatchFragment : Fragment() {
         val dialog = android.app.Dialog(act, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
         dialog.setContentView(fsView)
         dialog.setOnDismissListener { if (fsDialog != null) exitFullscreen() }
+        // Immersive fullscreen: hide status + gesture bars on the dialog's
+        // own window (swipe reveals them transiently).
+        dialog.setOnShowListener {
+            dialog.window?.let { w ->
+                androidx.core.view.WindowCompat.setDecorFitsSystemWindows(w, false)
+                androidx.core.view.WindowCompat.getInsetsController(w, w.decorView).apply {
+                    hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+                    systemBarsBehavior =
+                        androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                }
+            }
+        }
         pv.player = null
         fsView.player = exo
         wirePlayerControls(fsView)
