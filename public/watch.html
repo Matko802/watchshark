@@ -472,14 +472,20 @@ function initPlayer(src) {
 }
 function autoPlay() {
   if (!P) return;
-  // No autoplay and no forced mute: big play button shows, sound on.
+  // Play on open with sound; if the browser blocks unmuted autoplay,
+  // show the big play button (tap counts as a gesture). Never auto-mute.
   P.wantAuto = true;
   P.forceMuted = false;
   P.vid.muted = false;
   syncMuteIcon();
   P.unmute.style.display = 'none';
-  P.bigIcon.textContent = 'play_arrow';
-  P.bigplay.style.display = '';
+  P.vid.play().then(() => {
+    if (P) P.unmute.style.display = 'none';
+  }).catch(() => {
+    if (!P) return;
+    P.bigIcon.textContent = 'play_arrow';
+    P.bigplay.style.display = '';
+  });
 }
 function unmuteGesture() {
   if (!P || !P.forceMuted) return;

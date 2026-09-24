@@ -34,7 +34,6 @@
     <md-primary-tab><md-icon slot="icon">person</md-icon>Account</md-primary-tab>
     <md-primary-tab><md-icon slot="icon">lock</md-icon>Password</md-primary-tab>
     <md-primary-tab><md-icon slot="icon">notifications</md-icon>Notifications</md-primary-tab>
-    <md-primary-tab><md-icon slot="icon">play_circle</md-icon>Playback and performance</md-primary-tab>
   </md-tabs>
   <div id="paneAccount">
     <div id="spic"></div>
@@ -85,21 +84,6 @@
       <md-filled-button onclick="saveNotif()"><md-icon slot="icon">save</md-icon>Save</md-filled-button>
     </div>
     <p id="nt-msg" class="muted"></p>
-  </div>
-  <div id="panePlay" style="display:none">
-    <h3>Wheels playback</h3>
-    <div class="row">
-      <md-switch id="sw-autoplay"></md-switch>
-      <span>Autoplay next wheel</span>
-    </div>
-    <div class="row">
-      <md-switch id="sw-muted"></md-switch>
-      <span>Start muted</span>
-    </div>
-    <div class="row" style="margin-top:12px">
-      <md-filled-button onclick="savePlayback()"><md-icon slot="icon">save</md-icon>Save</md-filled-button>
-    </div>
-    <p id="pb-msg" class="muted"></p>
   </div>
   <div style="margin-top:32px">
     <h3>Sign out</h3>
@@ -156,8 +140,6 @@ async function initSettings() {
   document.getElementById('sinfo').textContent = 'Member since ' + fmtDate(u.since) + ' (' + fmtAge(u.since) + ')';
   document.getElementById('spic').innerHTML = avatarHtml(u.avatar, 'pfp-lg');
   document.getElementById('sw-notif').selected = u.notify_uploads !== false;
-  document.getElementById('sw-autoplay').selected = localStorage.getItem('ws_autoplay') !== '0';
-  document.getElementById('sw-muted').selected = localStorage.getItem('ws_muted') === '1';
   if (u.admin) {
     document.querySelector('[data-realadmin]').style.display = '';
     document.getElementById('sw-adminview').selected = localStorage.getItem('ws_adminview') !== '0';
@@ -168,7 +150,7 @@ async function initSettings() {
   }
 }
 document.getElementById('setTabs').addEventListener('change', (e) => {
-  const panes = ['paneAccount', 'panePassword', 'paneNotif', 'panePlay'];
+  const panes = ['paneAccount', 'panePassword', 'paneNotif'];
   panes.forEach((id, i) => {
     document.getElementById(id).style.display = i === e.target.activeTabIndex ? '' : 'none';
   });
@@ -192,11 +174,6 @@ async function saveNotif() {
     credentials: 'include', body: JSON.stringify({ uploads: on }),
   });
   document.getElementById('nt-msg').textContent = r.ok ? 'Saved!' : 'Failed.';
-}
-function savePlayback() {
-  localStorage.setItem('ws_autoplay', document.getElementById('sw-autoplay').selected ? '1' : '0');
-  localStorage.setItem('ws_muted', document.getElementById('sw-muted').selected ? '1' : '0');
-  document.getElementById('pb-msg').textContent = 'Saved!';
 }
 async function uploadPfp() {
   const f = document.getElementById('pfpfile').files[0];

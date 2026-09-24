@@ -79,7 +79,9 @@ class WheelsFragment : Fragment() {
                     if (exo.currentMediaItemIndex != position && position < exo.mediaItemCount) {
                         exo.seekTo(position, 0)
                     }
-                    // No autoplay: swiping never starts playback, tap to play.
+                    // Play on select with sound (no autoplay-next: ended reels
+                    // hold position via the transition guard).
+                    exo.playWhenReady = true
                 }
                 if (position >= videos.size - 3) loadMore()
             }
@@ -174,9 +176,10 @@ class WheelsFragment : Fragment() {
                     val firstBatch = videos.size == added
                     adapter.notifyDataSetChanged()
                     if (firstBatch) {
-                        // Prepare only; playback starts on tap (no autoplay).
                         player?.prepare()
+                        player?.seekTo(0, 0)
                     }
+                    player?.playWhenReady = true
                 }
             } finally {
                 loading = false

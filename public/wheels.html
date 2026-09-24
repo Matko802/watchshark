@@ -264,14 +264,18 @@ function onSlide() {
       v.src = v.dataset.src;
       v.load();
     }
-    v.muted = mutedAll;
-    document.getElementById('rmuteIcon').textContent = v.muted ? 'volume_off' : 'volume_up';
+    v.muted = false;
+    document.getElementById('rmuteIcon').textContent = 'volume_up';
     applyReelAutoQuality();
     onTimeReel();
-    // No autoplay and no auto-advance: reel stays paused, tap to play.
-    pauseOthers();
-    document.getElementById('rbigIcon').textContent = 'play_arrow';
-    document.getElementById('rbig').style.display = '';
+    // Play on select with sound; if the browser blocks it, show the big
+    // play button (tap counts as a gesture). Never auto-mute, never advance.
+    v.play().then(() => {
+      document.getElementById('rbig').style.display = 'none';
+    }).catch(() => {
+      document.getElementById('rbigIcon').textContent = 'play_arrow';
+      document.getElementById('rbig').style.display = '';
+    });
   }
   if (SW.activeIndex >= SW.slides.length - 3) loadBatch();
   warmNeighbors();
@@ -597,8 +601,8 @@ function reelMute() {
   Pjax.on(document, 'fullscreenchange', syncReelFullIcon);
   bindReelTap(document.getElementById('rgleft'), -10);
   bindReelTap(document.getElementById('rgright'), 10);
-  mutedAll = localStorage.getItem('ws_muted') === '1';
-  document.getElementById('rmuteIcon').textContent = mutedAll ? 'volume_off' : 'volume_up';
+  mutedAll = false;
+  document.getElementById('rmuteIcon').textContent = 'volume_up';
   initWheels();
 })();
 window.__destroy = function() {
