@@ -5,10 +5,10 @@
     android:layout_height="wrap_content"
     android:orientation="vertical">
 
-    <com.google.android.material.imageview.ShapeableImageView
+    <org.watchshark.app.ui.SixteenNineImageView
         android:id="@+id/thumb"
         android:layout_width="match_parent"
-        android:layout_height="180dp"
+        android:layout_height="wrap_content"
         android:background="#000000"
         android:scaleType="centerCrop"
         android:contentDescription="@string/thumb_desc"

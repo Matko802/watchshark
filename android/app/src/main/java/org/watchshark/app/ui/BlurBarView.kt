@@ -26,7 +26,9 @@ class BlurBarView @JvmOverloads constructor(
         var blurEnabled: Boolean = true
         private const val DOWNSCALE = 10
         private const val CAPTURE_MIN_MS = 150L
-        private const val SCRIM = 0x99000000
+        // AMOLED-friendly scrim: translucent black over the blur so the
+        // frosted content stays visible instead of drowning in black.
+        private const val SCRIM = 0x80000000
     }
 
     /** Content view sampled from behind this bar (the fragment container). */
