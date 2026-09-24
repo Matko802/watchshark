@@ -195,6 +195,7 @@ async function pjaxSwap(url, push) {
     document.title = doc.title;
     document.body.className = doc.body.className;
     document.body.innerHTML = doc.body.innerHTML;
+    hideBoot();
     await refreshAuth();
     initBell();
     for (const code of codes) {
@@ -210,8 +211,12 @@ async function pjaxSwap(url, push) {
     pjaxBar(false);
   }
 }
-function pjaxBar(show) {
-  let bar = document.getElementById('pjaxbar');
+function hideBoot() {
+  const b = document.getElementById('bootloader');
+  if (b) b.remove();
+}
+document.addEventListener('DOMContentLoaded', () => setTimeout(hideBoot, 1500));
+function pjaxBar(show) {  let bar = document.getElementById('pjaxbar');
   if (show) {
     if (!bar) {
       bar = document.createElement('div');

@@ -454,3 +454,9 @@ md-list-item.unread { --md-list-item-container-color: var(--md-sys-color-seconda
   background: linear-gradient(90deg, transparent, #fff, transparent);
   background-size: 40% 100%; animation: pjaxslide 1s linear infinite; }
 @keyframes pjaxslide { from { background-position: -40% 0; } to { background-position: 140% 0; } }
+#bootloader { position: fixed; inset: 0; z-index: 10000; background: #000;
+  display: flex; align-items: center; justify-content: center; }
+#bootloader .boots { width: 44px; height: 44px; border-radius: 50%;
+  border: 4px solid #242424; border-top-color: #fff;
+  animation: boots 0.9s linear infinite; }
+@keyframes boots { to { transform: rotate(360deg); } }

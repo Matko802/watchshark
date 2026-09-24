@@ -20,7 +20,7 @@
 <meta property="og:description" content="WatchShark — watch and share videos, wheels and music.">
 <meta property="og:image" content="https://watchshark.duckdns.org/watchshark.webp">
 </head>
-<body class="reelbody" data-pjax="1">
+<body class="reelbody" data-pjax="1"><div id="bootloader"><div class="boots"></div></div>
 <header class="topbar">
   <md-icon-button href="/" aria-label="Back"><md-icon>arrow_back</md-icon></md-icon-button>
   <a class="brand" href="/"><img src="/watchshark.webp?v=2" alt="WatchShark logo"><span>Wheels</span></a>
@@ -594,6 +594,7 @@ window.__destroy = function() {
 };
 };
 window.__boot();
+hideBoot();
 </script>
 </body>
 </html>

@@ -14,7 +14,7 @@
 <meta property="og:site_name" content="WatchShark">
 <meta name="twitter:card" content="summary_large_image">
 </head>
-<body data-pjax="1">
+<body data-pjax="1"><div id="bootloader"><div class="boots"></div></div>
 <header class="topbar">
   <a class="brand" href="/"><img src="/watchshark.webp?v=2" alt="WatchShark logo"><span>WatchShark</span></a>
   <span class="spacer"></span>
@@ -238,6 +238,7 @@ initChannel();
 Object.assign(window, { toggleChanFollow, toggleMore });
 };
 window.__boot();
+hideBoot();
 </script>
 </body>
 </html>
