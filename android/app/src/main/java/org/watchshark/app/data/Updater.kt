@@ -288,6 +288,14 @@ object Updater {
                     }
                     withContext(Dispatchers.Main) {
                         dialog.dismiss()
+                        if (total > 0 && file.length() != total) {
+                            showError(host, "Download incomplete, try again")
+                            return@withContext
+                        }
+                        if (!signaturesMatch(ctx, file)) {
+                            showSignatureMismatch(host)
+                            return@withContext
+                        }
                         installApk(ctx, file)
                     }
                 }
@@ -301,8 +309,72 @@ object Updater {
         }
     }
 
-    private fun installApk(ctx: Context, file: File) {
-        val uri = FileProvider.getUriForFile(
+    private fun showError(host: Fragment, message: String) {
+        if (!host.isAdded) return
+        MaterialAlertDialogBuilder(host.requireContext())
+            .setTitle("Update failed")
+            .setMessage(message)
+            .setPositiveButton("Close", null)
+            .show()
+    }
+
+    /**
+     * Debug builds and release builds are signed with different keys, so a
+     * release APK can never install over a debug one (and vice versa).
+     * Detect it up front instead of dumping the user at a dead installer.
+     */
+    private fun signaturesMatch(ctx: Context, apkFile: File): Boolean {
+        return try {
+            val pm = ctx.packageManager
+            val installedSigs: Set<String> = if (android.os.Build.VERSION.SDK_INT >= 28) {
+                val info = pm.getPackageInfo(ctx.packageName, android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES)
+                info.signingInfo?.apkContentsSigners?.map { it.toCharsString() }?.toSet().orEmpty()
+            } else {
+                @Suppress("DEPRECATION")
+                pm.getPackageInfo(ctx.packageName, android.content.pm.PackageManager.GET_SIGNATURES)
+                    .signatures?.map { it.toCharsString() }?.toSet().orEmpty()
+            }
+            val archiveSigs: Set<String> = if (android.os.Build.VERSION.SDK_INT >= 28) {
+                val info = pm.getPackageArchiveInfo(apkFile.absolutePath, android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES)
+                info?.signingInfo?.apkContentsSigners?.map { it.toCharsString() }?.toSet().orEmpty()
+            } else {
+                @Suppress("DEPRECATION")
+                pm.getPackageArchiveInfo(apkFile.absolutePath, android.content.pm.PackageManager.GET_SIGNATURES)
+                    ?.signatures?.map { it.toCharsString() }?.toSet().orEmpty()
+            }
+            if (installedSigs.isEmpty() || archiveSigs.isEmpty()) return true
+            installedSigs.intersect(archiveSigs).isNotEmpty()
+        } catch (_: Exception) {
+            true
+        }
+    }
+
+    private fun showSignatureMismatch(host: Fragment) {
+        if (!host.isAdded) return
+        val ctx = host.requireContext()
+        MaterialAlertDialogBuilder(ctx)
+            .setTitle("Can't install over this version")
+            .setMessage(
+                "This update is signed with a different key than the installed app, " +
+                    "so Android refuses to install it. Uninstall WatchShark first, then install " +
+                    "the downloaded update — your account and videos stay on the server, just log in again."
+            )
+            .setNegativeButton("Close", null)
+            .setPositiveButton("Uninstall app") { _, _ ->
+                try {
+                    ctx.startActivity(
+                        Intent(
+                            Intent.ACTION_DELETE,
+                            android.net.Uri.parse("package:${ctx.packageName}")
+                        ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                    )
+                } catch (_: Exception) {
+                }
+            }
+            .show()
+    }
+
+    private fun installApk(ctx: Context, file: File) {        val uri = FileProvider.getUriForFile(
             ctx, "${ctx.packageName}.fileprovider", file
         )
         val intent = Intent(Intent.ACTION_VIEW).apply {
