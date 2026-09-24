@@ -455,10 +455,16 @@ async function initWheels() {
   }
   SW = new Swiper('#wswiper', {
     direction: 'vertical',
-    effect: 'slide',
-    speed: 0,
+    effect: 'cube',
+    speed: 450,
     resistanceRatio: 0.85,
     mousewheel: true,
+    cubeEffect: {
+      shadow: true,
+      slideShadows: true,
+      shadowOffset: 20,
+      shadowScale: 0.94,
+    },
   });
   SW.on('slideChange', onSlide);
   SW.on('tap', () => toggleReelPlay());
