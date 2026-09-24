@@ -70,7 +70,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun msg(s: String) {
-        view?.findViewById<TextView>(R.id.s_msg)?.text = s
+        // Popup toast only — no inline status text.
         if (isAdded) requireContext().toast(s)
     }
 

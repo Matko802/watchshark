@@ -163,12 +163,5 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
             android:text="Sign out" />
-
-        <TextView
-            android:id="@+id/s_msg"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:textColor="#AAAAAA" />
     </LinearLayout>
 </ScrollView>
