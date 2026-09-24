@@ -127,6 +127,9 @@ object Static {
                 serveMedia(ctx, f.absolutePath, nm, true)
                 return
             }
+            val base = if (uri[1] == 't') Config.thumbsDir else Config.avatarsDir
+            serveMedia(ctx, "$base/$nm", nm, true)
+            return
         }
         if (uri.contains("..")) {
             HttpUtil.writeErr(ctx, 404, "Not found")
