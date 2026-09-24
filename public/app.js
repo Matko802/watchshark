@@ -163,6 +163,7 @@ async function pjaxHead(doc) {
 async function pjaxSwap(url, push) {
   if (pjaxBusy) { location.href = url; return false; }
   pjaxBusy = true;
+  pjaxBar(true);
   try {
     let html;
     try {
@@ -206,6 +207,20 @@ async function pjaxSwap(url, push) {
     return true;
   } finally {
     pjaxBusy = false;
+    pjaxBar(false);
+  }
+}
+function pjaxBar(show) {
+  let bar = document.getElementById('pjaxbar');
+  if (show) {
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'pjaxbar';
+      document.body.appendChild(bar);
+    }
+    bar.style.display = '';
+  } else if (bar) {
+    bar.style.display = 'none';
   }
 }
 async function pjaxGo(url) {

@@ -450,3 +450,7 @@ md-list-item.unread { --md-list-item-container-color: var(--md-sys-color-seconda
   .qpgrid { grid-template-columns: 1fr; }
   .ytmsechead h2 { font-size: 18px; }
 }
+#pjaxbar { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 9999;
+  background: linear-gradient(90deg, transparent, #fff, transparent);
+  background-size: 40% 100%; animation: pjaxslide 1s linear infinite; }
+@keyframes pjaxslide { from { background-position: -40% 0; } to { background-position: 140% 0; } }

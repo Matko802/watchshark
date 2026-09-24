@@ -13,6 +13,7 @@ import org.watchshark.app.data.Video
 class VideoAdapter(
     private val videos: MutableList<Video>,
     private val onOpen: (Video) -> Unit = {},
+    private val layoutRes: Int = R.layout.item_video,
 ) : RecyclerView.Adapter<VideoAdapter.Holder>() {
 
     class Holder(v: View) : RecyclerView.ViewHolder(v) {
@@ -23,7 +24,7 @@ class VideoAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
-        val v = LayoutInflater.from(parent.context).inflate(R.layout.item_video, parent, false)
+        val v = LayoutInflater.from(parent.context).inflate(layoutRes, parent, false)
         return Holder(v)
     }
 
