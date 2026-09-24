@@ -46,43 +46,87 @@
         android:layout_marginBottom="120dp"
         android:orientation="vertical">
 
-        <com.google.android.material.button.MaterialIconButton
-            android:id="@+id/reel_like"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@drawable/ic_favorite_outline"
-            android:contentDescription="Like" 
-            app:backgroundTint="#2b2b2b"
-            app:tint="@android:color/white" />
+                    <com.google.android.material.button.MaterialButton
+                android:id="@+id/reel_like"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:contentDescription="Like"
+                android:insetLeft="0dp"
+                android:insetRight="0dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                app:backgroundTint="#2b2b2b"
+                app:cornerRadius="24dp"
+                app:icon="@drawable/ic_favorite_outline"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconSize="24dp"
+                app:iconTint="@android:color/white"
+                />
 
-        <com.google.android.material.button.MaterialIconButton
-            android:id="@+id/reel_mute"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginTop="12dp"
-            android:src="@drawable/ic_volume_up"
-            android:contentDescription="Mute" 
-            app:backgroundTint="#2b2b2b"
-            app:tint="@android:color/white" />
+                    <com.google.android.material.button.MaterialButton
+                android:id="@+id/reel_mute"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginTop="12dp"
+                android:contentDescription="Mute"
+                android:insetLeft="0dp"
+                android:insetRight="0dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                app:backgroundTint="#2b2b2b"
+                app:cornerRadius="24dp"
+                app:icon="@drawable/ic_volume_up"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconSize="24dp"
+                app:iconTint="@android:color/white"
+                />
 
-        <com.google.android.material.button.MaterialIconButton
-            android:id="@+id/reel_comments"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginTop="12dp"
-            android:src="@drawable/ic_open_in_new"
-            android:contentDescription="Comments" 
-            app:backgroundTint="#2b2b2b"
-            app:tint="@android:color/white" />
+                    <com.google.android.material.button.MaterialButton
+                android:id="@+id/reel_comments"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginTop="12dp"
+                android:contentDescription="Comments"
+                android:insetLeft="0dp"
+                android:insetRight="0dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                app:backgroundTint="#2b2b2b"
+                app:cornerRadius="24dp"
+                app:icon="@drawable/ic_open_in_new"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconSize="24dp"
+                app:iconTint="@android:color/white"
+                />
 
-        <com.google.android.material.button.MaterialIconButton
-            android:id="@+id/reel_quality"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginTop="12dp"
-            android:src="@drawable/ic_settings"
-            android:contentDescription="Quality" 
-            app:backgroundTint="#2b2b2b"
-            app:tint="@android:color/white" />
+                    <com.google.android.material.button.MaterialButton
+                android:id="@+id/reel_quality"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginTop="12dp"
+                android:contentDescription="Quality"
+                android:insetLeft="0dp"
+                android:insetRight="0dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                app:backgroundTint="#2b2b2b"
+                app:cornerRadius="24dp"
+                app:icon="@drawable/ic_settings"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconSize="24dp"
+                app:iconTint="@android:color/white"
+                />
     </LinearLayout>
 </FrameLayout>

@@ -63,14 +63,25 @@
                         android:layout_height="wrap_content"
                         android:text="Play all" />
 
-                    <com.google.android.material.button.MaterialIconButton
-                        android:id="@+id/qp_shuffle"
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
-                        android:src="@drawable/ic_shuffle"
-                        android:contentDescription="Shuffle play" 
-            app:backgroundTint="#2b2b2b"
-            app:tint="@android:color/white" />
+                                <com.google.android.material.button.MaterialButton
+                android:id="@+id/qp_shuffle"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:contentDescription="Shuffle play"
+                android:insetLeft="0dp"
+                android:insetRight="0dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                app:backgroundTint="#2b2b2b"
+                app:cornerRadius="24dp"
+                app:icon="@drawable/ic_shuffle"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconSize="24dp"
+                app:iconTint="@android:color/white"
+                />
                 </LinearLayout>
 
                 <androidx.recyclerview.widget.RecyclerView
@@ -205,34 +216,67 @@
                     android:textSize="12sp" />
             </LinearLayout>
 
-            <com.google.android.material.button.MaterialIconButton
+                        <com.google.android.material.button.MaterialButton
                 android:id="@+id/mini_prev"
                 android:layout_width="44dp"
                 android:layout_height="44dp"
-                android:src="@drawable/ic_skip_previous"
-                android:contentDescription="Previous" 
-            app:backgroundTint="#2b2b2b"
-            app:tint="@android:color/white" />
+                android:contentDescription="Previous"
+                android:insetLeft="0dp"
+                android:insetRight="0dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                app:backgroundTint="#2b2b2b"
+                app:cornerRadius="22dp"
+                app:icon="@drawable/ic_skip_previous"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconSize="24dp"
+                app:iconTint="@android:color/white"
+                />
 
-            <com.google.android.material.button.MaterialIconButton
+                        <com.google.android.material.button.MaterialButton
                 android:id="@+id/mini_play"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_marginStart="4dp"
-                android:src="@drawable/ic_play_arrow"
-                android:contentDescription="Play" 
-            app:backgroundTint="#FFFFFF"
-            app:tint="@android:color/black" />
+                android:contentDescription="Play"
+                android:insetLeft="0dp"
+                android:insetRight="0dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                app:backgroundTint="#FFFFFF"
+                app:cornerRadius="24dp"
+                app:icon="@drawable/ic_play_arrow"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconSize="24dp"
+                app:iconTint="@android:color/black"
+                />
 
-            <com.google.android.material.button.MaterialIconButton
+                        <com.google.android.material.button.MaterialButton
                 android:id="@+id/mini_next"
                 android:layout_width="44dp"
                 android:layout_height="44dp"
                 android:layout_marginStart="4dp"
-                android:src="@drawable/ic_skip_next"
-                android:contentDescription="Next" 
-            app:backgroundTint="#2b2b2b"
-            app:tint="@android:color/white" />
+                android:contentDescription="Next"
+                android:insetLeft="0dp"
+                android:insetRight="0dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                app:backgroundTint="#2b2b2b"
+                app:cornerRadius="22dp"
+                app:icon="@drawable/ic_skip_next"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconSize="24dp"
+                app:iconTint="@android:color/white"
+                />
         </LinearLayout>
     </LinearLayout>
 
@@ -255,14 +299,25 @@
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
-                <com.google.android.material.button.MaterialIconButton
-                    android:id="@+id/full_close"
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
-                    android:src="@drawable/ic_expand_more"
-                    android:contentDescription="Collapse" 
-            app:backgroundTint="#2b2b2b"
-            app:tint="@android:color/white" />
+                            <com.google.android.material.button.MaterialButton
+                android:id="@+id/full_close"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:contentDescription="Collapse"
+                android:insetLeft="0dp"
+                android:insetRight="0dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                app:backgroundTint="#2b2b2b"
+                app:cornerRadius="22dp"
+                app:icon="@drawable/ic_expand_more"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconSize="24dp"
+                app:iconTint="@android:color/white"
+                />
 
                 <TextView
                     android:layout_width="0dp"
@@ -344,34 +399,67 @@
                 android:gravity="center"
                 android:orientation="horizontal">
 
-                <com.google.android.material.button.MaterialIconButton
-                    android:id="@+id/full_prev"
-                    android:layout_width="52dp"
-                    android:layout_height="52dp"
-                    android:src="@drawable/ic_skip_previous"
-                    android:contentDescription="Previous" 
-            app:backgroundTint="#2b2b2b"
-            app:tint="@android:color/white" />
+                            <com.google.android.material.button.MaterialButton
+                android:id="@+id/full_prev"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:contentDescription="Previous"
+                android:insetLeft="0dp"
+                android:insetRight="0dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                app:backgroundTint="#2b2b2b"
+                app:cornerRadius="26dp"
+                app:icon="@drawable/ic_skip_previous"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconSize="24dp"
+                app:iconTint="@android:color/white"
+                />
 
-                <com.google.android.material.button.MaterialIconButton
-                    android:id="@+id/full_play"
-                    android:layout_width="64dp"
-                    android:layout_height="64dp"
-                    android:layout_marginStart="12dp"
-                    android:layout_marginEnd="12dp"
-                    android:src="@drawable/ic_play_arrow"
-                    android:contentDescription="Play" 
-            app:backgroundTint="#FFFFFF"
-            app:tint="@android:color/black" />
+                            <com.google.android.material.button.MaterialButton
+                android:id="@+id/full_play"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="12dp"
+                android:contentDescription="Play"
+                android:insetLeft="0dp"
+                android:insetRight="0dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                app:backgroundTint="#FFFFFF"
+                app:cornerRadius="32dp"
+                app:icon="@drawable/ic_play_arrow"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconSize="24dp"
+                app:iconTint="@android:color/black"
+                />
 
-                <com.google.android.material.button.MaterialIconButton
-                    android:id="@+id/full_next"
-                    android:layout_width="52dp"
-                    android:layout_height="52dp"
-                    android:src="@drawable/ic_skip_next"
-                    android:contentDescription="Next" 
-            app:backgroundTint="#2b2b2b"
-            app:tint="@android:color/white" />
+                            <com.google.android.material.button.MaterialButton
+                android:id="@+id/full_next"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:contentDescription="Next"
+                android:insetLeft="0dp"
+                android:insetRight="0dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                app:backgroundTint="#2b2b2b"
+                app:cornerRadius="26dp"
+                app:icon="@drawable/ic_skip_next"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconSize="24dp"
+                app:iconTint="@android:color/white"
+                />
             </LinearLayout>
 
             <TextView
