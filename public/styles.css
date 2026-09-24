@@ -508,4 +508,8 @@ md-list-item.unread { --md-list-item-container-color: var(--md-sys-color-seconda
   #sidebar a.active { background: #F5F5F5; color: #000; }
   #sidebar md-icon { font-size: 24px; width: 24px; height: 24px; flex-shrink: 0; }
   body.has-sidebar main { margin-left: 220px; }
+  body.has-sidebar main.reelmain {
+    margin-left: calc(220px + (100vw - 220px - 560px) / 2);
+    margin-right: auto;
+  }
 }
