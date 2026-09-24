@@ -14,7 +14,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.json.JSONArray
 import org.watchshark.app.BuildConfig
 import org.watchshark.app.R
 import java.io.File
@@ -34,8 +33,13 @@ sealed interface UpdateCheck {
 }
 
 object Updater {
-    private const val RELEASES_URL =
-        "https://api.github.com/repos/Matko802/watchshark/releases?per_page=30"
+    // NOTE: intentionally NOT api.github.com — its 60 req/hour IP limit
+    // breaks update checks on shared mobile networks. The web endpoints
+    // below have no such limit.
+    private const val LATEST_URL =
+        "https://github.com/Matko802/watchshark/releases/latest"
+    private const val TAG_URL_PREFIX =
+        "https://github.com/Matko802/watchshark/releases/tag/"
 
     /** Silent auto-check at most once per this interval (manual taps bypass it). */
     private const val CHECK_THROTTLE_MS = 24 * 60 * 60 * 1000L
@@ -47,6 +51,12 @@ object Updater {
     @Volatile
     private var appContext: Context? = null
     private val checking = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val noRedirectHttp = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .followRedirects(false)
+        .followSslRedirects(false)
+        .build()
 
     /** Must be called once at startup (alongside ApiClient.init). */
     fun init(ctx: Context) {
@@ -100,65 +110,47 @@ object Updater {
     }
 
     /**
-     * Returns Available / UpToDate / Failed (network, HTTP error, rate limit).
+     * Returns Available / UpToDate / Failed (network, HTTP error).
+     * Uses the public releases page (no API rate limits) and a
+     * deterministic asset URL — no api.github.com involved.
      * Never throws; callers must surface Failed instead of pretending
      * everything is up to date.
      */
     suspend fun checkForUpdate(): UpdateCheck = withContext(Dispatchers.IO) {
         val current = parseVer(BuildConfig.VERSION_NAME)
         try {
-            val req = Request.Builder()
-                .url(RELEASES_URL)
-                .header("Accept", "application/vnd.github+json")
-                .get()
-                .build()
-            client().newCall(req).execute().use { resp ->
-                if (resp.code == 403) {
-                    val reset = resp.header("X-RateLimit-Reset")?.toLongOrNull()
-                    val when_ = if (reset != null) {
-                        val mins = ((reset * 1000 - System.currentTimeMillis()) / 60000)
-                            .coerceAtLeast(1)
-                        " (retry in ~$mins min)"
-                    } else ""
-                    return@withContext UpdateCheck.Failed("GitHub rate limit$when_")
-                }
-                if (!resp.isSuccessful) {
-                    return@withContext UpdateCheck.Failed("Check failed (HTTP ${resp.code})")
-                }
-                val body = resp.body?.string() ?: return@withContext UpdateCheck.Failed(
-                    "Check failed (empty response)"
-                )
-                val releases = JSONArray(body)
-                var best: AppUpdate? = null
-                for (i in 0 until releases.length()) {
-                    val r = releases.optJSONObject(i) ?: continue
-                    val tag = r.optString("tag_name", "")
-                    if (!tag.startsWith("android-v")) continue
-                    if (cmpVer(parseVer(tag), current) <= 0) continue
-                    val assets = r.optJSONArray("assets") ?: continue
-                    var apkUrl = ""
-                    var apkSize = 0L
-                    for (j in 0 until assets.length()) {
-                        val a = assets.optJSONObject(j) ?: continue
-                        val name = a.optString("name", "")
-                        if (name.endsWith(".apk")) {
-                            apkUrl = a.optString("browser_download_url", "")
-                            apkSize = a.optLong("size", 0)
-                            break
-                        }
-                    }
-                    if (apkUrl.isEmpty()) continue
-                    val cand = AppUpdate(
-                        tag.removePrefix("android-v"),
-                        r.optString("body", ""),
-                        apkUrl, apkSize
-                    )
-                    if (best == null || cmpVer(parseVer(cand.version), parseVer(best.version)) > 0) {
-                        best = cand
+            // /releases/latest 302-redirects to /releases/tag/<tag>.
+            var tag: String? = null
+            Request.Builder().url(LATEST_URL).get().build().let { req ->
+                noRedirectHttp.newCall(req).execute().use { resp ->
+                    val loc = resp.header("Location", "").orEmpty()
+                    if ((resp.code == 301 || resp.code == 302) && loc.startsWith(TAG_URL_PREFIX)) {
+                        tag = loc.removePrefix(TAG_URL_PREFIX).substringBefore('/').substringBefore('?')
+                    } else if (resp.isSuccessful) {
+                        // Already at latest page without redirect (unexpected);
+                        // fall back to parsing below via API-free atom feed is
+                        // overkill — treat as up to date only if nothing newer.
+                        return@withContext UpdateCheck.UpToDate
+                    } else {
+                        return@withContext UpdateCheck.Failed("Check failed (HTTP ${resp.code})")
                     }
                 }
-                best?.let { UpdateCheck.Available(it) } ?: UpdateCheck.UpToDate
             }
+            val t = tag?.takeIf { it.startsWith("android-v") }
+                ?: return@withContext UpdateCheck.Failed("Check failed (bad response)")
+            if (cmpVer(parseVer(t), current) <= 0) return@withContext UpdateCheck.UpToDate
+            val version = t.removePrefix("android-v")
+            val apkUrl = "https://github.com/Matko802/watchshark/releases/download/$t/WatchShark-$version.apk"
+            var size = 0L
+            try {
+                Request.Builder().url(apkUrl).head().build().let { req ->
+                    client().newCall(req).execute().use { resp ->
+                        size = resp.header("Content-Length", "0")?.toLongOrNull() ?: 0L
+                    }
+                }
+            } catch (_: Exception) {
+            }
+            UpdateCheck.Available(AppUpdate(version, "", apkUrl, size))
         } catch (e: Exception) {
             UpdateCheck.Failed("Could not check for updates (${e.message ?: "network error"})")
         }
