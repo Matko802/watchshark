@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.PopupMenu
 import android.widget.TextView
 import com.google.android.material.button.MaterialButton
@@ -178,6 +179,7 @@ class WheelsFragment : Fragment() {
     inner class ReelAdapter : RecyclerView.Adapter<ReelAdapter.Holder>() {
         inner class Holder(v: View) : RecyclerView.ViewHolder(v) {
             val playerView: PlayerView = v.findViewById(R.id.reel_player)
+            val thumb: ImageView = v.findViewById(R.id.reel_thumb)
             val title: TextView = v.findViewById(R.id.reel_title)
             val meta: TextView = v.findViewById(R.id.reel_meta)
             val like: MaterialButton = v.findViewById(R.id.reel_like)
@@ -198,6 +200,9 @@ class WheelsFragment : Fragment() {
             // Single shared player: only the visible page holds the surface,
             // otherwise the last-bound page steals it and current page is black.
             h.playerView.player = if (position == selectedPos) player else null
+            h.thumb.loadMedia(vid.thumbnail)
+            h.thumb.visibility =
+                if (position == selectedPos) View.GONE else View.VISIBLE
             h.title.text = vid.title
             h.meta.text = "@${vid.username} • ${fmtNum(vid.views)} views"
             h.like.setIconResource(if (vid.liked) R.drawable.ic_favorite_fill else R.drawable.ic_favorite_outline)

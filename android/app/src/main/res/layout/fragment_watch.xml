@@ -17,12 +17,20 @@
             android:layout_height="240dp"
             android:background="@android:color/black">
 
+            <ImageView
+                android:id="@+id/web_poster"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:background="@android:color/black" />
+
             <androidx.media3.ui.PlayerView
                 android:id="@+id/player"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:background="@android:color/black"
                 app:hide_on_touch="true"
+                app:show_buffering="when_playing"
                 app:show_timeout="3000" />
 
             <com.google.android.material.button.MaterialButton

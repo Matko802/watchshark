@@ -91,6 +91,10 @@ class WatchFragment : Fragment() {
             "${fmtNum(vid.views)} views • ${fmtAge(vid.created_at)} • ${fmtNum(vid.likes)} likes"
         v.findViewById<TextView>(R.id.desc).text = vid.description ?: ""
         v.findViewById<WebmAvatarView>(R.id.avatar).setAvatar(vid.avatar, R.drawable.ic_person)
+        v.findViewById<ImageView>(R.id.web_poster)?.let { poster ->
+            poster.loadMedia(vid.thumbnail)
+            poster.visibility = View.VISIBLE
+        }
         syncLike()
         lifecycleScope.launch {
             try {
@@ -160,7 +164,12 @@ class WatchFragment : Fragment() {
 
     private val ctrlListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) = syncCtrlButtons()
-        override fun onPlaybackStateChanged(state: Int) = syncCtrlButtons()
+        override fun onPlaybackStateChanged(state: Int) {
+            if (state == Player.STATE_READY) {
+                view?.findViewById<View>(R.id.web_poster)?.visibility = View.GONE
+            }
+            syncCtrlButtons()
+        }
     }
 
     private fun syncCtrlButtons() {

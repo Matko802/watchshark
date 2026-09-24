@@ -190,7 +190,7 @@ func cleanName(nm string) bool {
 	return true
 }
 
-func serveMedia(w http.ResponseWriter, r *http.Request, full, name string) {
+func serveMedia(w http.ResponseWriter, r *http.Request, full, name string, immutable ...bool) {
 	ext := strings.ToLower(filepath.Ext(name))
 	ct, ok := mediaTypes[ext]
 	if !ok {
@@ -208,6 +208,9 @@ func serveMedia(w http.ResponseWriter, r *http.Request, full, name string) {
 		return
 	}
 	w.Header().Set("Content-Type", ct)
+	if len(immutable) > 0 && immutable[0] {
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	}
 	http.ServeContent(w, r, name, fi.ModTime(), f)
 }
 
@@ -231,7 +234,7 @@ func serveStatic(w http.ResponseWriter, r *http.Request, uri string) {
 		default:
 			base = avatarsDir
 		}
-		serveMedia(w, r, filepath.Join(base, nm), nm)
+		serveMedia(w, r, filepath.Join(base, nm), nm, true)
 		return
 	}
 	if strings.Contains(uri, "..") {

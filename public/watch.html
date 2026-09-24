@@ -187,6 +187,7 @@ async function init() {
   cIdx = 0;
   cCollapsed = true;
   renderComments();
+  if (VID.thumbnail) document.getElementById('vid').poster = VID.thumbnail;
   initPlayer(VID.src);
   renderFollow();
   loadUpnext();

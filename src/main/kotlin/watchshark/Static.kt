@@ -11,7 +11,7 @@ object Static {
         return if (i >= 0) name.substring(i).lowercase() else ""
     }
 
-    fun serveMedia(ctx: Context, full: String, name: String) {
+    fun serveMedia(ctx: Context, full: String, name: String, immutable: Boolean = false) {
         val f = File(full)
         if (!f.exists() || !f.isFile) {
             HttpUtil.writeErr(ctx, 404, "Not found")
@@ -23,6 +23,11 @@ object Static {
         ctx.header("Content-Type", ct)
         ctx.header("Accept-Ranges", "bytes")
         ctx.header("X-Content-Type-Options", "nosniff")
+        // Media filenames are content hashes — immutable forever, safe to
+        // cache hard (YouTube-style edge/client caching for instant revisits).
+        if (immutable) {
+            ctx.header("Cache-Control", "public, max-age=31536000, immutable")
+        }
         val isHead = ctx.method().name == "HEAD"
         if (isHead) {
             // headers only; still need Content-Length
@@ -106,11 +111,16 @@ object Static {
                 return
             }
             val base = when (uri[1]) {
-                'v' -> Config.videosDir
+                'v' -> null // resolved per kind subdir below
                 't' -> Config.thumbsDir
                 else -> Config.avatarsDir
             }
-            serveMedia(ctx, "$base/$nm", nm)
+            if (uri[1] == 'v') {
+                val f = Config.resolveVideo(nm)
+                serveMedia(ctx, f.absolutePath, nm, true)
+                return
+            }
+            serveMedia(ctx, "$base/$nm", nm, true)
             return
         }
         if (uri.contains("..")) {
@@ -201,7 +211,7 @@ object Static {
             var mt = str("mimetype")
             if (mt.isEmpty()) mt = "video/mp4"
             sb.append(metaTag("og:video:type", mt))
-            val (w, h, ok) = Media.probeDims("${Config.videosDir}/${src.removePrefix("/v/")}")
+            val (w, h, ok) = Media.probeDims(Config.resolveVideo(src.removePrefix("/v/")).absolutePath)
             if (ok) {
                 sb.append(metaTag("og:video:width", w.toString()))
                 sb.append(metaTag("og:video:height", h.toString()))

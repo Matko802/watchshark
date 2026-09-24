@@ -26,6 +26,9 @@ fun main() {
     Config.load()
     File(Config.dataDir).mkdirs()
     File(Config.videosDir).mkdirs()
+    File("${Config.videosDir}/videos").mkdirs()
+    File("${Config.videosDir}/wheels").mkdirs()
+    File("${Config.videosDir}/music").mkdirs()
     File(Config.thumbsDir).mkdirs()
     File(Config.avatarsDir).mkdirs()
     try {

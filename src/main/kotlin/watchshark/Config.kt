@@ -58,4 +58,31 @@ object Config {
     }
 
     fun siteBase(): String = appUrl.trimEnd('/')
+
+    /** Kind-separated storage: videos/ wheels/ music/ under videosDir. */
+    fun videoKindDir(kind: String?): String = when (kind) {
+        "wheel" -> "wheels"
+        "music" -> "music"
+        else -> "videos"
+    }
+
+    /** Upload target dir for a kind (created on demand). */
+    fun videoDirFor(kind: String?): java.io.File =
+        java.io.File("$videosDir/${videoKindDir(kind)}").apply { mkdirs() }
+
+    /**
+     * Resolve a stored video filename to its file. New uploads live in
+     * kind subdirs; legacy files sit flat in videosDir — try subdirs
+     * first, then the root, so old links keep working.
+     */
+    fun resolveVideo(name: String, kind: String? = null): java.io.File {
+        val clean = name.substringAfterLast('/').substringAfterLast('\\')
+        val dirs = (listOfNotNull(kind?.let { videoKindDir(it) }) + listOf("videos", "wheels", "music", ""))
+            .distinct()
+        for (d in dirs) {
+            val f = if (d.isEmpty()) java.io.File(videosDir, clean) else java.io.File("$videosDir/$d", clean)
+            if (f.isFile) return f
+        }
+        return java.io.File(videosDir, clean)
+    }
 }

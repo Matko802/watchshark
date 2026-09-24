@@ -5,6 +5,13 @@
     android:layout_height="match_parent"
     android:background="@android:color/black">
 
+    <ImageView
+        android:id="@+id/reel_thumb"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/black"
+        android:scaleType="centerCrop" />
+
     <androidx.media3.ui.PlayerView
         android:id="@+id/reel_player"
         android:layout_width="match_parent"
