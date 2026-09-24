@@ -161,18 +161,17 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px 16px 96px; }
 .cardlink { text-decoration: none; color: inherit; }
 .m3card {
   background: transparent;
-  border-radius: 12px; overflow: hidden;
   box-shadow: none;
 }
-.m3card .media { width: 100%; aspect-ratio: 16/9; object-fit: cover; background: #000; display: block; }
+.m3card .media { width: 100%; aspect-ratio: 16/9; object-fit: cover; background: #000; display: block; border-radius: 12px; }
 .m3card .meta { display: flex; gap: 10px; padding: 10px 4px; align-items: flex-start; }
 .m3card .metatext { min-width: 0; }
 .m3card h3 { margin: 0 0 4px; font-size: 16px; font-weight: 500; line-height: 1.4; }
 .m3card small { color: var(--md-sys-color-on-surface-variant); }
-.mnoart { display: flex; align-items: center; justify-content: center; aspect-ratio: 16/9; background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
+.mnoart { display: flex; align-items: center; justify-content: center; aspect-ratio: 16/9; background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); border-radius: 12px; }
 .mnoart md-icon { font-size: 48px; width: 48px; height: 48px; }
 .wgrid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
-.wcard .wmedia { width: 100%; aspect-ratio: 9/16; object-fit: cover; background: #000; display: block; }
+.wcard .wmedia { width: 100%; aspect-ratio: 9/16; object-fit: cover; background: #000; display: block; border-radius: 12px; }
 .wcard .wmeta { padding: 8px 4px; }
 .wcard h3 { margin: 0 0 4px; font-size: 14px; font-weight: 500; line-height: 1.4; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .wcard small { color: var(--md-sys-color-on-surface-variant); }
