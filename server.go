@@ -304,6 +304,7 @@ func openDB() error {
 		"ALTER TABLE videos ADD COLUMN orientation TEXT DEFAULT 'h'",
 		"ALTER TABLE videos ADD COLUMN renditions TEXT DEFAULT NULL",
 		"ALTER TABLE videos ADD COLUMN kind TEXT DEFAULT NULL",
+		"ALTER TABLE comments ADD COLUMN parent_id INTEGER DEFAULT NULL",
 	} {
 		if _, err = db.Exec(col); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
 			return err
@@ -1194,22 +1195,32 @@ func handleGetVideo(w http.ResponseWriter, r *http.Request, id int64) {	viewer :
 		return
 	}
 	type comment struct {
-		ID        int64  `json:"id"`
-		Body      string `json:"body"`
-		CreatedAt string `json:"created_at"`
-		Username  string `json:"username"`
-		Avatar    any    `json:"avatar"`
+		ID             int64  `json:"id"`
+		Body           string `json:"body"`
+		CreatedAt      string `json:"created_at"`
+		Username       string `json:"username"`
+		Avatar         any    `json:"avatar"`
+		ParentID       any    `json:"parent_id"`
+		ParentUsername any    `json:"parent_username"`
 	}
 	comments := []comment{}
 	dbMu.Lock()
-	rows, err := db.Query("SELECT c.id,c.body,c.created_at,u.username,u.avatar FROM comments c JOIN users u ON u.id=c.user_id WHERE c.video_id=? ORDER BY c.id DESC LIMIT 50", id)
+	rows, err := db.Query(`SELECT c.id,c.body,c.created_at,u.username,u.avatar,c.parent_id,pu.username FROM comments c JOIN users u ON u.id=c.user_id LEFT JOIN comments pc ON pc.id=c.parent_id LEFT JOIN users pu ON pu.id=pc.user_id WHERE c.video_id=? ORDER BY c.id DESC LIMIT 50`, id)
 	if err == nil {
 		for rows.Next() {
 			var c comment
 			var av sql.NullString
-			if err := rows.Scan(&c.ID, &c.Body, &c.CreatedAt, &c.Username, &av); err == nil {
+			var pid sql.NullInt64
+			var pun sql.NullString
+			if err := rows.Scan(&c.ID, &c.Body, &c.CreatedAt, &c.Username, &av, &pid, &pun); err == nil {
 				if av.Valid {
 					c.Avatar = "/a/" + av.String
+				}
+				if pid.Valid {
+					c.ParentID = pid.Int64
+				}
+				if pun.Valid {
+					c.ParentUsername = pun.String
 				}
 				comments = append(comments, c)
 			}
@@ -1448,7 +1459,8 @@ func handleComment(w http.ResponseWriter, r *http.Request, id int64) {
 		return
 	}
 	var b struct {
-		Body string `json:"body"`
+		Body     string `json:"body"`
+		ParentID *int64 `json:"parent_id"`
 	}
 	if !readJSONBody(w, r, &b) {
 		return
@@ -1461,9 +1473,19 @@ func handleComment(w http.ResponseWriter, r *http.Request, id int64) {
 	dbMu.Lock()
 	var one int
 	exists := db.QueryRow("SELECT 1 FROM videos WHERE id=?", id).Scan(&one) == nil
+	var pid any
+	if b.ParentID != nil {
+		var pv int64
+		if err := db.QueryRow("SELECT video_id FROM comments WHERE id=?", *b.ParentID).Scan(&pv); err != nil || pv != id {
+			dbMu.Unlock()
+			writeErr(w, 400, "Bad parent comment")
+			return
+		}
+		pid = *b.ParentID
+	}
 	var cid int64
 	if exists {
-		if res, err := db.Exec("INSERT INTO comments (video_id,user_id,body) VALUES (?,?,?)", id, uid, body); err == nil {
+		if res, err := db.Exec("INSERT INTO comments (video_id,user_id,body,parent_id) VALUES (?,?,?,?)", id, uid, body, pid); err == nil {
 			cid, _ = res.LastInsertId()
 		}
 	}

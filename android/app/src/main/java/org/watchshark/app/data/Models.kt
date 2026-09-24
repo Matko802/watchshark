@@ -76,7 +76,9 @@ data class Comment(
     val body: String = "",
     @SerializedName("created_at") val created_at: String = "",
     val username: String = "",
-    val avatar: String? = null
+    val avatar: String? = null,
+    @SerializedName("parent_id") val parentId: Long? = null,
+    @SerializedName("parent_username") val parentUsername: String? = null
 )
 
 data class MeResponse(val user: MeUser?)

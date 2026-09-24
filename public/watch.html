@@ -189,10 +189,30 @@ async function init() {
   renderFollow();
   loadUpnext();
 }
+let replyParent = null;
+function startReply(id, username) {
+  replyParent = { id, username };
+  const box = document.getElementById('cbody');
+  box.placeholder = `Reply to @${username}...`;
+  box.focus();
+}
 function commentHTML(c) {
-  return `<md-list-item><div slot="start">${avatarHtml(c.avatar, 'pfp-sm')}</div><div slot="headline"><a class="ulink" href="/channel?user=${esc(c.username)}">${esc(c.username)}</a></div>`
-    + `<div slot="supporting-text">${esc(c.body)}</div>`
-    + `<div slot="trailing-supporting-text">${esc(c.created_at)}</div></md-list-item>`;
+  const kids = (c._replies || []).map(commentHTML).join('');
+  const who = c.parent_username ? `<span class="muted">↳ @${esc(c.parent_username)} </span>` : '';
+  const item = `<md-list-item><div slot="start">${avatarHtml(c.avatar, 'pfp-sm')}</div><div slot="headline"><a class="ulink" href="/channel?user=${esc(c.username)}">${esc(c.username)}</a></div>`
+    + `<div slot="supporting-text">${who}${esc(c.body)}</div>`
+    + `<div slot="trailing-supporting-text">${esc(c.created_at)} <md-text-button onclick="startReply(${c.id}, '${esc(c.username)}')">Reply</md-text-button></div></md-list-item>`;
+  return item + (kids ? `<div style="margin-left:36px">${kids}</div>` : '');
+}
+function threadComments(items) {
+  const byId = new Map(items.map((c) => [c.id, { ...c, _replies: [] }]));
+  const top = [];
+  byId.forEach((c) => {
+    const p = c.parent_id != null ? byId.get(c.parent_id) : null;
+    if (p) p._replies.push(c);
+    else top.push(c);
+  });
+  return top;
 }
 function renderComments() {
   stopCmtTimer();
@@ -204,7 +224,7 @@ function renderComments() {
     prev.style.display = 'none';
     tog.style.display = '';
     list.style.display = '';
-    list.innerHTML = cItems.map(commentHTML).join('') || '<p class="muted">No comments yet.</p>';
+    list.innerHTML = threadComments(cItems).map(commentHTML).join('') || '<p class="muted">No comments yet.</p>';
     return;
   }
   list.style.display = 'none';
@@ -449,24 +469,14 @@ function initPlayer(src) {
 }
 function autoPlay() {
   if (!P) return;
+  // No autoplay and no forced mute: show the big play button, sound on.
   P.wantAuto = true;
   P.forceMuted = false;
   P.vid.muted = false;
   syncMuteIcon();
   P.unmute.style.display = 'none';
-  P.vid.play().then(() => {
-    if (P) P.unmute.style.display = 'none';
-  }).catch(() => {
-    if (!P) return;
-    P.forceMuted = true;
-    P.vid.muted = true;
-    syncMuteIcon();
-    P.vid.play().then(() => {
-      if (P) P.unmute.style.display = '';
-    }).catch(() => {
-      if (P) P.unmute.style.display = 'none';
-    });
-  });
+  P.bigIcon.textContent = 'play_arrow';
+  P.bigplay.style.display = '';
 }
 function unmuteGesture() {
   if (!P || !P.forceMuted) return;
@@ -560,17 +570,9 @@ function qualOptions() {
   o.push({ label: 'Source', src: VID.src });
   return o;
 }
-function autoPick(o) {
-  // Prefer light renditions so playback starts fast and doesn't stall:
-  // 720p -> 480p -> 360p -> Source. Source originals can be gigabytes.
-  return o.find((x) => x.label === '720p')
-    || o.find((x) => x.label === '480p')
-    || o.find((x) => x.label === '360p')
-    || o[o.length - 1];
-}
 function applyAutoQuality() {
   const o = qualOptions();
-  let pick = autoPick(o).src;
+  let pick = o[o.length - 1].src;
   try {
     const c = navigator.connection;
     if (c && (c.saveData || c.effectiveType === 'slow-2g' || c.effectiveType === '2g' || c.effectiveType === '3g')) {
@@ -703,13 +705,17 @@ async function del() {
 async function sendComment() {
   if (!(await me())) return openAuth('login');
   const body = document.getElementById('cbody').value;
+  const payload = { body };
+  if (replyParent) payload.parent_id = replyParent.id;
   const r = await fetch(`/api/videos/${id}/comments`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    credentials: 'include', body: JSON.stringify({ body }),
+    credentials: 'include', body: JSON.stringify(payload),
   });
   const j = await r.json();
   if (!r.ok) return alert(j.error);
   document.getElementById('cbody').value = '';
+  document.getElementById('cbody').placeholder = 'Add a comment...';
+  replyParent = null;
   init();
 }
 document.getElementById('cbody').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendComment(); });
@@ -723,7 +729,7 @@ init();
 window.__destroy = function() {
   destroyPlayer();
 };
-Object.assign(window, { like, toggleFollow, sendComment, openDelDialog, closeDelDialog, adminDel, applyQualityOpt, openEditDialog, closeEditDialog, saveEdit });
+Object.assign(window, { like, toggleFollow, sendComment, startReply, openDelDialog, closeDelDialog, adminDel, applyQualityOpt, openEditDialog, closeEditDialog, saveEdit });
 };
 window.__boot();
 </script>

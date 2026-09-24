@@ -29,7 +29,7 @@ class WheelsFragment : Fragment() {
     private lateinit var adapter: ReelAdapter
     private var loading = false
     private var exhausted = false
-    private var muted = true
+    private var muted = false
     private var selectedPos = 0
     private val qualityOverride = mutableMapOf<Long, String>()
 
@@ -40,7 +40,6 @@ class WheelsFragment : Fragment() {
     override fun onViewCreated(view: View, saved: Bundle?) {
         loadSeen()
         player = ApiClient.buildPlayer(requireContext()).also { exo ->
-            exo.volume = 0f
             exo.addListener(object : Player.Listener {
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                     val idx = exo.currentMediaItemIndex
@@ -64,7 +63,8 @@ class WheelsFragment : Fragment() {
                     if (exo.currentMediaItemIndex != position && position < exo.mediaItemCount) {
                         exo.seekTo(position, 0)
                     }
-                    exo.playWhenReady = true
+                    // No autoplay: stay paused, tap the reel to play.
+                    exo.playWhenReady = false
                 }
                 if (position >= videos.size - 3) loadMore()
             }
@@ -149,12 +149,8 @@ class WheelsFragment : Fragment() {
                 } else {
                     adapter.notifyDataSetChanged()
                     player?.prepare()
-                    if (player?.currentMediaItemIndex == 0 || videos.size <= added) {
-                        player?.seekTo(0, 0)
-                        player?.playWhenReady = true
-                    } else {
-                        player?.playWhenReady = true
-                    }
+                    // No autoplay: reels start paused with sound on, tap to play.
+                    player?.playWhenReady = false
                 }
             } finally {
                 loading = false
@@ -205,7 +201,7 @@ class WheelsFragment : Fragment() {
             h.title.text = vid.title
             h.meta.text = "@${vid.username} • ${fmtNum(vid.views)} views"
             h.like.setIconResource(if (vid.liked) R.drawable.ic_favorite_fill else R.drawable.ic_favorite_outline)
-            h.like.iconTint = android.content.res.ColorStateList.valueOf(if (vid.liked) android.graphics.Color.RED else android.graphics.Color.WHITE)
+            h.like.iconTint = android.content.res.ColorStateList.valueOf(android.graphics.Color.WHITE)
             h.like.alpha = if (vid.liked) 1.0f else 0.6f
             h.mute.setIconResource(if (muted) R.drawable.ic_volume_off else R.drawable.ic_volume_up)
             h.playerView.setOnClickListener { togglePlayPause() }
@@ -244,7 +240,7 @@ class WheelsFragment : Fragment() {
                     vid.likes = res.get("likes")?.asLong ?: vid.likes
                     if (isAdded) {
                         h.like.setIconResource(if (vid.liked) R.drawable.ic_favorite_fill else R.drawable.ic_favorite_outline)
-                        h.like.iconTint = android.content.res.ColorStateList.valueOf(if (vid.liked) android.graphics.Color.RED else android.graphics.Color.WHITE)
+                        h.like.iconTint = android.content.res.ColorStateList.valueOf(android.graphics.Color.WHITE)
                         h.like.alpha = if (vid.liked) 1.0f else 0.6f
                     }
                 } catch (e: Exception) {

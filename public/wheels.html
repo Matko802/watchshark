@@ -263,38 +263,14 @@ function onSlide() {
       v.src = v.dataset.src;
       v.load();
     }
-    v.muted = mutedAll;
-    document.getElementById('rmuteIcon').textContent = v.muted ? 'volume_off' : 'volume_up';
+    v.muted = false;
+    document.getElementById('rmuteIcon').textContent = 'volume_up';
     applyReelAutoQuality();
     onTimeReel();
-    if (localStorage.getItem('ws_autoplay') !== '0') {
-      if (!v.muted) {
-        v.play().then(() => {
-          document.getElementById('rbig').style.display = 'none';
-        }).catch(() => {
-          reelForced = true;
-          v.muted = true;
-          document.getElementById('rmuteIcon').textContent = 'volume_off';
-          v.play().then(() => {
-            document.getElementById('rbig').style.display = 'none';
-          }).catch(() => {
-            document.getElementById('rbigIcon').textContent = 'play_arrow';
-            document.getElementById('rbig').style.display = '';
-          });
-        });
-      } else {
-        v.play().then(() => {
-          document.getElementById('rbig').style.display = 'none';
-        }).catch(() => {
-          document.getElementById('rbigIcon').textContent = 'play_arrow';
-          document.getElementById('rbig').style.display = '';
-        });
-      }
-    } else {
-      pauseOthers();
-      document.getElementById('rbigIcon').textContent = 'play_arrow';
-      document.getElementById('rbig').style.display = '';
-    }
+    // No autoplay and no forced mute: reel starts paused with sound on.
+    pauseOthers();
+    document.getElementById('rbigIcon').textContent = 'play_arrow';
+    document.getElementById('rbig').style.display = '';
   }
   if (SW.activeIndex >= SW.slides.length - 3) loadBatch();
   warmNeighbors();
@@ -365,10 +341,7 @@ function setReelQualitySrc(src, label) {
 }
 function applyReelAutoQuality() {
   const o = reelQualOptions();
-  let pick = (o.find((x) => x.label === '720p')
-    || o.find((x) => x.label === '480p')
-    || o.find((x) => x.label === '360p')
-    || o[o.length - 1]).src;
+  let pick = o[o.length - 1].src;
   try {
     const cn = navigator.connection;
     if (cn && (cn.saveData || cn.effectiveType === 'slow-2g' || cn.effectiveType === '2g' || cn.effectiveType === '3g')) {

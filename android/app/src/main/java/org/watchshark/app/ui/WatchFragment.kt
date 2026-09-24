@@ -51,7 +51,7 @@ class WatchFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, saved: Bundle?) {
-        commentsAdapter = CommentsAdapter(mutableListOf())
+        commentsAdapter = CommentsAdapter { c -> askReply(c) }
         view.findViewById<RecyclerView>(R.id.comments).apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = commentsAdapter
@@ -129,7 +129,8 @@ class WatchFragment : Fragment() {
             exo.addListener(ctrlListener)
             exo.setMediaItem(MediaItem.fromUri(url))
             exo.prepare()
-            exo.play()
+            // No autoplay: big play button shows, user taps to start (with sound).
+            syncCtrlButtons()
         }
         wirePlayerControls(pv)
         ctrlHandler.post(ctrlTick)
@@ -311,8 +312,7 @@ class WatchFragment : Fragment() {
                 if (vid.liked) R.drawable.ic_favorite_fill else R.drawable.ic_favorite_outline
             )
             iconTint = android.content.res.ColorStateList.valueOf(
-                if (vid.liked) android.graphics.Color.RED
-                else context.getColor(android.R.color.white)
+                context.getColor(android.R.color.white)
             )
         }
     }
@@ -350,6 +350,32 @@ class WatchFragment : Fragment() {
                 if (isAdded) view?.snack(httpErrorMessage(e))
             }
         }
+    }
+
+    private fun askReply(to: Comment) {
+        val ctx = context ?: return
+        val input = TextInputEditText(ctx).apply { hint = "Reply to @${to.username}" }
+        AlertDialog.Builder(ctx)
+            .setTitle("Reply to @${to.username}")
+            .setView(input)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Reply") { _, _ ->
+                val body = input.text.toString().trim()
+                if (body.isEmpty()) return@setPositiveButton
+                lifecycleScope.launch {
+                    try {
+                        ApiClient.api.comment(
+                            videoId,
+                            mapOf("body" to body, "parent_id" to to.id)
+                        )
+                        if (!isAdded) return@launch
+                        load()
+                    } catch (e: Exception) {
+                        if (isAdded) view?.snack(httpErrorMessage(e))
+                    }
+                }
+            }
+            .show()
     }
 
     private fun sendComment() {
@@ -424,13 +450,19 @@ class WatchFragment : Fragment() {
             .show()
     }
 
-    class CommentsAdapter(private val items: MutableList<Comment>) :
-        RecyclerView.Adapter<CommentsAdapter.Holder>() {
+    class CommentsAdapter(
+        private var rows: List<Row> = emptyList(),
+        private val onReply: (Comment) -> Unit = {},
+    ) : RecyclerView.Adapter<CommentsAdapter.Holder>() {
+        data class Row(val c: Comment, val depth: Int)
+
         class Holder(v: View) : RecyclerView.ViewHolder(v) {
             val avatar: WebmAvatarView = v.findViewById(R.id.c_avatar)
             val user: TextView = v.findViewById(R.id.c_user)
             val body: TextView = v.findViewById(R.id.c_body)
             val time: TextView = v.findViewById(R.id.c_time)
+            val reply: TextView = v.findViewById(R.id.c_reply)
+            val row: View = v
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
@@ -438,25 +470,48 @@ class WatchFragment : Fragment() {
             return Holder(v)
         }
 
-        override fun getItemCount() = items.size
+        override fun getItemCount() = rows.size
 
         override fun onBindViewHolder(h: Holder, position: Int) {
-            val c = items[position]
+            val (c, depth) = rows[position]
             h.avatar.setAvatar(c.avatar, R.drawable.ic_person)
             h.user.text = "@${c.username}"
-            h.body.text = c.body
+            val prefix = if (c.parentUsername != null) "↳ @${c.parentUsername} " else ""
+            h.body.text = prefix + c.body
             h.time.text = fmtAge(c.created_at)
+            val indent = (12 + depth.coerceAtMost(3) * 28) *
+                h.itemView.resources.displayMetrics.density
+            h.row.setPadding(indent.toInt(), h.row.paddingTop, h.row.paddingRight, h.row.paddingBottom)
+            h.reply.setOnClickListener { onReply(c) }
         }
 
         fun setItems(list: List<Comment>) {
-            items.clear()
-            items.addAll(list)
+            rows = thread(list)
             notifyDataSetChanged()
         }
 
         override fun onViewRecycled(h: Holder) {
             h.avatar.release()
             super.onViewRecycled(h)
+        }
+
+        /** Thread flat comments: top-level first, replies nested under parents. */
+        private fun thread(list: List<Comment>): List<Row> {
+            val byId = list.associateBy { it.id }
+            val children = mutableMapOf<Long, MutableList<Comment>>()
+            val top = mutableListOf<Comment>()
+            list.forEach { c ->
+                val p = c.parentId?.let { byId[it] }
+                if (p != null) children.getOrPut(p.id) { mutableListOf() }.add(c)
+                else top.add(c)
+            }
+            val out = mutableListOf<Row>()
+            fun add(c: Comment, depth: Int) {
+                out.add(Row(c, depth))
+                children[c.id]?.forEach { add(it, depth + 1) }
+            }
+            top.forEach { add(it, 0) }
+            return out
         }
     }
 }

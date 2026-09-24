@@ -112,17 +112,21 @@ object VideoHandlers {
         }
         val comments = mutableListOf<Map<String, Any?>>()
         synchronized(Db.lock) {
-            Db.conn.prepareStatement("SELECT c.id,c.body,c.created_at,u.username,u.avatar FROM comments c JOIN users u ON u.id=c.user_id WHERE c.video_id=? ORDER BY c.id DESC LIMIT 50").use { ps ->
+            Db.conn.prepareStatement("SELECT c.id,c.body,c.created_at,u.username,u.avatar,c.parent_id,pu.username FROM comments c JOIN users u ON u.id=c.user_id LEFT JOIN comments pc ON pc.id=c.parent_id LEFT JOIN users pu ON pu.id=pc.user_id WHERE c.video_id=? ORDER BY c.id DESC LIMIT 50").use { ps ->
                 ps.setLong(1, id)
                 ps.executeQuery().use { rs ->
                     while (rs.next()) {
                         val av = rs.getString(5)
+                        val pid = rs.getObject(6)?.toString()?.toLongOrNull()
+                        val pun = rs.getString(7)
                         comments.add(
                             mapOf(
                                 "id" to rs.getLong(1), "body" to (rs.getString(2) ?: ""),
                                 "created_at" to (rs.getString(3) ?: ""),
                                 "username" to (rs.getString(4) ?: ""),
-                                "avatar" to if (!av.isNullOrEmpty()) "/a/$av" else null
+                                "avatar" to if (!av.isNullOrEmpty()) "/a/$av" else null,
+                                "parent_id" to pid,
+                                "parent_username" to pun
                             )
                         )
                     }
@@ -391,6 +395,7 @@ object VideoHandlers {
             HttpUtil.writeErr(ctx, 400, "Empty comment")
             return
         }
+        val parentId = node.get("parent_id")?.takeUnless { it.isNull }?.asLong()
         var exists = false
         var cid = 0L
         synchronized(Db.lock) {
@@ -398,10 +403,28 @@ object VideoHandlers {
                 ps.setLong(1, id)
                 ps.executeQuery().use { rs -> exists = rs.next() }
             }
+            if (parentId != null) {
+                var pv = -1L
+                Db.conn.prepareStatement("SELECT video_id FROM comments WHERE id=?").use { ps ->
+                    ps.setLong(1, parentId)
+                    ps.executeQuery().use { rs -> if (rs.next()) pv = rs.getLong(1) }
+                }
+                if (pv != id) {
+                    HttpUtil.writeErr(ctx, 400, "Bad parent comment")
+                    return
+                }
+            }
             if (exists) {
-                Db.conn.prepareStatement("INSERT INTO comments (video_id,user_id,body) VALUES (?,?,?)").use { ps ->
-                    ps.setLong(1, id); ps.setLong(2, uid); ps.setString(3, body)
-                    ps.executeUpdate()
+                if (parentId != null) {
+                    Db.conn.prepareStatement("INSERT INTO comments (video_id,user_id,body,parent_id) VALUES (?,?,?,?)").use { ps ->
+                        ps.setLong(1, id); ps.setLong(2, uid); ps.setString(3, body); ps.setLong(4, parentId)
+                        ps.executeUpdate()
+                    }
+                } else {
+                    Db.conn.prepareStatement("INSERT INTO comments (video_id,user_id,body) VALUES (?,?,?)").use { ps ->
+                        ps.setLong(1, id); ps.setLong(2, uid); ps.setString(3, body)
+                        ps.executeUpdate()
+                    }
                 }
                 cid = Db.lastInsertId()
             }

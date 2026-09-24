@@ -47,7 +47,8 @@ DROP TABLE IF EXISTS reset_requests;
                 "ALTER TABLE videos ADD COLUMN status TEXT DEFAULT 'ready'",
                 "ALTER TABLE videos ADD COLUMN orientation TEXT DEFAULT 'h'",
                 "ALTER TABLE videos ADD COLUMN renditions TEXT DEFAULT NULL",
-                "ALTER TABLE videos ADD COLUMN kind TEXT DEFAULT NULL"
+                "ALTER TABLE videos ADD COLUMN kind TEXT DEFAULT NULL",
+                "ALTER TABLE comments ADD COLUMN parent_id INTEGER DEFAULT NULL"
             )
             for (col in alters) {
                 try {

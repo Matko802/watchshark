@@ -51,7 +51,7 @@ interface ApiService {
     suspend fun like(@Path("id") id: Long): JsonObject
 
     @POST("api/videos/{id}/comments")
-    suspend fun comment(@Path("id") id: Long, @Body b: Map<String, String>): JsonObject
+    suspend fun comment(@Path("id") id: Long, @Body b: Map<String, @JvmSuppressWildcards Any>): JsonObject
 
     @Multipart
     @POST("api/videos")
