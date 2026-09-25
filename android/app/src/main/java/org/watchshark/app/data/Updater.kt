@@ -43,8 +43,10 @@ object Updater {
 
     /** Silent auto-check at most once per this interval. */
     private const val SILENT_COOLDOWN_MS = 24 * 60 * 60 * 1000L
-    /** Manual taps share a shorter cooldown so spamming can't hammer GitHub. */
-    private const val MANUAL_COOLDOWN_MS = 60 * 60 * 1000L
+    // Manual taps share a short cooldown so spam-tapping can't hammer
+    // GitHub. Kept tiny on purpose: a long cooldown makes the app claim
+    // "up to date" while newer releases drop in between checks.
+    private const val MANUAL_COOLDOWN_MS = 5 * 60 * 1000L
     private const val PREFS = "watchshark_update"
     private const val KEY_LAST_CHECK = "last_check"
 
@@ -129,10 +131,10 @@ object Updater {
                     if ((resp.code == 301 || resp.code == 302) && loc.startsWith(TAG_URL_PREFIX)) {
                         tag = loc.removePrefix(TAG_URL_PREFIX).substringBefore('/').substringBefore('?')
                     } else if (resp.isSuccessful) {
-                        // Already at latest page without redirect (unexpected);
-                        // fall back to parsing below via API-free atom feed is
-                        // overkill — treat as up to date only if nothing newer.
-                        return@withContext UpdateCheck.UpToDate
+                        // /latest should always redirect; a 200 here means we
+                        // got some page, not a version answer — never claim
+                        // "up to date" on a guess.
+                        return@withContext UpdateCheck.Failed("Check failed (unexpected response)")
                     } else {
                         return@withContext UpdateCheck.Failed("Check failed (HTTP ${resp.code})")
                     }
@@ -168,7 +170,10 @@ object Updater {
         host.lifecycleScope.launch {
             try {
                 val result = checkForUpdate()
-                if (result is UpdateCheck.Available || result is UpdateCheck.UpToDate) {
+                // Only a clean "up to date" resets the silent timer. If an
+                // update was found but dismissed, it must prompt again on
+                // the next launch instead of going quiet for 24 hours.
+                if (result is UpdateCheck.UpToDate) {
                     stampCheck()
                 }
                 if (result is UpdateCheck.Available && host.isAdded) {
@@ -190,7 +195,7 @@ object Updater {
         }
         if (cooledDown(MANUAL_COOLDOWN_MS)) {
             checking.set(false)
-            onStatus("Already checked — up to date")
+            onStatus("Checked recently — try again in a few minutes")
             return
         }
         host.lifecycleScope.launch {
