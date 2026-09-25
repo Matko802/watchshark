@@ -1,12 +1,9 @@
 package org.watchshark.app.ui
 
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.TextView
 import androidx.fragment.app.Fragment
@@ -14,7 +11,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.tabs.TabLayout
-import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.launch
 import org.watchshark.app.MainActivity
 import org.watchshark.app.R
@@ -26,8 +22,18 @@ class HomeFragment : Fragment() {
     private var query = ""
     private var pages = 1
     private lateinit var adapter: VideoAdapter
-    private val searchHandler = Handler(Looper.getMainLooper())
-    private var searchRunnable: Runnable? = null
+    // Retained across view recreation so backing out of a detail slides
+    // the already-loaded feed in instead of a blank grid that pops late.
+    private val cached = mutableListOf<org.watchshark.app.data.Video>()
+
+    /** Driven by the topbar search input. */
+    fun setQuery(q: String) {
+        if (query == q) return
+        query = q
+        load(1)
+    }
+
+    fun currentQuery(): String = query
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, saved: Bundle?): View {
         return inflater.inflate(R.layout.fragment_home, container, false)
@@ -39,27 +45,12 @@ class HomeFragment : Fragment() {
         grid.layoutManager = GridLayoutManager(requireContext(), gridSpan(requireContext()))
         grid.clearBottomBar()
         grid.adapter = adapter
-
-        val search: TextInputEditText = view.findViewById(R.id.search)
-        search.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                query = search.text.toString()
-                load(1)
-                true
-            } else false
+        if (cached.isNotEmpty()) {
+            adapter.setItems(cached)
+            page = 1
+            view.findViewById<Button>(R.id.more_btn).visibility =
+                if (page < pages) View.VISIBLE else View.GONE
         }
-        search.addTextChangedListener(object : android.text.TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
-            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
-            override fun afterTextChanged(s: android.text.Editable?) {
-                searchRunnable?.let { searchHandler.removeCallbacks(it) }
-                searchRunnable = Runnable {
-                    query = s.toString()
-                    load(1)
-                }
-                searchHandler.postDelayed(searchRunnable!!, 500)
-            }
-        })
 
         view.findViewById<TabLayout>(R.id.tabs).addOnTabSelectedListener(
             object : TabLayout.OnTabSelectedListener {
@@ -89,7 +80,12 @@ class HomeFragment : Fragment() {
                 if (!isAdded) return@launch
                 page = p
                 pages = res.pages.toInt()
-                if (p == 1) adapter.setItems(res.videos.orEmpty()) else adapter.append(res.videos.orEmpty())
+                val ready = res.videos.orEmpty()
+                if (p == 1) {
+                    cached.clear()
+                    cached.addAll(ready)
+                    adapter.setItems(ready)
+                } else adapter.append(ready)
                 v.findViewById<Button>(R.id.more_btn).visibility =
                     if (p < pages) View.VISIBLE else View.GONE
             } catch (e: Exception) {

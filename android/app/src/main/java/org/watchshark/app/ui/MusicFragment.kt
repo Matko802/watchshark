@@ -21,6 +21,9 @@ class MusicFragment : Fragment() {
     private var sort = "new"
     private var pages = 1
     private lateinit var adapter: VideoAdapter
+    // Same as HomeFragment: rebind instantly on return so the back
+    // animation slides content in, not a blank grid.
+    private val cached = mutableListOf<org.watchshark.app.data.Video>()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, saved: Bundle?): View {
         return inflater.inflate(R.layout.fragment_music, container, false)
@@ -33,6 +36,12 @@ class MusicFragment : Fragment() {
         grid.clearBottomBar()
         view.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.grid).clearBottomBar()
         grid.adapter = adapter
+        if (cached.isNotEmpty()) {
+            adapter.setItems(cached)
+            page = 1
+            view.findViewById<Button>(R.id.more_btn).visibility =
+                if (page < pages) View.VISIBLE else View.GONE
+        }
 
         view.findViewById<TabLayout>(R.id.tabs).addOnTabSelectedListener(
             object : TabLayout.OnTabSelectedListener {
@@ -63,7 +72,11 @@ class MusicFragment : Fragment() {
                 page = p
                 pages = res.pages.toInt()
                 val ready = res.videos.orEmpty().filter { it.status == "ready" }
-                if (p == 1) adapter.setItems(ready) else adapter.append(ready)
+                if (p == 1) {
+                    cached.clear()
+                    cached.addAll(ready)
+                    adapter.setItems(ready)
+                } else adapter.append(ready)
                 v.findViewById<Button>(R.id.more_btn).visibility =
                     if (p < pages) View.VISIBLE else View.GONE
             } catch (e: Exception) {

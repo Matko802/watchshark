@@ -1,12 +1,18 @@
 package org.watchshark.app
 
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.View
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.animation.doOnEnd
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
@@ -62,6 +68,10 @@ class MainActivity : AppCompatActivity() {
                     isEnabled = true
                     return
                 }
+                if (searchExpanded) {
+                    collapseSearch(clear = true)
+                    return
+                }
                 if (tabHistory.size > 1) {
                     tabHistory.removeLast()
                     goRoot(rootFragment(tabHistory.last()), tabHistory.last(), false)
@@ -74,6 +84,7 @@ class MainActivity : AppCompatActivity() {
         // If the last session crashed, show the report right away so the
         // user can copy + send it instead of just seeing "app stopped".
         org.watchshark.app.data.CrashLog.showNow(this)
+        setupTopSearch()
 
         findViewById<View>(R.id.brand_icon).setOnClickListener { showHome() }
         findViewById<View>(R.id.brand_text).setOnClickListener { showHome() }
@@ -238,6 +249,112 @@ class MainActivity : AppCompatActivity() {
             .commit()
     }
 
+    private fun setupTopSearch() {
+        val btn: ImageButton = findViewById(R.id.top_search_btn)
+        val input: EditText = findViewById(R.id.top_search)
+        btn.setOnClickListener {
+            if (searchExpanded) collapseSearch(clear = true) else expandSearch()
+        }
+        input.setOnEditorActionListener { v, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                submitTopSearch(input.text.toString())
+                hideKeyboard(v)
+                true
+            } else false
+        }
+        input.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                if (searchSyncing) return
+                searchPending?.let { searchHandler.removeCallbacks(it) }
+                searchPending = Runnable { submitTopSearch(s.toString()) }
+                searchHandler.postDelayed(searchPending!!, 500)
+            }
+        })
+    }
+
+    private fun expandSearch() {
+        val input: EditText = findViewById(R.id.top_search)
+        val btn: ImageButton = findViewById(R.id.top_search_btn)
+        searchExpanded = true
+        btn.setImageResource(R.drawable.ic_close)
+        input.visibility = View.VISIBLE
+        animateSearchWidth(input.width, searchTargetWidth) {
+            input.requestFocus()
+            showKeyboard(input)
+        }
+    }
+
+    private fun collapseSearch(clear: Boolean) {
+        val input: EditText = findViewById(R.id.top_search)
+        val btn: ImageButton = findViewById(R.id.top_search_btn)
+        searchExpanded = false
+        searchPending?.let { searchHandler.removeCallbacks(it) }
+        hideKeyboard(input)
+        input.clearFocus()
+        if (clear) {
+            searchSyncing = true
+            input.text.clear()
+            searchSyncing = false
+            submitTopSearch("")
+        }
+        animateSearchWidth(input.width, 0) {
+            input.visibility = View.GONE
+        }
+        btn.setImageResource(R.drawable.ic_search)
+    }
+
+    /** Website-style expand: width + fade over 250ms. */
+    private fun animateSearchWidth(from: Int, to: Int, onDone: () -> Unit = {}) {
+        val input: EditText = findViewById(R.id.top_search)
+        searchAnimator?.cancel()
+        val range = (to - from).toFloat()
+        searchAnimator = android.animation.ValueAnimator.ofInt(from, to).apply {
+            duration = 250
+            interpolator = android.view.animation.DecelerateInterpolator()
+            addUpdateListener { anim ->
+                val w = anim.animatedValue as Int
+                input.layoutParams.width = w
+                input.requestLayout()
+                input.alpha = if (range == 0f) 1f else ((w - from) / range).coerceIn(0f, 1f)
+            }
+            doOnEnd { onDone() }
+            start()
+        }
+    }
+
+    private fun submitTopSearch(q: String) {
+        val home = supportFragmentManager.findFragmentByTag("home") as? HomeFragment
+        if (currentTab != "home" || home == null || !home.isAdded) {
+            showHome()
+        }
+        (supportFragmentManager.findFragmentByTag("home") as? HomeFragment)?.setQuery(q)
+    }
+
+    /** Keep the input text in sync with the visible Home feed's query. */
+    private fun syncSearchInput() {
+        val input: EditText = findViewById(R.id.top_search) ?: return
+        val q = (supportFragmentManager.findFragmentByTag("home") as? HomeFragment)?.currentQuery().orEmpty()
+        if (input.text.toString() != q) {
+            searchSyncing = true
+            input.setText(q)
+            searchSyncing = false
+        }
+    }
+
+    private fun showKeyboard(v: View) {
+        v.post {
+            (getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager)
+                ?.showSoftInput(v, InputMethodManager.SHOW_IMPLICIT)
+        }
+    }
+
+    private fun hideKeyboard(v: View) {
+        (getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager)
+            ?.hideSoftInputFromWindow(v.windowToken, 0)
+    }
+
     fun showMain() = showHome()
 
     fun showHome() = showRoot(HomeFragment(), "home")
@@ -259,6 +376,15 @@ class MainActivity : AppCompatActivity() {
 
     /** Root-tab history for back navigation (Music back to Home, etc.). */
     private val tabHistory = ArrayDeque<String>()
+
+    /** Topbar expandable search (icon next to the bell, like the website). */
+    private var searchExpanded = false
+    private var searchSyncing = false
+    private var searchAnimator: android.animation.ValueAnimator? = null
+    private val searchHandler = Handler(Looper.getMainLooper())
+    private var searchPending: Runnable? = null
+    private val searchTargetWidth
+        get() = (200 * resources.displayMetrics.density).toInt()
 
     private fun goRoot(fragment: Fragment, tag: String, push: Boolean) {
         val order = listOf("home", "wheels", "music")
@@ -298,6 +424,7 @@ class MainActivity : AppCompatActivity() {
                 org.watchshark.app.data.Updater.checkSilent(it)
             }
         }
+        syncSearchInput()
     }
 
 

@@ -47,6 +47,12 @@ class ChannelFragment : Fragment() {
         grid.clearBottomBar()
         view.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.ch_grid).clearBottomBar()
         grid.adapter = adapter
+        if (allVideos.isNotEmpty()) {
+            // Instant rebind so backing in slides content, not a blank page;
+            // load() refreshes right after.
+            bindHeader(view)
+            renderGrid()
+        }
         view.findViewById<TabLayout>(R.id.ch_tabs).addOnTabSelectedListener(
             object : TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(tab: TabLayout.Tab) {
@@ -66,6 +72,14 @@ class ChannelFragment : Fragment() {
         super.onDestroyView()
     }
 
+    private fun bindHeader(v: View) {
+        v.findViewById<TextView>(R.id.ch_name).text = "@${user.username}"
+        v.findViewById<TextView>(R.id.ch_stats).text =
+            "${fmtNum(user.followers)} followers • ${fmtNum(user.videos)} videos • ${fmtNum(user.views)} views"
+        v.findViewById<WebmAvatarView>(R.id.ch_avatar).setAvatar(user.avatar, R.drawable.ic_person)
+        v.findViewById<WebmAvatarView>(R.id.ch_avatar).setOnline(user.online)
+    }
+
     private fun load() {
         val v = view ?: return
         lifecycleScope.launch {
@@ -74,11 +88,7 @@ class ChannelFragment : Fragment() {
                 if (!isAdded) return@launch
                 user = res.user
                 allVideos = res.videos.orEmpty()
-                v.findViewById<TextView>(R.id.ch_name).text = "@${user.username}"
-                v.findViewById<TextView>(R.id.ch_stats).text =
-                    "${fmtNum(user.followers)} followers • ${fmtNum(user.videos)} videos • ${fmtNum(user.views)} views"
-                v.findViewById<WebmAvatarView>(R.id.ch_avatar).setAvatar(user.avatar, R.drawable.ic_person)
-                v.findViewById<WebmAvatarView>(R.id.ch_avatar).setOnline(user.online)
+                bindHeader(v)
                 val me = try {
                     ApiClient.api.me().user
                 } catch (_: Exception) {
