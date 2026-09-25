@@ -116,9 +116,31 @@ object UploadAlerts {
                     }
                 }
                 checkDm(prefs)
+                flushOutbox()
                 Result.success()
             } catch (_: Exception) {
                 Result.retry()
+            }
+        }
+
+        private suspend fun flushOutbox() {
+            val ctx = applicationContext
+            try {
+                for (e in DmOutbox.all(ctx).take(20)) {
+                    val id = try {
+                        DmOutbox.flushEntry(ctx, e)
+                    } catch (_: java.io.IOException) {
+                        break
+                    } ?: continue
+                    DmOutbox.remove(ctx, e.ts)
+                    if (id > 0) {
+                        val p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                        if (id > p.getLong(KEY_LAST_DM, 0)) {
+                            p.edit().putLong(KEY_LAST_DM, id).apply()
+                        }
+                    }
+                }
+            } catch (_: Exception) {
             }
         }
 

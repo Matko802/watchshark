@@ -56,6 +56,7 @@ class ChatFragment : Fragment() {
             } else false
         }
         view.findViewById<View>(R.id.chat_send).setOnClickListener { send() }
+        flushQueue()
         load(true)
     }
 
@@ -64,6 +65,7 @@ class ChatFragment : Fragment() {
         pollTask = object : Runnable {
             override fun run() {
                 if (isAdded) {
+                    flushQueue()
                     load(false)
                     pollHandler.postDelayed(this, 3000)
                 }
@@ -150,7 +152,19 @@ class ChatFragment : Fragment() {
         lifecycleScope.launch {
             try {
                 val ctx = requireContext()
-                val key = peerKey
+                var key = peerKey
+                if (key == null) {
+                    try {
+                        key = ApiClient.api.dmGetKey(username).get("pubkey")?.asString
+                        peerKey = key
+                    } catch (ex: Exception) {
+                        if (ex is java.io.IOException) {
+                            DmOutbox.add(ctx, username, text)
+                            if (isAdded) v.snack("No connection — will send when online")
+                            return@launch
+                        }
+                    }
+                }
                 if (key == null) {
                     if (isAdded) v.snack("@$username has not opened messages yet")
                     return@launch
@@ -172,7 +186,31 @@ class ChatFragment : Fragment() {
                 )
                 if (isAdded) input.text.clear()
             } catch (e: Exception) {
-                if (isAdded) v.snack(httpErrorMessage(e))
+                if (!isAdded) return@launch
+                if (e is java.io.IOException) {
+                    DmOutbox.add(requireContext(), username, text)
+                    v.snack("No connection — will send when online")
+                } else {
+                    v.snack(httpErrorMessage(e))
+                }
+            }
+        }
+    }
+    private fun flushQueue() {
+        val peer = username
+        lifecycleScope.launch {
+            try {
+                val ctx = requireContext()
+                for (e in DmOutbox.forPeer(ctx, peer)) {
+                    val id = try {
+                        DmOutbox.flushEntry(ctx, e)
+                    } catch (_: java.io.IOException) {
+                        break
+                    } ?: break
+                    DmOutbox.remove(ctx, e.ts)
+                    if (id > maxId) maxId = id
+                }
+            } catch (_: Exception) {
             }
         }
     }
