@@ -8,12 +8,19 @@ import android.graphics.RectF
 import android.os.SystemClock
 import android.util.AttributeSet
 import android.view.View
+import android.view.ViewTreeObserver
 import android.widget.LinearLayout
 
 /**
- * Bottom bar with a live frosted-glass backdrop: samples the content
+ * Top/bottom bar with a live frosted-glass backdrop: samples the content
  * scrolling underneath, blurs it on the CPU at tiny scale (cheap), and
  * lays translucent AMOLED black over it. Toggleable via [blurEnabled].
+ *
+ * The backdrop stays dynamic two ways: a lightweight refresh loop
+ * re-draws at [CAPTURE_MIN_MS] intervals while attached, and a scroll
+ * listener on the target's view tree invalidates immediately on scroll.
+ * (Without these, onDraw only runs once and the blur freezes into a
+ * static snapshot of whatever was behind the bar at first draw.)
  */
 class BlurBarView @JvmOverloads constructor(
     context: Context,
@@ -24,23 +31,70 @@ class BlurBarView @JvmOverloads constructor(
     companion object {
         @Volatile
         var blurEnabled: Boolean = true
+            set(value) {
+                field = value
+                // Apply the toggle to every visible bar right away —
+                // no relaunch needed.
+                synchronized(live) { live.toList().forEach { it.onBlurToggled() } }
+            }
         private const val DOWNSCALE = 10
         private const val CAPTURE_MIN_MS = 150L
         // AMOLED-friendly scrim: translucent black over the blur so the
         // frosted content stays visible instead of drowning in black.
         private const val SCRIM = 0x80000000
+
+        private val live = mutableSetOf<BlurBarView>()
     }
 
     /** Content view sampled from behind this bar (the fragment container). */
     var target: View? = null
+        set(value) {
+            if (field === value) return
+            unregisterTargetScroll()
+            field = value
+            registerTargetScroll()
+            invalidate()
+        }
 
     private var cached: Bitmap? = null
     private var lastCapture = 0L
     private val bitmapPaint = Paint(Paint.FILTER_BITMAP_FLAG)
     private val scrimPaint = Paint().apply { color = SCRIM.toInt() }
 
+    /** Re-draw on an interval so video frames / list changes show through. */
+    private val refresher = object : Runnable {
+        override fun run() {
+            if (isAttachedToWindow && blurEnabled) {
+                invalidate()
+                postDelayed(this, CAPTURE_MIN_MS)
+            }
+        }
+    }
+
+    /** Instant refresh when anything in the target's tree scrolls. */
+    private val scrollListener = ViewTreeObserver.OnScrollChangedListener {
+        if (blurEnabled && isAttachedToWindow) invalidate()
+    }
+    private var observedVto: ViewTreeObserver? = null
+
     init {
         setWillNotDraw(false)
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        synchronized(live) { live.add(this) }
+        registerTargetScroll()
+        startLoop()
+    }
+
+    override fun onDetachedFromWindow() {
+        stopLoop()
+        unregisterTargetScroll()
+        synchronized(live) { live.remove(this) }
+        cached?.recycle()
+        cached = null
+        super.onDetachedFromWindow()
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -48,10 +102,44 @@ class BlurBarView @JvmOverloads constructor(
         super.onDraw(canvas)
     }
 
-    override fun onDetachedFromWindow() {
-        cached?.recycle()
-        cached = null
-        super.onDetachedFromWindow()
+    private fun onBlurToggled() {
+        if (!isAttachedToWindow) return
+        if (blurEnabled) {
+            registerTargetScroll()
+            startLoop()
+        } else {
+            stopLoop()
+            cached?.recycle()
+            cached = null
+        }
+        invalidate()
+    }
+
+    private fun startLoop() {
+        removeCallbacks(refresher)
+        if (blurEnabled) postDelayed(refresher, CAPTURE_MIN_MS)
+    }
+
+    private fun stopLoop() {
+        removeCallbacks(refresher)
+    }
+
+    private fun registerTargetScroll() {
+        val t = target ?: return
+        if (!isAttachedToWindow) return
+        val vto = t.viewTreeObserver
+        if (vto !== observedVto) {
+            unregisterTargetScroll()
+            observedVto = vto
+            runCatching { vto.addOnScrollChangedListener(scrollListener) }
+        }
+    }
+
+    private fun unregisterTargetScroll() {
+        observedVto?.let { vto ->
+            runCatching { vto.removeOnScrollChangedListener(scrollListener) }
+        }
+        observedVto = null
     }
 
     private fun drawBlurBehind(canvas: Canvas) {
@@ -76,14 +164,19 @@ class BlurBarView @JvmOverloads constructor(
 
     private fun renderBlurred(t: View): Bitmap? {
         return try {
-            val loc = IntArray(2)
-            getLocationOnScreen(loc)
+            val selfLoc = IntArray(2)
+            getLocationOnScreen(selfLoc)
+            val targetLoc = IntArray(2)
+            t.getLocationOnScreen(targetLoc)
             val w = (width / DOWNSCALE).coerceAtLeast(1)
             val h = (height / DOWNSCALE).coerceAtLeast(1)
             val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
             val c = Canvas(bmp)
             c.scale(1f / DOWNSCALE, 1f / DOWNSCALE)
-            c.translate(-loc[0].toFloat(), -loc[1].toFloat())
+            c.translate(
+                -(selfLoc[0] - targetLoc[0]).toFloat(),
+                -(selfLoc[1] - targetLoc[1]).toFloat()
+            )
             t.draw(c)
             boxBlur(bmp, 3)
             boxBlur(bmp, 3)
