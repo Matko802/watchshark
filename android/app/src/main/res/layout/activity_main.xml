@@ -7,16 +7,16 @@
     android:background="@android:color/black"
     android:fitsSystemWindows="false">
 
-    <FrameLayout
-        android:id="@+id/container"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:orientation="vertical">
 
-    <org.watchshark.app.ui.BlurBarView
+    <LinearLayout
         android:id="@+id/topbar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="top"
+            android:background="#000000"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:padding="8dp"
@@ -98,13 +98,19 @@
                 android:layout_height="wrap_content"
                 android:text="Sign in"
                 android:visibility="gone" />
-    </org.watchshark.app.ui.BlurBarView>
+    </LinearLayout>
 
-    <org.watchshark.app.ui.BlurBarView
+        <FrameLayout
+            android:id="@+id/container"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+    <LinearLayout
         android:id="@+id/bottomnav"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
+        android:background="#000000"
         android:orientation="vertical"
         android:visibility="gone">
 
@@ -253,5 +259,6 @@
                 android:textSize="11sp" />
         </LinearLayout>
         </LinearLayout>
-    </org.watchshark.app.ui.BlurBarView>
+    </LinearLayout>
+    </LinearLayout>
 </FrameLayout>

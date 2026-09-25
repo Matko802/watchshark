@@ -40,11 +40,6 @@ class MainActivity : AppCompatActivity() {
         org.watchshark.app.data.Updater.init(this)
         setContentView(R.layout.activity_main)
         applyEdgeToEdge()
-        org.watchshark.app.ui.BlurBarView.blurEnabled =
-            getSharedPreferences("watchshark_ui", MODE_PRIVATE).getBoolean("blur", true)
-        val container: View = findViewById(R.id.container)
-        (findViewById<View>(R.id.bottomnav) as? org.watchshark.app.ui.BlurBarView)?.target = container
-        (findViewById<View>(R.id.topbar) as? org.watchshark.app.ui.BlurBarView)?.target = container
         // If the last session crashed, show the report right away so the
         // user can copy + send it instead of just seeing "app stopped".
         org.watchshark.app.data.CrashLog.showNow(this)

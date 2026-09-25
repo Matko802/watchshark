@@ -49,15 +49,6 @@ class SettingsFragment : Fragment() {
         }
         view.findViewById<TextView>(R.id.s_version).text =
             "Version ${Updater.currentVersion(requireContext())}"
-        val prefs = requireContext().getSharedPreferences("watchshark_ui", android.content.Context.MODE_PRIVATE)
-        view.findViewById<SwitchMaterial>(R.id.s_blur).apply {
-            isChecked = prefs.getBoolean("blur", true)
-            setOnCheckedChangeListener { _, on ->
-                prefs.edit().putBoolean("blur", on).apply()
-                BlurBarView.blurEnabled = on
-                if (isAdded) msg(if (on) "Blur on" else "Blur off")
-            }
-        }
         view.findViewById<Button>(R.id.s_update).setOnClickListener {
             msg("Checking…")
             Updater.checkManual(this) { status -> if (isAdded) msg(status) }
