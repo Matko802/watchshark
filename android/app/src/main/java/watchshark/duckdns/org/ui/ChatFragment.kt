@@ -15,15 +15,12 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import watchshark.duckdns.org.R
-import watchshark.duckdns.org.data.ApiClient
-import watchshark.duckdns.org.data.DmCrypto
-import watchshark.duckdns.org.data.DmMessage
 import watchshark.duckdns.org.data.DmOutbox
+import watchshark.duckdns.org.data.DmRepo
 
 class ChatFragment : Fragment() {
     private var userId: Long = 0
     private var username: String = ""
-    private var peerKey: String? = null
     private var maxId: Long = 0
     private val pollHandler = Handler(Looper.getMainLooper())
     private var pollTask: Runnable? = null
@@ -81,24 +78,34 @@ class ChatFragment : Fragment() {
         super.onPause()
     }
 
-    private fun bubble(text: String, mine: Boolean) {
+    private fun bubble(text: String, mine: Boolean, at: String) {
         val v = view ?: return
         val list: LinearLayout = v.findViewById(R.id.chat_list)
-        val row = TextView(requireContext()).apply {
+        val row = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            val lpRow = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            lpRow.gravity = if (mine) android.view.Gravity.END else android.view.Gravity.START
+            layoutParams = lpRow
+        }
+        val d = TextView(requireContext()).apply {
             this.text = text
-            setTextColor(android.graphics.Color.WHITE)
+            setTextColor(if (mine) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
             textSize = 15f
             val pad = (12 * resources.displayMetrics.density).toInt()
             setPadding(pad, (8 * resources.displayMetrics.density).toInt(), pad, (8 * resources.displayMetrics.density).toInt())
             background = resources.getDrawable(R.drawable.search_bg, null)
-            val lp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            lp.gravity = if (mine) android.view.Gravity.END else android.view.Gravity.START
-            lp.topMargin = (4 * resources.displayMetrics.density).toInt()
-            lp.bottomMargin = (4 * resources.displayMetrics.density).toInt()
-            layoutParams = lp
+        }
+        row.addView(d)
+        val t = fmtAge(at)
+        if (t.isNotEmpty()) {
+            row.addView(TextView(requireContext()).apply {
+                this.text = t
+                setTextColor(android.graphics.Color.parseColor("#A8A8A8"))
+                textSize = 11f
+            })
         }
         list.addView(row)
         v.findViewById<ScrollView>(R.id.chat_scroll).post {
@@ -111,38 +118,21 @@ class ChatFragment : Fragment() {
         lifecycleScope.launch {
             try {
                 val ctx = requireContext()
-                if (!DmCrypto.ensureUploaded(ctx)) {
-                    if (initial && isAdded) v.snack("Could not set up encryption")
-                    return@launch
-                }
-                if (peerKey == null) {
-                    try {
-                        peerKey = ApiClient.api.dmGetKey(username).get("pubkey")?.asString
-                    } catch (_: Exception) {
-                        peerKey = null
-                    }
-                }
-                val key = peerKey
-                if (key.isNullOrEmpty()) {
-                    if (initial && isAdded) v.snack("@$username has not opened messages yet")
-                    return@launch
-                }
-                val res = ApiClient.api.dmThread(username, if (initial) 0 else maxId, 50)
+                val lines = DmRepo.thread(ctx, username, if (initial) 0 else maxId)
                 if (!isAdded) return@launch
-                val fresh = res.messages.orEmpty().filter { it.id > maxId }.sortedBy { it.id }
-                for (m in fresh) {
-                    val text = DmCrypto.decrypt(ctx, key, m.nonce, m.body) ?: continue
-                    appendMessage(m, text)
+                if (initial && lines.isEmpty()) {
+                    val probe = DmRepo.peerKey(username)
+                    if (probe == null) v.snack("@$username has not opened messages yet")
+                }
+                for (line in lines) {
+                    if (line.id <= maxId) continue
+                    maxId = line.id
+                    bubble(line.text, line.mine, line.at)
                 }
             } catch (e: Exception) {
                 if (initial && isAdded) v.snack(httpErrorMessage(e))
             }
         }
-    }
-
-    private fun appendMessage(m: DmMessage, text: String) {
-        if (m.id > maxId) maxId = m.id
-        bubble(text, m.senderId != userId)
     }
 
     private fun send() {
@@ -153,39 +143,15 @@ class ChatFragment : Fragment() {
         lifecycleScope.launch {
             try {
                 val ctx = requireContext()
-                var key = peerKey
-                if (key == null) {
-                    try {
-                        key = ApiClient.api.dmGetKey(username).get("pubkey")?.asString
-                        peerKey = key
-                    } catch (ex: Exception) {
-                        if (ex is java.io.IOException) {
-                            DmOutbox.add(ctx, username, text)
-                            if (isAdded) v.snack("No connection — will send when online")
-                            return@launch
-                        }
-                    }
-                }
-                if (key == null) {
-                    if (isAdded) v.snack("@$username has not opened messages yet")
-                    return@launch
-                }
-                val (nonce, body) = DmCrypto.encrypt(ctx, key, text) ?: run {
-                    if (isAdded) v.snack("Encrypt failed")
-                    return@launch
-                }
-                val res = ApiClient.api.dmSend(mapOf("to" to username, "nonce" to nonce, "body" to body))
+                val id = DmRepo.send(ctx, username, text)
                 if (!isAdded) return@launch
-                val id = try {
-                    res.get("id")?.asLong ?: 0
-                } catch (_: Exception) {
-                    0
+                if (id == null) {
+                    v.snack("@$username has not opened messages yet")
+                    return@launch
                 }
-                appendMessage(
-                    DmMessage(id = id, senderId = 0, recipientId = userId, nonce = nonce, body = body),
-                    text
-                )
-                if (isAdded) input.text.clear()
+                if (id > maxId) maxId = id
+                input.text.clear()
+                bubble(text, true, "")
             } catch (e: Exception) {
                 if (!isAdded) return@launch
                 if (e is java.io.IOException) {
@@ -197,19 +163,20 @@ class ChatFragment : Fragment() {
             }
         }
     }
+
     private fun flushQueue() {
-        val peer = username
         lifecycleScope.launch {
             try {
                 val ctx = requireContext()
-                for (e in DmOutbox.forPeer(ctx, peer)) {
+                for (e in DmOutbox.forPeer(ctx, username)) {
                     val id = try {
-                        DmOutbox.flushEntry(ctx, e)
+                        DmRepo.send(ctx, e.uname, e.text)
                     } catch (_: java.io.IOException) {
                         break
                     } ?: break
                     DmOutbox.remove(ctx, e.ts)
                     if (id > maxId) maxId = id
+                    if (isAdded) bubble(e.text, true, "")
                 }
             } catch (_: Exception) {
             }

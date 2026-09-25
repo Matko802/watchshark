@@ -60,6 +60,6 @@
             android:layout_marginStart="8dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Send"
-            android:src="@drawable/ic_open_in_new" />
+            android:src="@drawable/ic_send" />
     </LinearLayout>
 </LinearLayout>

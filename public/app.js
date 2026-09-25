@@ -587,7 +587,7 @@ async function initDmButton() {
   a.id = 'dmBtn';
   a.setAttribute('href', '/messages');
   a.setAttribute('aria-label', 'Messages');
-  a.innerHTML = '<md-icon>forum</md-icon>';
+  a.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M4,4h16c1.1,0 2,0.9 2,2v10c0,1.1 -0.9,2 -2,2H8l-4,4V6c0,-1.1 0.9,-2 2,-2z"/></svg>';
   slot.before(a);
 }
 function banMessage(u) {
