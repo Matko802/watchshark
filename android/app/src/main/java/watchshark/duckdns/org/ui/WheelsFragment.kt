@@ -38,6 +38,7 @@ class WheelsFragment : Fragment() {
     /** True once the current item rendered a frame (initial buffering never downgrades). */
     private var wheelReady = false
     private val readyPositions = mutableSetOf<Int>()
+    private val holders = mutableMapOf<Int, ReelAdapter.Holder>()
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, saved: Bundle?): View {
         return inflater.inflate(R.layout.fragment_wheels, container, false)
     }
@@ -62,7 +63,7 @@ class WheelsFragment : Fragment() {
                     } else if (state == Player.STATE_READY) {
                         wheelReady = true
                         val idx = exo.currentMediaItemIndex
-                        if (readyPositions.add(idx)) adapter.notifyItemChanged(idx)
+                        if (readyPositions.add(idx)) holders[idx]?.thumb?.visibility = View.GONE
                     } else if (state == Player.STATE_BUFFERING && exo.playWhenReady && wheelReady) {
                         autoStepDownCurrent(exo)
                     }
@@ -281,7 +282,9 @@ class WheelsFragment : Fragment() {
             }
             h as Holder
             val vid = videos[position]
-            h.playerView.player = if (position == selectedPos) player else null
+            if (h.playerView.player !== player || position != selectedPos) {
+                h.playerView.player = if (position == selectedPos) player else null
+            }
             h.thumb.loadMedia(vid.thumbnail)
             h.thumb.visibility =
                 if (position == selectedPos && readyPositions.contains(position)) View.GONE else View.VISIBLE
@@ -306,13 +309,15 @@ class WheelsFragment : Fragment() {
         override fun onViewAttachedToWindow(holder: RecyclerView.ViewHolder) {
             super.onViewAttachedToWindow(holder)
             if (holder is Holder) {
+                holders[holder.bindingAdapterPosition] = holder
                 holder.playerView.player =
                     if (holder.bindingAdapterPosition == selectedPos) player else null
             }
         }
         override fun onViewDetachedFromWindow(holder: RecyclerView.ViewHolder) {
-            if (holder is Holder && holder.playerView.player != null) {
-                holder.playerView.player = null
+            if (holder is Holder) {
+                if (holder.playerView.player != null) holder.playerView.player = null
+                holders.entries.removeAll { it.value === holder }
             }
             super.onViewDetachedFromWindow(holder)
         }
