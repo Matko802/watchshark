@@ -83,20 +83,4 @@ interface ApiService {
     suspend fun rename(@Body b: Map<String, String>): JsonObject
     @POST("api/auth/change")
     suspend fun changePw(@Body b: Map<String, String>): JsonObject
-    @POST("api/dm/key")
-    suspend fun dmSetKey(@Body b: Map<String, String>): JsonObject
-    @GET("api/dm/key/{user}")
-    suspend fun dmGetKey(@Path("user") user: String): JsonObject
-    @GET("api/friends")
-    suspend fun friends(): FriendsResponse
-    @POST("api/dm/send")
-    suspend fun dmSend(@Body b: Map<String, String>): JsonObject
-    @GET("api/dm/thread")
-    suspend fun dmThread(
-        @Query("user") user: String,
-        @Query("after_id") after: Long,
-        @Query("limit") limit: Int
-    ): DmThreadResponse
-    @GET("api/dm/recent")
-    suspend fun dmRecent(@Query("limit") limit: Int): DmThreadResponse
 }

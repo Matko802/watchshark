@@ -25,13 +25,10 @@ import watchshark.duckdns.org.R
 
 object UploadAlerts {
     const val CHANNEL_UPLOADS = "uploads"
-    const val CHANNEL_DM = "dm"
     const val ACTION_WATCH = "watchshark.duckdns.org.action.WATCH"
-    const val ACTION_DM = "watchshark.duckdns.org.action.DM"
     private const val WORK = "upload-check"
     private const val PREFS = "watchshark_uploads"
     private const val KEY_LAST_ID = "last_notif_id"
-    private const val KEY_LAST_DM = "last_dm_id"
     private const val KEY_ASKED = "asked_perm"
     private const val MAX_PER_RUN = 5
     private const val PERM_CODE = 4001
@@ -45,18 +42,8 @@ object UploadAlerts {
         )
     }
 
-    fun ensureDmChannel(ctx: Context) {
-        if (Build.VERSION.SDK_INT < 26) return
-        val mgr = ctx.getSystemService(NotificationManager::class.java) ?: return
-        if (mgr.getNotificationChannel(CHANNEL_DM) != null) return
-        mgr.createNotificationChannel(
-            NotificationChannel(CHANNEL_DM, "Messages", NotificationManager.IMPORTANCE_HIGH)
-        )
-    }
-
     fun schedule(ctx: Context) {
         ensureChannel(ctx)
-        ensureDmChannel(ctx)
         val req = PeriodicWorkRequestBuilder<UploadCheckWorker>(15, TimeUnit.MINUTES)
             .setConstraints(
                 Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
@@ -115,86 +102,10 @@ object UploadAlerts {
                         }
                     }
                 }
-                checkDm(prefs)
-                flushOutbox()
                 Result.success()
             } catch (_: Exception) {
                 Result.retry()
             }
-        }
-
-        private suspend fun flushOutbox() {
-            val ctx = applicationContext
-            try {
-                for (e in DmOutbox.all(ctx).take(20)) {
-                    val id = try {
-                        DmOutbox.flushEntry(ctx, e)
-                    } catch (_: java.io.IOException) {
-                        break
-                    } ?: continue
-                    DmOutbox.remove(ctx, e.ts)
-                    if (id > 0) {
-                        val p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                        if (id > p.getLong(KEY_LAST_DM, 0)) {
-                            p.edit().putLong(KEY_LAST_DM, id).apply()
-                        }
-                    }
-                }
-            } catch (_: Exception) {
-            }
-        }
-
-        private suspend fun checkDm(prefs: android.content.SharedPreferences) {
-            val ctx = applicationContext
-            val me = try {
-                ApiClient.api.me().user?.id ?: 0
-            } catch (_: Exception) {
-                return
-            }
-            if (me <= 0) return
-            val items = try {
-                ApiClient.api.dmRecent(20).messages.orEmpty()
-            } catch (_: Exception) {
-                return
-            }
-            if (items.isEmpty()) return
-            val last = prefs.getLong(KEY_LAST_DM, 0)
-            val maxId = items.maxOf { it.id }
-            if (last == 0L) {
-                prefs.edit().putLong(KEY_LAST_DM, maxId).apply()
-                return
-            }
-            val fresh = items.filter { it.id > last && it.senderId != me }.sortedBy { it.id }
-                .takeLast(3)
-            prefs.edit().putLong(KEY_LAST_DM, maxId).apply()
-            if (fresh.isEmpty() || !hasPermission(ctx)) return
-            ensureDmChannel(ctx)
-            for (m in fresh) notifyDm(m)
-        }
-
-        private fun notifyDm(m: DmMessage) {
-            val ctx = applicationContext
-            val intent = Intent(ctx, MainActivity::class.java).apply {
-                action = ACTION_DM
-                putExtra("user_id", m.senderId)
-                putExtra("username", m.username)
-            }
-            val pi = PendingIntent.getActivity(
-                ctx,
-                -m.id.toInt(),
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            val built = NotificationCompat.Builder(ctx, CHANNEL_DM)
-                .setSmallIcon(R.drawable.ic_chat)
-                .setContentTitle("New message from @${m.username}")
-                .setContentText("Open chat to read")
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setAutoCancel(true)
-                .setContentIntent(pi)
-                .setGroup("dm")
-                .build()
-            NotificationManagerCompat.from(ctx).notify(-m.id.toInt(), built)
         }
 
         private fun notifyUpload(n: Notif) {

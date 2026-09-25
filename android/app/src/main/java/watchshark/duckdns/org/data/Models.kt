@@ -88,16 +88,4 @@ data class VideosResponse(
 data class ChannelResponse(val user: ChannelUser, val videos: List<Video>? = null)
 data class VideoDetailResponse(val video: Video?, val comments: List<Comment>? = null)
 data class NotificationsResponse(val notifications: List<Notif>? = null, val unread: Int = 0)
-data class Friend(val id: Long = 0, val username: String = "", val avatar: String? = null)
-data class FriendsResponse(val friends: List<Friend>? = null)
-data class DmMessage(
-    val id: Long = 0,
-    @SerializedName("sender_id") val senderId: Long = 0,
-    @SerializedName("recipient_id") val recipientId: Long = 0,
-    val nonce: String = "",
-    val body: String = "",
-    @SerializedName("created_at") val createdAt: String = "",
-    val username: String = ""
-)
-data class DmThreadResponse(val messages: List<DmMessage>? = null)
 data class AdminUsersResponse(val users: List<AdminUser>? = null)

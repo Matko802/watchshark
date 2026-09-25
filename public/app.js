@@ -19,9 +19,6 @@ async function refreshAuth() {
   const lbl = document.getElementById('whoami');
   if (lbl) lbl.innerHTML = u ? `<a class="who" href="/channel?user=${esc(u.username)}">${avatarHtml(u.avatar, 'pfp-sm')}<span>@${esc(u.username)}</span></a>` : '';
   checkBanStatus(u);
-  if (u && typeof crypto !== 'undefined' && crypto.subtle) {
-    try { dmEnsureUploaded(); } catch {}
-  }
   return u;
 }
 function avatarHtml(file, cls) {
@@ -211,7 +208,6 @@ async function pjaxSwap(url, push) {
     ensureSidebar();
     await refreshAuth();
     initBell();
-    initDmButton();
     for (const code of codes) {
       const el = document.createElement('script');
       el.textContent = code;
@@ -499,97 +495,6 @@ async function adminReject(id) {
   renderBell();
   if (typeof loadAdmin === 'function') loadAdmin();
 }
-function b64enc(bytes) {
-  let s = '';
-  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
-  return btoa(s);
-}
-function b64dec(b64) {
-  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-}
-function cmpBytes(a, b) {
-  for (let i = 0; i < Math.min(a.length, b.length); i++) {
-    const d = a[i] - b[i];
-    if (d !== 0) return d;
-  }
-  return a.length - b.length;
-}
-async function dmKeypair() {
-  let saved = null;
-  try { saved = JSON.parse(localStorage.getItem('ws_dm_priv') || 'null'); } catch {}
-  if (saved && saved.priv && saved.pub) {
-    const priv = await crypto.subtle.importKey(
-      'jwk', saved.priv, { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
-    return { priv, pubRaw: b64dec(saved.pub) };
-  }
-  const pair = await crypto.subtle.generateKey(
-    { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
-  const pubRaw = new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey));
-  try {
-    localStorage.setItem('ws_dm_priv', JSON.stringify({
-      priv: await crypto.subtle.exportKey('jwk', pair.privateKey),
-      pub: b64enc(pubRaw),
-    }));
-  } catch {}
-  return { priv: pair.privateKey, pubRaw };
-}
-async function dmSharedKey(priv, myRaw, peerB64) {
-  const peerRaw = b64dec(peerB64);
-  const peerKey = await crypto.subtle.importKey(
-    'raw', peerRaw, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
-  const z = new Uint8Array(await crypto.subtle.deriveBits(
-    { name: 'ECDH', public: peerKey }, priv, 256));
-  const sorted = [myRaw, peerRaw].sort(cmpBytes);
-  const info = new Uint8Array(8 + 65 + 65);
-  info.set(new TextEncoder().encode('ws-dm-v1'), 0);
-  info.set(sorted[0], 8);
-  info.set(sorted[1], 73);
-  const hkdfKey = await crypto.subtle.importKey('raw', z, 'HKDF', false, ['deriveBits']);
-  const okm = await crypto.subtle.deriveBits(
-    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info }, hkdfKey, 256);
-  return crypto.subtle.importKey('raw', okm, 'AES-GCM', false, ['encrypt', 'decrypt']);
-}
-async function dmEncrypt(peerB64, text) {
-  const { priv, pubRaw } = await dmKeypair();
-  const key = await dmSharedKey(priv, pubRaw, peerB64);
-  const nonce = crypto.getRandomValues(new Uint8Array(12));
-  const body = new Uint8Array(await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv: nonce }, key, new TextEncoder().encode(text)));
-  return { nonce: b64enc(nonce), body: b64enc(body) };
-}
-async function dmDecrypt(peerB64, nonceB64, bodyB64) {
-  const { priv, pubRaw } = await dmKeypair();
-  const key = await dmSharedKey(priv, pubRaw, peerB64);
-  const pt = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv: b64dec(nonceB64) }, key, b64dec(bodyB64));
-  return new TextDecoder().decode(pt);
-}
-async function dmEnsureUploaded() {
-  try {
-    if (localStorage.getItem('ws_dm_up') === '1') return true;
-    const { pubRaw } = await dmKeypair();
-    const r = await fetch('/api/dm/key', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', body: JSON.stringify({ pubkey: b64enc(pubRaw) }),
-    });
-    if (!r.ok) return false;
-    localStorage.setItem('ws_dm_up', '1');
-    return true;
-  } catch { return false; }
-}
-async function initDmButton() {
-  const slot = document.getElementById('bellSlot');
-  if (!slot || document.getElementById('dmBtn')) return;
-  let u = null;
-  try { u = await me(); } catch {}
-  if (!u) return;
-  const a = document.createElement('md-icon-button');
-  a.id = 'dmBtn';
-  a.setAttribute('href', '/messages');
-  a.setAttribute('aria-label', 'Messages');
-  a.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M4,4h16c1.1,0 2,0.9 2,2v10c0,1.1 -0.9,2 -2,2H8l-4,4V6c0,-1.1 0.9,-2 2,-2z"/></svg>';
-  slot.before(a);
-}
 function banMessage(u) {
   if (!u) return null;
   if (u.deleted) {
@@ -646,6 +551,5 @@ document.addEventListener('DOMContentLoaded', () => {
   } catch {}
   refreshAuth();
   initBell();
-  initDmButton();
   setInterval(refreshBellBadge, 60000);
 });
