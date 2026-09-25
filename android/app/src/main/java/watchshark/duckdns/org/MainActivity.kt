@@ -196,6 +196,12 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 val me = ApiClient.api.me().user
+                launch {
+                    try {
+                        watchshark.duckdns.org.data.DmCrypto.ensureUploaded(this@MainActivity)
+                    } catch (_: Exception) {
+                    }
+                }
                 findViewById<View>(R.id.topbar).visibility = View.VISIBLE
                 findViewById<View>(R.id.bottomnav).visibility = View.VISIBLE
                 if (me == null) {

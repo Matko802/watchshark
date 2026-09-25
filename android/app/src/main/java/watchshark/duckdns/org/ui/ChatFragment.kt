@@ -147,11 +147,14 @@ class ChatFragment : Fragment() {
         val input: EditText = v.findViewById(R.id.chat_input)
         val text = input.text.toString().trim()
         if (text.isEmpty()) return
-        input.text.clear()
         lifecycleScope.launch {
             try {
                 val ctx = requireContext()
-                val key = peerKey ?: return@launch
+                val key = peerKey
+                if (key == null) {
+                    if (isAdded) v.snack("@$username has not opened messages yet")
+                    return@launch
+                }
                 val (nonce, body) = DmCrypto.encrypt(ctx, key, text) ?: run {
                     if (isAdded) v.snack("Encrypt failed")
                     return@launch
@@ -167,6 +170,7 @@ class ChatFragment : Fragment() {
                     DmMessage(id = id, senderId = 0, recipientId = userId, nonce = nonce, body = body),
                     text
                 )
+                if (isAdded) input.text.clear()
             } catch (e: Exception) {
                 if (isAdded) v.snack(httpErrorMessage(e))
             }

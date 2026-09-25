@@ -19,6 +19,9 @@ async function refreshAuth() {
   const lbl = document.getElementById('whoami');
   if (lbl) lbl.innerHTML = u ? `<a class="who" href="/channel?user=${esc(u.username)}">${avatarHtml(u.avatar, 'pfp-sm')}<span>@${esc(u.username)}</span></a>` : '';
   checkBanStatus(u);
+  if (u && typeof crypto !== 'undefined' && crypto.subtle) {
+    try { dmEnsureUploaded(); } catch {}
+  }
   return u;
 }
 function avatarHtml(file, cls) {
