@@ -63,14 +63,16 @@ object DmCrypto {
         return p.getParameterSpec(ECParameterSpec::class.java)
     }
 
-    private fun decodePeer(b64: String): java.security.PublicKey? = try {
-        val raw = Base64.decode(b64, Base64.DEFAULT)
-        if (raw.size != 65 || raw[0] != 0x04.toByte()) return null
-        val x = BigInteger(1, raw.copyOfRange(1, 33))
-        val y = BigInteger(1, raw.copyOfRange(33, 65))
-        KeyFactory.getInstance("EC").generatePublic(ECPublicKeySpec(ECPoint(x, y), ecParams()))
-    } catch (_: Exception) {
-        null
+    private fun decodePeer(b64: String): java.security.PublicKey? {
+        return try {
+            val raw = Base64.decode(b64, Base64.DEFAULT)
+            if (raw.size != 65 || raw[0] != 0x04.toByte()) return null
+            val x = BigInteger(1, raw.copyOfRange(1, 33))
+            val y = BigInteger(1, raw.copyOfRange(33, 65))
+            KeyFactory.getInstance("EC").generatePublic(ECPublicKeySpec(ECPoint(x, y), ecParams()))
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun cmpBytes(a: ByteArray, b: ByteArray): Int {
@@ -103,28 +105,32 @@ object DmCrypto {
         null
     }
 
-    fun encrypt(ctx: Context, peerB64: String, plain: String): Pair<String, String>? = try {
-        val key = sharedKey(ctx, peerB64) ?: return null
-        val nonce = ByteArray(12)
-        SecureRandom().nextBytes(nonce)
-        val c = Cipher.getInstance("AES/GCM/NoPadding")
-        c.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(128, nonce))
-        val body = c.doFinal(plain.toByteArray(Charsets.UTF_8))
-        Base64.encodeToString(nonce, Base64.NO_WRAP) to
-            Base64.encodeToString(body, Base64.NO_WRAP)
-    } catch (_: Exception) {
-        null
+    fun encrypt(ctx: Context, peerB64: String, plain: String): Pair<String, String>? {
+        return try {
+            val key = sharedKey(ctx, peerB64) ?: return null
+            val nonce = ByteArray(12)
+            SecureRandom().nextBytes(nonce)
+            val c = Cipher.getInstance("AES/GCM/NoPadding")
+            c.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(128, nonce))
+            val body = c.doFinal(plain.toByteArray(Charsets.UTF_8))
+            Base64.encodeToString(nonce, Base64.NO_WRAP) to
+                Base64.encodeToString(body, Base64.NO_WRAP)
+        } catch (_: Exception) {
+            null
+        }
     }
 
-    fun decrypt(ctx: Context, peerB64: String, nonceB64: String, bodyB64: String): String? = try {
-        val key = sharedKey(ctx, peerB64) ?: return null
-        val nonce = Base64.decode(nonceB64, Base64.DEFAULT)
-        val body = Base64.decode(bodyB64, Base64.DEFAULT)
-        val c = Cipher.getInstance("AES/GCM/NoPadding")
-        c.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, nonce))
-        String(c.doFinal(body), Charsets.UTF_8)
-    } catch (_: Exception) {
-        null
+    fun decrypt(ctx: Context, peerB64: String, nonceB64: String, bodyB64: String): String? {
+        return try {
+            val key = sharedKey(ctx, peerB64) ?: return null
+            val nonce = Base64.decode(nonceB64, Base64.DEFAULT)
+            val body = Base64.decode(bodyB64, Base64.DEFAULT)
+            val c = Cipher.getInstance("AES/GCM/NoPadding")
+            c.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, nonce))
+            String(c.doFinal(body), Charsets.UTF_8)
+        } catch (_: Exception) {
+            null
+        }
     }
 
     fun isUploaded(ctx: Context): Boolean =
