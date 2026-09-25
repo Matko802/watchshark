@@ -53,6 +53,14 @@
                 android:src="@drawable/ic_search"
                 android:contentDescription="Search" />
 
+            <ImageButton
+                android:id="@+id/top_messages"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_chat"
+                android:contentDescription="Messages" />
+
             <FrameLayout
                 android:id="@+id/bell_wrap"
                 android:layout_width="48dp"

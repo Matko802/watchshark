@@ -93,6 +93,34 @@ fun main() {
     }
     app.get("/api/me") { AuthHandlers.me(it) }
 
+    // ---- DMs (end-to-end encrypted blobs; server only routes) ----
+    app.post("/api/dm/key") {
+        val (uid, _, ok) = HandlersCommon.authUser(it)
+        if (!ok) HttpUtil.writeErr(it, 401, "Login required") else DmHandlers.setKey(it, uid)
+    }
+    app.get("/api/dm/key/*") { ctx ->
+        val u = ctx.path()
+        val prefix = "/api/dm/key/"
+        val name = if (u.startsWith(prefix)) u.substring(prefix.length) else ""
+        DmHandlers.getKey(ctx, name)
+    }
+    app.get("/api/friends") { ctx ->
+        val (uid, _, ok) = HandlersCommon.authUser(ctx)
+        if (!ok) HttpUtil.writeErr(ctx, 401, "Login required") else DmHandlers.friends(ctx, uid)
+    }
+    app.post("/api/dm/send") { ctx ->
+        val (uid, _, ok) = HandlersCommon.authUser(ctx)
+        if (!ok) HttpUtil.writeErr(ctx, 401, "Login required") else DmHandlers.send(ctx, uid)
+    }
+    app.get("/api/dm/thread") { ctx ->
+        val (uid, _, ok) = HandlersCommon.authUser(ctx)
+        if (!ok) HttpUtil.writeErr(ctx, 401, "Login required") else DmHandlers.thread(ctx, uid)
+    }
+    app.get("/api/dm/recent") { ctx ->
+        val (uid, _, ok) = HandlersCommon.authUser(ctx)
+        if (!ok) HttpUtil.writeErr(ctx, 401, "Login required") else DmHandlers.recent(ctx, uid)
+    }
+
     // ---- videos ----
     app.get("/api/videos") { VideoHandlers.list(it) }
     app.post("/api/videos") {

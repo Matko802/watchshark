@@ -19,7 +19,9 @@ import watchshark.duckdns.org.data.ApiClient
 import watchshark.duckdns.org.ui.AdminFragment
 import watchshark.duckdns.org.ui.AuthFragment
 import watchshark.duckdns.org.ui.ChannelFragment
+import watchshark.duckdns.org.ui.ChatFragment
 import watchshark.duckdns.org.ui.HomeFragment
+import watchshark.duckdns.org.ui.MessagesFragment
 import watchshark.duckdns.org.ui.MusicFragment
 import watchshark.duckdns.org.ui.NotificationsFragment
 import watchshark.duckdns.org.ui.SettingsFragment
@@ -82,6 +84,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.brand_icon).setOnClickListener { showHome() }
         findViewById<View>(R.id.brand_text).setOnClickListener { showHome() }
         findViewById<ImageButton>(R.id.bell_btn).setOnClickListener { openDetail(NotificationsFragment()) }
+        findViewById<ImageButton>(R.id.top_messages).setOnClickListener { openDetail(MessagesFragment()) }
         findViewById<ImageButton>(R.id.top_settings).setOnClickListener { openDetail(SettingsFragment()) }
         findViewById<MaterialButton>(R.id.top_admin).setOnClickListener { openAdmin() }
         findViewById<MaterialButton>(R.id.signin_btn).setOnClickListener { showAuth() }
@@ -128,6 +131,12 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 if (vid > 0) openDetail(WatchFragment.newInstance(vid)) else showHome()
+            }
+            "watchshark.duckdns.org.action.DM" -> {
+                val uid = intent.getLongExtra("user_id", 0)
+                val name = intent.getStringExtra("username") ?: ""
+                if (uid > 0 && name.isNotEmpty()) openDetail(ChatFragment.newInstance(uid, name))
+                else showHome()
             }
             else -> return false
         }
@@ -192,6 +201,7 @@ class MainActivity : AppCompatActivity() {
                 if (me == null) {
                     currentUsername = null
                     findViewById<View>(R.id.bell_wrap).visibility = View.GONE
+                    findViewById<View>(R.id.top_messages).visibility = View.GONE
                     findViewById<View>(R.id.top_settings).visibility = View.GONE
                     findViewById<View>(R.id.top_admin).visibility = View.GONE
                     findViewById<View>(R.id.signin_btn).visibility = View.VISIBLE
@@ -202,9 +212,9 @@ class MainActivity : AppCompatActivity() {
                 }
                 currentUsername = me.username
                 findViewById<View>(R.id.bell_wrap).visibility = View.VISIBLE
+                findViewById<View>(R.id.top_messages).visibility = View.VISIBLE
                 findViewById<View>(R.id.top_settings).visibility = View.VISIBLE
-                findViewById<View>(R.id.top_admin).visibility =
-                    if (me.admin) View.VISIBLE else View.GONE
+                findViewById<View>(R.id.top_admin).visibility = View.GONE
                 findViewById<View>(R.id.signin_btn).visibility = View.GONE
                 val avatar = findViewById<watchshark.duckdns.org.ui.WebmAvatarView>(R.id.nav_avatar)
                 val person = findViewById<ImageView>(R.id.nav_person)
