@@ -157,12 +157,11 @@ class MainActivity : AppCompatActivity() {
                 0,
                 (7 * density).toInt() + bars.bottom
             )
-            root.setPadding(
-                root.paddingLeft,
-                root.paddingTop,
-                root.paddingRight,
-                ime.bottom
-            )
+            val imePx = ime.bottom
+            imeBottomPx = imePx
+            findViewById<View>(R.id.bottom_search_bar)?.let { strip ->
+                if (searchExpanded && !searchAnimating) strip.translationY = -imePx.toFloat()
+            }
             insets
         }
     }
@@ -263,18 +262,20 @@ class MainActivity : AppCompatActivity() {
         val input: EditText = findViewById(R.id.bottom_search)
         val btn: ImageButton = findViewById(R.id.top_search_btn)
         searchExpanded = true
+        searchAnimating = true
         btn.setImageResource(R.drawable.ic_close)
         strip.animate().cancel()
         strip.visibility = View.VISIBLE
         strip.post {
-            strip.translationY = strip.height.toFloat()
+            strip.translationY = (strip.height - imeBottomPx).toFloat()
             strip.alpha = 0f
             strip.animate()
-                .translationY(0f)
+                .translationY(-imeBottomPx.toFloat())
                 .alpha(1f)
                 .setDuration(250)
                 .setInterpolator(android.view.animation.DecelerateInterpolator())
                 .withEndAction {
+                    searchAnimating = false
                     input.requestFocus()
                     showKeyboard(input)
                 }
@@ -286,6 +287,7 @@ class MainActivity : AppCompatActivity() {
         val input: EditText = findViewById(R.id.bottom_search)
         val btn: ImageButton = findViewById(R.id.top_search_btn)
         searchExpanded = false
+        searchAnimating = true
         searchPending?.let { searchHandler.removeCallbacks(it) }
         hideKeyboard(input)
         input.clearFocus()
@@ -298,7 +300,7 @@ class MainActivity : AppCompatActivity() {
         btn.setImageResource(R.drawable.ic_search)
         strip.animate().cancel()
         strip.animate()
-            .translationY(strip.height.toFloat())
+            .translationY((strip.height - imeBottomPx).toFloat())
             .alpha(0f)
             .setDuration(250)
             .setInterpolator(android.view.animation.DecelerateInterpolator())
@@ -306,6 +308,7 @@ class MainActivity : AppCompatActivity() {
                 strip.visibility = View.GONE
                 strip.translationY = 0f
                 strip.alpha = 1f
+                searchAnimating = false
             }
             .start()
     }
@@ -354,6 +357,8 @@ class MainActivity : AppCompatActivity() {
     private val tabHistory = ArrayDeque<String>()
     /** Topbar expandable search (icon next to the bell, like the website). */
     private var searchExpanded = false
+    private var searchAnimating = false
+    private var imeBottomPx = 0
     private var searchSyncing = false
     private val searchHandler = Handler(Looper.getMainLooper())
     private var searchPending: Runnable? = null
