@@ -1,5 +1,4 @@
-package org.watchshark.app.ui
-
+package watchshark.duckdns.org.ui
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -12,23 +11,18 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.tabs.TabLayout
 import kotlinx.coroutines.launch
-import org.watchshark.app.R
-import org.watchshark.app.data.ApiClient
-
+import watchshark.duckdns.org.R
+import watchshark.duckdns.org.data.ApiClient
 /** Music as regular videos: same feed grid as home, square artwork cards. */
 class MusicFragment : Fragment() {
     private var page = 1
     private var sort = "new"
     private var pages = 1
     private lateinit var adapter: VideoAdapter
-    // Same as HomeFragment: rebind instantly on return so the back
-    // animation slides content in, not a blank grid.
-    private val cached = mutableListOf<org.watchshark.app.data.Video>()
-
+    private val cached = mutableListOf<watchshark.duckdns.org.data.Video>()
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, saved: Bundle?): View {
         return inflater.inflate(R.layout.fragment_music, container, false)
     }
-
     override fun onViewCreated(view: View, saved: Bundle?) {
         adapter = VideoAdapter(mutableListOf(), {}, R.layout.item_video_square)
         val grid: RecyclerView = view.findViewById(R.id.grid)
@@ -42,7 +36,6 @@ class MusicFragment : Fragment() {
             view.findViewById<Button>(R.id.more_btn).visibility =
                 if (page < pages) View.VISIBLE else View.GONE
         }
-
         view.findViewById<TabLayout>(R.id.tabs).addOnTabSelectedListener(
             object : TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(tab: TabLayout.Tab) {
@@ -56,7 +49,6 @@ class MusicFragment : Fragment() {
         view.findViewById<Button>(R.id.more_btn).setOnClickListener { load(page + 1) }
         load(1)
     }
-
     private fun load(p: Int) {
         val v = view ?: return
         lifecycleScope.launch {
@@ -84,9 +76,7 @@ class MusicFragment : Fragment() {
             }
         }
     }
-
     override fun onDestroyView() {
-        // Release any avatar players held by visible holders.
         view?.findViewById<RecyclerView>(R.id.grid)?.let { grid ->
             for (i in 0 until grid.childCount) {
                 grid.getChildViewHolder(grid.getChildAt(i))?.let { h ->

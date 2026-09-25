@@ -1,5 +1,4 @@
-package org.watchshark.app.ui
-
+package watchshark.duckdns.org.ui
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -12,33 +11,26 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.tabs.TabLayout
 import kotlinx.coroutines.launch
-import org.watchshark.app.MainActivity
-import org.watchshark.app.R
-import org.watchshark.app.data.ApiClient
-
+import watchshark.duckdns.org.MainActivity
+import watchshark.duckdns.org.R
+import watchshark.duckdns.org.data.ApiClient
 class HomeFragment : Fragment() {
     private var page = 1
     private var sort = "new"
     private var query = ""
     private var pages = 1
     private lateinit var adapter: VideoAdapter
-    // Retained across view recreation so backing out of a detail slides
-    // the already-loaded feed in instead of a blank grid that pops late.
-    private val cached = mutableListOf<org.watchshark.app.data.Video>()
-
+    private val cached = mutableListOf<watchshark.duckdns.org.data.Video>()
     /** Driven by the topbar search input. */
     fun setQuery(q: String) {
         if (query == q) return
         query = q
         load(1)
     }
-
     fun currentQuery(): String = query
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, saved: Bundle?): View {
         return inflater.inflate(R.layout.fragment_home, container, false)
     }
-
     override fun onViewCreated(view: View, saved: Bundle?) {
         adapter = VideoAdapter(mutableListOf())
         val grid: RecyclerView = view.findViewById(R.id.grid)
@@ -51,7 +43,6 @@ class HomeFragment : Fragment() {
             view.findViewById<Button>(R.id.more_btn).visibility =
                 if (page < pages) View.VISIBLE else View.GONE
         }
-
         view.findViewById<TabLayout>(R.id.tabs).addOnTabSelectedListener(
             object : TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(tab: TabLayout.Tab) {
@@ -65,7 +56,6 @@ class HomeFragment : Fragment() {
         view.findViewById<Button>(R.id.more_btn).setOnClickListener { load(page + 1) }
         load(1)
     }
-
     private fun load(p: Int) {
         val v = view ?: return
         lifecycleScope.launch {

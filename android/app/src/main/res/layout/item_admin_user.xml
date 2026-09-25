@@ -12,7 +12,7 @@
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
-        <org.watchshark.app.ui.WebmAvatarView
+        <watchshark.duckdns.org.ui.WebmAvatarView
             android:id="@+id/u_avatar"
             android:layout_width="48dp"
             android:layout_height="48dp" />

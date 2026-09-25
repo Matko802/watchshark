@@ -1,14 +1,11 @@
-package org.watchshark.app.data
-
+package watchshark.duckdns.org.data
 import android.content.Context
 import android.util.Log
-
 /** Captures uncaught crashes to a file so users can send the exact stack trace. */
 object CrashLog {
     private const val PREFS = "watchshark_crash"
     private const val KEY_CRASH = "last_crash"
     private const val TAG = "WatchShark"
-
     fun install(ctx: Context) {
         val appCtx = ctx.applicationContext
         val previous = Thread.getDefaultUncaughtExceptionHandler()
@@ -31,12 +28,10 @@ object CrashLog {
             previous?.uncaughtException(thread, throwable)
         }
     }
-
     fun lastCrash(ctx: Context): String? =
         ctx.applicationContext
             .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getString(KEY_CRASH, null)
-
     fun clear(ctx: Context) {
         ctx.applicationContext
             .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -44,7 +39,6 @@ object CrashLog {
             .remove(KEY_CRASH)
             .apply()
     }
-
     /** Shows the saved crash report with Copy / Clear actions. No-op if none. */
     fun showNow(ctx: Context) {
         val report = lastCrash(ctx) ?: return

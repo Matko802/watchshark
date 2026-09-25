@@ -5,7 +5,7 @@
     android:orientation="horizontal"
     android:padding="12dp">
 
-    <org.watchshark.app.ui.WebmAvatarView
+    <watchshark.duckdns.org.ui.WebmAvatarView
                 android:id="@+id/c_avatar"
                 android:layout_width="32dp"
                 android:layout_height="32dp" />

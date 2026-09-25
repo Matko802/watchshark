@@ -73,7 +73,7 @@
             android:paddingStart="12dp"
             android:paddingEnd="12dp">
 
-            <org.watchshark.app.ui.WebmAvatarView
+            <watchshark.duckdns.org.ui.WebmAvatarView
                 android:id="@+id/avatar"
                 android:layout_width="36dp"
                 android:layout_height="36dp" />

@@ -1,5 +1,4 @@
-package org.watchshark.app.ui
-
+package watchshark.duckdns.org.ui
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -13,20 +12,17 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import org.watchshark.app.R
-import org.watchshark.app.data.AdminUser
-import org.watchshark.app.data.ApiClient
-
+import watchshark.duckdns.org.R
+import watchshark.duckdns.org.data.AdminUser
+import watchshark.duckdns.org.data.ApiClient
 class AdminFragment : Fragment() {
     private lateinit var adapter: AdminAdapter
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, saved: Bundle?): View {
         return inflater.inflate(R.layout.fragment_admin, container, false)
     }
-
     override fun onViewCreated(view: View, saved: Bundle?) {
         adapter = AdminAdapter(mutableListOf(), lifecycleScope, { reload() }) { name ->
-            (activity as? org.watchshark.app.MainActivity)?.openChannel(name)
+            (activity as? watchshark.duckdns.org.MainActivity)?.openChannel(name)
         }
         view.findViewById<RecyclerView>(R.id.admin_list).apply {
             layoutManager = LinearLayoutManager(requireContext())
@@ -35,7 +31,6 @@ class AdminFragment : Fragment() {
         }
         reload()
     }
-
     private fun reload() {
         val v = view ?: return
         lifecycleScope.launch {
@@ -48,7 +43,6 @@ class AdminFragment : Fragment() {
             }
         }
     }
-
     class AdminAdapter(
         private val items: MutableList<AdminUser>,
         private val scope: kotlinx.coroutines.CoroutineScope,
@@ -70,14 +64,11 @@ class AdminFragment : Fragment() {
             val delete: Button = v.findViewById(R.id.u_delete)
             val remove: Button = v.findViewById(R.id.u_remove)
         }
-
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
             val v = LayoutInflater.from(parent.context).inflate(R.layout.item_admin_user, parent, false)
             return Holder(v)
         }
-
         override fun getItemCount() = items.size
-
         override fun onBindViewHolder(h: Holder, position: Int) {
             val u = items[position]
             val isAdmin = u.role == "admin"
@@ -113,7 +104,6 @@ class AdminFragment : Fragment() {
             h.restore.visibility = if (u.deleted) View.VISIBLE else View.GONE
             h.delete.visibility = if (!u.deleted) View.VISIBLE else View.GONE
             h.remove.visibility = View.VISIBLE
-
             val ctx = h.itemView.context
             h.ban.setOnClickListener {
                 val days = h.days.text.toString().toDoubleOrNull() ?: 0.0
@@ -188,17 +178,14 @@ class AdminFragment : Fragment() {
                 }
             }
         }
-
         fun setItems(list: List<AdminUser>) {
             items.clear()
             items.addAll(list)
             notifyDataSetChanged()
         }
-
         override fun onViewRecycled(h: Holder) {
             h.avatar.release()
             super.onViewRecycled(h)
         }
-
     }
 }

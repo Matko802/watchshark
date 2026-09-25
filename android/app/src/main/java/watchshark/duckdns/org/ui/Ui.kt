@@ -1,19 +1,16 @@
-package org.watchshark.app.ui
-
+package watchshark.duckdns.org.ui
 import android.content.Context
 import android.view.View
 import android.widget.ImageView
 import android.widget.Toast
 import coil.load
 import com.google.android.material.snackbar.Snackbar
-import org.watchshark.app.R
-import org.watchshark.app.data.ApiClient
+import watchshark.duckdns.org.R
+import watchshark.duckdns.org.data.ApiClient
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
-
 fun fullUrl(path: String?): String? = ApiClient.fullUrl(path)
-
 /**
  * Clears space above the overlaid blur bar so scroll content never hides
  * behind it (content still slides underneath for the frosted effect).
@@ -23,16 +20,13 @@ fun View.clearBottomBar() {
     setPadding(paddingLeft, paddingTop, paddingRight, paddingBottom + px)
     (this as? android.view.ViewGroup)?.clipToPadding = false
 }
-
 /** YouTube-style feed: single stripe on phones, grid on wide screens. */
 fun gridSpan(ctx: Context): Int {
     val dp = ctx.resources.displayMetrics.widthPixels / ctx.resources.displayMetrics.density
     return (dp / 400).toInt().coerceAtLeast(1)
 }
-
 @Volatile
 private var videoLoader: coil.ImageLoader? = null
-
 /** ImageLoader with video-frame decoding, so .webm thumbnails render too. */
 fun videoImageLoader(ctx: Context): coil.ImageLoader {
     return videoLoader ?: synchronized(UiLock) {
@@ -43,15 +37,12 @@ fun videoImageLoader(ctx: Context): coil.ImageLoader {
             .also { videoLoader = it }
     }
 }
-
 private object UiLock
-
 fun ImageView.loadMedia(path: String?, placeholder: Int = R.drawable.ic_movie) {
     val url = fullUrl(path)
     if (url == null) {
         setImageResource(placeholder)
     } else if (WebmAvatarView.isWebm(path)) {
-        // Coil core can't decode webm — use the video-frame decoder.
         load(url, videoImageLoader(context)) {
             placeholder(placeholder)
             error(placeholder)
@@ -65,7 +56,6 @@ fun ImageView.loadMedia(path: String?, placeholder: Int = R.drawable.ic_movie) {
         }
     }
 }
-
 fun fmtNum(n: Long): String {
     if (n < 1000) return n.toString()
     val units = arrayOf(1_000_000_000L to "B", 1_000_000L to "M", 1_000L to "K")
@@ -77,7 +67,6 @@ fun fmtNum(n: Long): String {
     }
     return n.toString()
 }
-
 fun fmtAge(s: String?): String {
     if (s.isNullOrEmpty()) return ""
     return try {
@@ -97,13 +86,11 @@ fun fmtAge(s: String?): String {
         s
     }
 }
-
 fun fmtDur(sec: Long): String {
     val m = sec / 60
     val s = sec % 60
     return "$m:${s.toString().padStart(2, '0')}"
 }
-
 /** Server timestamps are UTC — render absolute time in the device timezone. */
 fun fmtDateTime(s: String?): String {
     if (s.isNullOrEmpty()) return ""
@@ -117,15 +104,11 @@ fun fmtDateTime(s: String?): String {
         s
     }
 }
-
 fun Context.toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
-
 fun android.view.View.snack(msg: String) =
     Snackbar.make(this, msg, Snackbar.LENGTH_SHORT).show()
-
 fun apiErrorMessage(e: Exception): String =
     e.message?.takeIf { it.isNotBlank() } ?: "Network error"
-
 fun httpErrorMessage(e: Exception): String {
     try {
         val body = (e as? retrofit2.HttpException)?.response()?.errorBody()?.string()

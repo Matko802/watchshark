@@ -1,5 +1,4 @@
-package org.watchshark.app.ui
-
+package watchshark.duckdns.org.ui
 import android.content.Context
 import android.util.AttributeSet
 import android.view.View
@@ -8,9 +7,8 @@ import android.widget.ImageView
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
-import org.watchshark.app.R
-import org.watchshark.app.data.ApiClient
-
+import watchshark.duckdns.org.R
+import watchshark.duckdns.org.data.ApiClient
 /**
  * Avatar that plays animated (.webm) profile pictures on loop, like the
  * website. Static images load with Coil as usual.
@@ -20,17 +18,13 @@ class WebmAvatarView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
     defStyle: Int = 0
 ) : FrameLayout(context, attrs, defStyle) {
-
     private val image: ImageView
     private val playerView: PlayerView
     private var player: ExoPlayer? = null
-
     init {
         View.inflate(context, R.layout.view_webm_avatar, this)
         image = findViewById(R.id.ava_image)
         playerView = findViewById(R.id.ava_player)
-        // Clip the picture layers round, but NOT this container: the
-        // presence dot straddles the outer edge.
         clipChildren = false
         clipToPadding = false
         val oval = object : android.view.ViewOutlineProvider() {
@@ -43,23 +37,17 @@ class WebmAvatarView @JvmOverloads constructor(
         playerView.clipToOutline = true
         playerView.outlineProvider = oval
     }
-
     private val avatarListener = object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
-            // Only cover the placeholder once frames actually render —
-            // otherwise a failed stream leaves a black square.
             playerView.visibility =
                 if (playbackState == Player.STATE_READY) View.VISIBLE else View.GONE
         }
-
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
             playerView.visibility = View.GONE
         }
     }
-
     fun setAvatar(path: String?, placeholder: Int = R.drawable.ic_person) {
         if (isWebm(path)) {
-            // Static first frame underneath; replaced by animation on READY.
             image.loadMedia(path, placeholder)
             image.visibility = View.VISIBLE
             playerView.visibility = View.GONE
@@ -81,24 +69,19 @@ class WebmAvatarView @JvmOverloads constructor(
             image.loadMedia(path, placeholder)
         }
     }
-
     fun release() {
         releasePlayer()
     }
-
     /**
      * Online presence dot (green = active, grey = offline).
      * Hidden by default — home feed never shows it.
      */
     private var dotView: View? = null
-
     fun setOnline(online: Boolean) {
         var dot = dotView
         if (dot == null) {
             dot = View(context).apply {
                 val s = (12 * resources.displayMetrics.density).toInt()
-                // Negative margins: the dot straddles the avatar edge,
-                // half outside like standard presence badges.
                 val m = (-4 * resources.displayMetrics.density).toInt()
                 layoutParams = LayoutParams(s, s).apply {
                     gravity = android.view.Gravity.END or android.view.Gravity.BOTTOM
@@ -115,24 +98,20 @@ class WebmAvatarView @JvmOverloads constructor(
         else android.graphics.Color.parseColor("#6E6E6E")
         dot.backgroundTintList = android.content.res.ColorStateList.valueOf(color)
     }
-
     private fun releasePlayer() {
         playerView.player = null
         player?.release()
         player = null
         playerView.visibility = View.GONE
     }
-
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         player?.play()
     }
-
     override fun onDetachedFromWindow() {
         player?.pause()
         super.onDetachedFromWindow()
     }
-
     companion object {
         fun isWebm(path: String?): Boolean {
             if (path.isNullOrBlank()) return false

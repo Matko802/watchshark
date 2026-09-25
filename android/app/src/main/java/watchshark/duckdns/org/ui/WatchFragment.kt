@@ -1,5 +1,4 @@
-package org.watchshark.app.ui
-
+package watchshark.duckdns.org.ui
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -23,12 +22,11 @@ import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
-import org.watchshark.app.MainActivity
-import org.watchshark.app.R
-import org.watchshark.app.data.ApiClient
-import org.watchshark.app.data.Comment
-import org.watchshark.app.data.Video
-
+import watchshark.duckdns.org.MainActivity
+import watchshark.duckdns.org.R
+import watchshark.duckdns.org.data.ApiClient
+import watchshark.duckdns.org.data.Comment
+import watchshark.duckdns.org.data.Video
 class WatchFragment : Fragment() {
     private var videoId: Long = 0
     private var player: ExoPlayer? = null
@@ -38,22 +36,18 @@ class WatchFragment : Fragment() {
     private var autoMode = true
     private var autoKey: String? = null
     private var everReady = false
-
     companion object {
         fun newInstance(id: Long) = WatchFragment().apply {
             arguments = Bundle().apply { putLong("id", id) }
         }
     }
-
     override fun onCreate(saved: Bundle?) {
         super.onCreate(saved)
         videoId = arguments?.getLong("id", 0) ?: 0
     }
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, saved: Bundle?): View {
         return inflater.inflate(R.layout.fragment_watch, container, false)
     }
-
     override fun onViewCreated(view: View, saved: Bundle?) {
         view.clearBottomBar()
         commentsAdapter = CommentsAdapter { c -> askReply(c) }
@@ -71,7 +65,6 @@ class WatchFragment : Fragment() {
         }
         load()
     }
-
     private fun load() {
         val v = view ?: return
         lifecycleScope.launch {
@@ -86,7 +79,6 @@ class WatchFragment : Fragment() {
             }
         }
     }
-
     private fun render() {
         val v = view ?: return
         val vid = video ?: return
@@ -117,12 +109,11 @@ class WatchFragment : Fragment() {
         }
         startPlayer(fullUrl(autoSrc(vid)) ?: return)
     }
-
     /** Auto quality: rung picked from live connection speed (see AutoQuality). */
     private fun autoSrc(vid: Video): String {
-        val key = org.watchshark.app.data.AutoQuality.pickKey()
+        val key = watchshark.duckdns.org.data.AutoQuality.pickKey()
         autoKey = key
-        return org.watchshark.app.data.AutoQuality.urlFor(vid, key)
+        return watchshark.duckdns.org.data.AutoQuality.urlFor(vid, key)
             ?: vid.renditions?.get("720p")
             ?: vid.renditions?.get("480p")
             ?: vid.renditions?.get("360p")
@@ -150,7 +141,6 @@ class WatchFragment : Fragment() {
         wirePlayerControls(pv)
         ctrlHandler.post(ctrlTick)
     }
-
     /** Wire the web-like controller buttons of a PlayerView (inline or fullscreen). */
     private fun wirePlayerControls(pv: PlayerView) {
         pv.findViewById<ImageButton>(R.id.web_play)?.setOnClickListener {
@@ -164,7 +154,6 @@ class WatchFragment : Fragment() {
         }
         pv.setFullscreenButtonClickListener { toggleFullscreen() }
     }
-
     private val ctrlHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private val ctrlTick = object : Runnable {
         override fun run() {
@@ -173,17 +162,15 @@ class WatchFragment : Fragment() {
             ctrlHandler.postDelayed(this, 500)
         }
     }
-
     /** Periodic upgrade: faster internet mid-video steps quality up. */
     private fun autoTick() {
         val exo = player ?: return
         val vid = video ?: return
         if (!autoMode || !exo.playWhenReady || exo.playbackState != Player.STATE_READY) return
-        org.watchshark.app.data.AutoQuality.maybeUpgradeSingle(exo, vid, autoKey)?.let {
+        watchshark.duckdns.org.data.AutoQuality.maybeUpgradeSingle(exo, vid, autoKey)?.let {
             autoKey = it
         }
     }
-
     private val ctrlListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) = syncCtrlButtons()
         override fun onPlaybackStateChanged(state: Int) {
@@ -191,11 +178,10 @@ class WatchFragment : Fragment() {
                 everReady = true
                 view?.findViewById<View>(R.id.web_poster)?.visibility = View.GONE
             } else if (state == Player.STATE_BUFFERING) {
-                // Stall while playing: step quality down fast (unless manual).
                 val exo = player
                 val vid = video
                 if (exo != null && vid != null && autoMode && everReady && exo.playWhenReady) {
-                    org.watchshark.app.data.AutoQuality.stepDownSingle(exo, vid, autoKey)?.let {
+                    watchshark.duckdns.org.data.AutoQuality.stepDownSingle(exo, vid, autoKey)?.let {
                         autoKey = it
                     }
                 }
@@ -203,7 +189,6 @@ class WatchFragment : Fragment() {
             syncCtrlButtons()
         }
     }
-
     private fun syncCtrlButtons() {
         val exo = player
         val playing = exo?.isPlaying == true
@@ -216,7 +201,6 @@ class WatchFragment : Fragment() {
             if (playing) View.GONE else View.VISIBLE
         updateCtrlTime()
     }
-
     private fun updateCtrlTime() {
         val exo = player ?: return
         val d = exo.duration
@@ -227,20 +211,16 @@ class WatchFragment : Fragment() {
                 "${fmtDur(c / 1000)} / ${fmtDur(d / 1000)}"
         }
     }
-
     /** Inline player view plus the fullscreen one when open. */
     private fun playerViews(): List<PlayerView> =
         listOfNotNull(view?.findViewById(R.id.player), fsPlayerView)
-
     private val SPEEDS = floatArrayOf(1f, 1.25f, 1.5f, 2f, 0.5f)
     private var speedIdx = 0
-
     private fun cycleSpeed(btn: android.widget.Button) {
         speedIdx = (speedIdx + 1) % SPEEDS.size
         player?.setPlaybackSpeed(SPEEDS[speedIdx])
         btn.text = (if (SPEEDS[speedIdx] % 1f == 0f) SPEEDS[speedIdx].toInt().toString() else SPEEDS[speedIdx].toString()) + "x"
     }
-
     private fun qualityOptions(): List<Pair<String, String?>> {
         val vid = video ?: return listOf("Auto" to null)
         val o = mutableListOf("Auto" to null as String?)
@@ -248,7 +228,6 @@ class WatchFragment : Fragment() {
         vid.renditions?.get("720p")?.let { o.add("720p HD" to it) }
         vid.renditions?.get("480p")?.let { o.add("480p" to it) }
         vid.renditions?.get("360p")?.let { o.add("360p" to it) }
-        // Dynamic renditions generate on first request — always offer them.
         dynStem(vid.src)?.let { stem ->
             if (!has("720p HD") && !has("720p")) o.add("720p HD" to "/v/$stem-720p.webm")
             if (!has("480p")) o.add("480p" to "/v/$stem-480p.webm")
@@ -257,12 +236,10 @@ class WatchFragment : Fragment() {
         o.add("Source" to vid.src)
         return o
     }
-
     private fun dynStem(src: String): String? {
         val m = Regex("""/v/(.+)\.[a-z0-9]+$""", RegexOption.IGNORE_CASE).find(src) ?: return null
         return m.groupValues[1].removeSuffix("-720p").removeSuffix("-480p").removeSuffix("-360p")
     }
-
     private fun showQualityMenu(anchor: View) {
         val popup = android.widget.PopupMenu(requireContext(), anchor)
         val options = qualityOptions()
@@ -283,13 +260,12 @@ class WatchFragment : Fragment() {
                 exo.seekTo(t)
                 if (playing) exo.play()
             } else {
-                // Back to Auto: re-pick from the current speed right away.
                 val vid = video
                 if (vid != null) {
-                    val want = org.watchshark.app.data.AutoQuality.pickKey()
+                    val want = watchshark.duckdns.org.data.AutoQuality.pickKey()
                     if (want != autoKey) {
-                        org.watchshark.app.data.AutoQuality.urlFor(vid, want)?.let { url ->
-                            org.watchshark.app.data.AutoQuality.switchSingle(exo, url)
+                        watchshark.duckdns.org.data.AutoQuality.urlFor(vid, want)?.let { url ->
+                            watchshark.duckdns.org.data.AutoQuality.switchSingle(exo, url)
                             autoKey = want
                         }
                     }
@@ -299,7 +275,6 @@ class WatchFragment : Fragment() {
         }
         popup.show()
     }
-
     private fun toggleFullscreen() {
         if (fsDialog != null) {
             exitFullscreen()
@@ -310,15 +285,11 @@ class WatchFragment : Fragment() {
         val pv: PlayerView = view?.findViewById(R.id.player) ?: return
         act.requestedOrientation =
             android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-        // Fullscreen keeps the same web-like controls (seek, play, mute,
-        // time, speed, quality, exit-fullscreen).
         val fsView = android.view.LayoutInflater.from(act)
             .inflate(R.layout.view_fs_player, null) as PlayerView
         val dialog = android.app.Dialog(act, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
         dialog.setContentView(fsView)
         dialog.setOnDismissListener { if (fsDialog != null) exitFullscreen() }
-        // Immersive fullscreen: hide status + gesture bars on the dialog's
-        // own window (swipe reveals them transiently).
         dialog.setOnShowListener {
             dialog.window?.let { w ->
                 androidx.core.view.WindowCompat.setDecorFitsSystemWindows(w, false)
@@ -337,7 +308,6 @@ class WatchFragment : Fragment() {
         syncCtrlButtons()
         dialog.show()
     }
-
     private fun exitFullscreen() {
         val d = fsDialog ?: return
         fsDialog = null
@@ -348,10 +318,8 @@ class WatchFragment : Fragment() {
         activity?.requestedOrientation =
             android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
     }
-
     private var fsDialog: android.app.Dialog? = null
     private var fsPlayerView: PlayerView? = null
-
     private fun releasePlayer() {
         if (fsDialog != null) exitFullscreen()
         ctrlHandler.removeCallbacks(ctrlTick)
@@ -359,18 +327,15 @@ class WatchFragment : Fragment() {
         player?.release()
         player = null
     }
-
     override fun onPause() {
         super.onPause()
         player?.pause()
     }
-
     override fun onDestroyView() {
         view?.findViewById<WebmAvatarView>(R.id.avatar)?.release()
         releasePlayer()
         super.onDestroyView()
     }
-
     private fun syncLike() {
         val vid = video ?: return
         view?.findViewById<MaterialButton>(R.id.like_btn)?.apply {
@@ -383,7 +348,6 @@ class WatchFragment : Fragment() {
             )
         }
     }
-
     private fun toggleLike() {
         lifecycleScope.launch {
             try {
@@ -392,8 +356,6 @@ class WatchFragment : Fragment() {
                 video?.liked = res.get("liked")?.asBoolean == true
                 video?.likes = res.get("likes")?.asLong ?: 0
                 syncLike()
-                // NOTE: no load() here — reloading would restart playback.
-                // Just refresh the counts line in place.
                 video?.let { vid ->
                     view?.findViewById<TextView>(R.id.stats)?.text =
                         "${fmtNum(vid.views)} views • ${fmtAge(vid.created_at)} • ${fmtNum(vid.likes)} likes"
@@ -403,7 +365,6 @@ class WatchFragment : Fragment() {
             }
         }
     }
-
     private fun toggleFollow() {
         val vid = video ?: return
         lifecycleScope.launch {
@@ -418,7 +379,6 @@ class WatchFragment : Fragment() {
             }
         }
     }
-
     private fun askReply(to: Comment) {
         val ctx = context ?: return
         val input = TextInputEditText(ctx).apply { hint = "Reply to @${to.username}" }
@@ -444,7 +404,6 @@ class WatchFragment : Fragment() {
             }
             .show()
     }
-
     private fun sendComment() {
         val v = view ?: return
         val box = v.findViewById<TextInputEditText>(R.id.comment_box)
@@ -461,7 +420,6 @@ class WatchFragment : Fragment() {
             }
         }
     }
-
     private fun askDelete() {
         AlertDialog.Builder(requireContext())
             .setTitle("Delete this video?")
@@ -480,7 +438,6 @@ class WatchFragment : Fragment() {
             }
             .show()
     }
-
     private fun askEdit() {
         val vid = video ?: return
         val ctx = requireContext()
@@ -516,13 +473,11 @@ class WatchFragment : Fragment() {
             }
             .show()
     }
-
     class CommentsAdapter(
         private var rows: List<Row> = emptyList(),
         private val onReply: (Comment) -> Unit = {},
     ) : RecyclerView.Adapter<CommentsAdapter.Holder>() {
         data class Row(val c: Comment, val depth: Int)
-
         class Holder(v: View) : RecyclerView.ViewHolder(v) {
             val avatar: WebmAvatarView = v.findViewById(R.id.c_avatar)
             val user: TextView = v.findViewById(R.id.c_user)
@@ -531,14 +486,11 @@ class WatchFragment : Fragment() {
             val reply: TextView = v.findViewById(R.id.c_reply)
             val row: View = v
         }
-
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
             val v = LayoutInflater.from(parent.context).inflate(R.layout.item_comment, parent, false)
             return Holder(v)
         }
-
         override fun getItemCount() = rows.size
-
         override fun onBindViewHolder(h: Holder, position: Int) {
             val (c, depth) = rows[position]
             h.avatar.setAvatar(c.avatar, R.drawable.ic_person)
@@ -552,17 +504,14 @@ class WatchFragment : Fragment() {
             h.row.setPadding(indent.toInt(), h.row.paddingTop, h.row.paddingRight, h.row.paddingBottom)
             h.reply.setOnClickListener { onReply(c) }
         }
-
         fun setItems(list: List<Comment>) {
             rows = thread(list)
             notifyDataSetChanged()
         }
-
         override fun onViewRecycled(h: Holder) {
             h.avatar.release()
             super.onViewRecycled(h)
         }
-
         /** Thread flat comments: top-level first, replies nested under parents. */
         private fun thread(list: List<Comment>): List<Row> {
             val byId = list.associateBy { it.id }

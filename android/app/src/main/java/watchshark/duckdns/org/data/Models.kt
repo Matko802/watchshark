@@ -1,7 +1,5 @@
-package org.watchshark.app.data
-
+package watchshark.duckdns.org.data
 import com.google.gson.annotations.SerializedName
-
 data class Video(
     val id: Long = 0,
     val title: String = "",
@@ -21,7 +19,6 @@ data class Video(
     val description: String? = null,
     val renditions: Map<String, String>? = null
 )
-
 data class MeUser(
     val id: Long = 0,
     val username: String = "",
@@ -35,7 +32,6 @@ data class MeUser(
     @SerializedName("deleted_reason") val deleted_reason: String? = null,
     val online: Boolean = false
 )
-
 data class ChannelUser(
     val id: Long = 0,
     val username: String = "",
@@ -47,7 +43,6 @@ data class ChannelUser(
     var following: Boolean = false,
     val online: Boolean = false
 )
-
 data class AdminUser(
     val id: Long = 0,
     val username: String = "",
@@ -63,7 +58,6 @@ data class AdminUser(
     val avatar: String? = null,
     val online: Boolean = false
 )
-
 data class Notif(
     val id: Long = 0,
     @SerializedName("video_id") val videoId: Long? = null,
@@ -74,7 +68,6 @@ data class Notif(
     val kind: String = "",
     val text: String = ""
 )
-
 data class Comment(
     val id: Long = 0,
     val body: String = "",
@@ -85,11 +78,8 @@ data class Comment(
     @SerializedName("parent_username") val parentUsername: String? = null,
     val online: Boolean = false
 )
-
 data class MeResponse(val user: MeUser?)
 data class VideosResponse(
-    // The Go backend marshals empty slices as JSON null, so these must
-    // stay nullable even though callers treat them as lists via orEmpty().
     val videos: List<Video>? = null,
     val page: Long = 1,
     val pages: Long = 0,

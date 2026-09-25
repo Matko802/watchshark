@@ -1,5 +1,4 @@
-package org.watchshark.app.ui
-
+package watchshark.duckdns.org.ui
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -13,33 +12,28 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.tabs.TabLayout
 import kotlinx.coroutines.launch
-import org.watchshark.app.R
-import org.watchshark.app.data.ApiClient
-import org.watchshark.app.data.ChannelUser
-import org.watchshark.app.data.Video
-
+import watchshark.duckdns.org.R
+import watchshark.duckdns.org.data.ApiClient
+import watchshark.duckdns.org.data.ChannelUser
+import watchshark.duckdns.org.data.Video
 class ChannelFragment : Fragment() {
     private var username = ""
     private var user = ChannelUser()
     private var allVideos = listOf<Video>()
     private var kind = "video"
     private lateinit var adapter: VideoAdapter
-
     companion object {
         fun newInstance(username: String) = ChannelFragment().apply {
             arguments = Bundle().apply { putString("user", username) }
         }
     }
-
     override fun onCreate(saved: Bundle?) {
         super.onCreate(saved)
         username = arguments?.getString("user", "") ?: ""
     }
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, saved: Bundle?): View {
         return inflater.inflate(R.layout.fragment_channel, container, false)
     }
-
     override fun onViewCreated(view: View, saved: Bundle?) {
         adapter = VideoAdapter(mutableListOf())
         val grid: RecyclerView = view.findViewById(R.id.ch_grid)
@@ -48,8 +42,6 @@ class ChannelFragment : Fragment() {
         view.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.ch_grid).clearBottomBar()
         grid.adapter = adapter
         if (allVideos.isNotEmpty()) {
-            // Instant rebind so backing in slides content, not a blank page;
-            // load() refreshes right after.
             bindHeader(view)
             renderGrid()
         }
@@ -66,12 +58,10 @@ class ChannelFragment : Fragment() {
         view.findViewById<Button>(R.id.ch_follow).setOnClickListener { toggleFollow() }
         load()
     }
-
     override fun onDestroyView() {
         view?.findViewById<WebmAvatarView>(R.id.ch_avatar)?.release()
         super.onDestroyView()
     }
-
     private fun bindHeader(v: View) {
         v.findViewById<TextView>(R.id.ch_name).text = "@${user.username}"
         v.findViewById<TextView>(R.id.ch_stats).text =
@@ -79,7 +69,6 @@ class ChannelFragment : Fragment() {
         v.findViewById<WebmAvatarView>(R.id.ch_avatar).setAvatar(user.avatar, R.drawable.ic_person)
         v.findViewById<WebmAvatarView>(R.id.ch_avatar).setOnline(user.online)
     }
-
     private fun load() {
         val v = view ?: return
         lifecycleScope.launch {
@@ -106,14 +95,12 @@ class ChannelFragment : Fragment() {
             }
         }
     }
-
     private fun renderGrid() {
         adapter.setItems(allVideos.filter {
             val k = it.kind.ifEmpty { "video" }
             if (kind == "video") k == "video" else k == kind
         })
     }
-
     private fun toggleFollow() {
         lifecycleScope.launch {
             try {

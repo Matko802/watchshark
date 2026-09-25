@@ -1,5 +1,4 @@
-package org.watchshark.app.ui
-
+package watchshark.duckdns.org.ui
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
@@ -20,22 +19,19 @@ import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
-import org.watchshark.app.MainActivity
-import org.watchshark.app.R
-import org.watchshark.app.data.ApiClient
-
+import watchshark.duckdns.org.MainActivity
+import watchshark.duckdns.org.R
+import watchshark.duckdns.org.data.ApiClient
 class UploadFragment : Fragment() {
     private var kind = "video"
     private var fileUri: Uri? = null
     private var thumbUri: Uri? = null
     private var busy = false
-
     companion object {
         fun newInstance(kind: String) = UploadFragment().apply {
             arguments = Bundle().apply { putString("kind", kind) }
         }
     }
-
     private val pickFile = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
             fileUri = uri
@@ -46,16 +42,13 @@ class UploadFragment : Fragment() {
         thumbUri = uri
         if (uri != null) view?.findViewById<TextView>(R.id.file_name)?.append("\nThumb: " + displayName(uri))
     }
-
     override fun onCreate(saved: Bundle?) {
         super.onCreate(saved)
         kind = arguments?.getString("kind", "video") ?: "video"
     }
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, saved: Bundle?): View {
         return inflater.inflate(R.layout.fragment_upload, container, false)
     }
-
     override fun onViewCreated(view: View, saved: Bundle?) {
         view.clearBottomBar()
         val tabs: TabLayout = view.findViewById(R.id.kind_tabs)
@@ -76,7 +69,6 @@ class UploadFragment : Fragment() {
         }
         view.findViewById<Button>(R.id.up_go).setOnClickListener { upload() }
     }
-
     private fun displayName(uri: Uri): String {
         return try {
             requireContext().contentResolver.query(uri, null, null, null, null)?.use { c ->
@@ -87,7 +79,6 @@ class UploadFragment : Fragment() {
             uri.lastPathSegment ?: "file"
         }
     }
-
     private fun upload() {
         val v = view ?: return
         if (busy) return

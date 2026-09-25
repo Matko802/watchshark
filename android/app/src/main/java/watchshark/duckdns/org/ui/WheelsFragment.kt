@@ -1,5 +1,4 @@
-package org.watchshark.app.ui
-
+package watchshark.duckdns.org.ui
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -18,12 +17,11 @@ import androidx.media3.ui.PlayerView
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import kotlinx.coroutines.launch
-import org.watchshark.app.MainActivity
-import org.watchshark.app.R
-import org.watchshark.app.data.ApiClient
-import org.watchshark.app.data.AutoQuality
-import org.watchshark.app.data.Video
-
+import watchshark.duckdns.org.MainActivity
+import watchshark.duckdns.org.R
+import watchshark.duckdns.org.data.ApiClient
+import watchshark.duckdns.org.data.AutoQuality
+import watchshark.duckdns.org.data.Video
 class WheelsFragment : Fragment() {
     private var player: ExoPlayer? = null
     private val videos = mutableListOf<Video>()
@@ -39,19 +37,15 @@ class WheelsFragment : Fragment() {
     private val autoKeys = mutableMapOf<Long, String>()
     /** True once the current item rendered a frame (initial buffering never downgrades). */
     private var wheelReady = false
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, saved: Bundle?): View {
         return inflater.inflate(R.layout.fragment_wheels, container, false)
     }
-
     override fun onViewCreated(view: View, saved: Bundle?) {
         loadSeen()
         player = ApiClient.buildPlayer(requireContext()).also { exo ->
             exo.addListener(object : Player.Listener {
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                     wheelReady = false
-                    // No autoplay-next: when a reel ends the playlist would
-                    // auto-advance on its own — hold position and stay paused.
                     if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
                         val back = (exo.currentMediaItemIndex - 1).coerceAtLeast(0)
                         exo.seekToDefaultPosition(back)
@@ -60,16 +54,12 @@ class WheelsFragment : Fragment() {
                         view.findViewById<ViewPager2>(R.id.pager).setCurrentItem(back, false)
                     }
                 }
-
                 override fun onPlaybackStateChanged(state: Int) {
-                    // No autoplay-next: when a reel ends, stop there instead
-                    // of advancing the playlist.
                     if (state == Player.STATE_ENDED) {
                         exo.pause()
                     } else if (state == Player.STATE_READY) {
                         wheelReady = true
                     } else if (state == Player.STATE_BUFFERING && exo.playWhenReady && wheelReady) {
-                        // Stall mid-reel: step quality down fast (unless manual).
                         autoStepDownCurrent(exo)
                     }
                 }
@@ -91,10 +81,7 @@ class WheelsFragment : Fragment() {
                     if (exo.currentMediaItemIndex != position && position < exo.mediaItemCount) {
                         exo.seekTo(position, 0)
                     }
-                    // Play on select with sound (no autoplay-next: ended reels
-                    // hold position via the transition guard).
                     exo.playWhenReady = true
-                    // Fresh speed samples may allow a better rung for this reel.
                     autoUpgradeCurrent(exo, position)
                 }
                 if (position >= videos.size - 3) loadMore()
@@ -102,7 +89,6 @@ class WheelsFragment : Fragment() {
         })
         loadMore()
     }
-
     /** Faster internet than the current reel's rung: swap it up in place. */
     private fun autoUpgradeCurrent(exo: ExoPlayer, position: Int) {
         val vid = videos.getOrNull(position) ?: return
@@ -120,7 +106,6 @@ class WheelsFragment : Fragment() {
         exo.seekTo(position, time)
         if (playing) exo.play()
     }
-
     /** Stall mid-reel: one rung down in place (unless manual override). */
     private fun autoStepDownCurrent(exo: ExoPlayer) {
         val pos = exo.currentMediaItemIndex
@@ -141,21 +126,14 @@ class WheelsFragment : Fragment() {
         exo.seekTo(pos, time)
         if (playing) exo.play()
     }
-
-    // Seen IDs are session-only, like the website (its _loadSeen is a no-op).
-    // Persisting them permanently exhausts the feed forever once you've
-    // watched everything once — new app starts would show "No wheels yet".
     private fun loadSeen() {
     }
-
     private fun saveSeen() {
     }
-
     private fun srcFor(v: Video): String? {
         val override = qualityOverride[v.id]
         val url = when {
             override != null -> v.renditions?.get(override) ?: dynRendition(v, override) ?: v.src
-            // Auto: rung picked from live connection speed (see AutoQuality).
             else -> {
                 val key = AutoQuality.pickKey()
                 val auto = AutoQuality.urlFor(v, key)
@@ -172,7 +150,6 @@ class WheelsFragment : Fragment() {
         }
         return fullUrl(url)
     }
-
     /** Dynamic rendition URL (generates on first request server-side). */
     private fun dynRendition(v: Video, res: String): String? {
         val stem = Regex("""/v/(.+)\.[a-z0-9]+$""", RegexOption.IGNORE_CASE)
@@ -181,7 +158,6 @@ class WheelsFragment : Fragment() {
             ?: return null
         return "/v/$stem-$res.webm"
     }
-
     private fun loadMore() {
         if (loading || exhausted) return
         loading = true
@@ -215,9 +191,6 @@ class WheelsFragment : Fragment() {
                         }
                         if (vid == null || vid.id == 0L || seen.contains(vid.id)) return@repeat
                         seen.add(vid.id)
-                        // Skip unplayable entries entirely: adding a video
-                        // without a media item desyncs pager pages from the
-                        // playlist and leaves black pages.
                         val url = srcFor(vid) ?: return@repeat
                         videos.add(vid)
                         player?.addMediaItem(MediaItem.fromUri(url))
@@ -232,7 +205,6 @@ class WheelsFragment : Fragment() {
                     if (videos.isEmpty()) {
                         v.findViewById<View>(R.id.empty).visibility = View.VISIBLE
                     } else {
-                        // End card like the website (no toast).
                         adapter.notifyDataSetChanged()
                     }
                 } else {
@@ -250,7 +222,6 @@ class WheelsFragment : Fragment() {
             }
         }
     }
-
     private fun watchAgain() {
         seen.clear()
         videos.clear()
@@ -264,23 +235,19 @@ class WheelsFragment : Fragment() {
         view?.findViewById<ViewPager2>(R.id.pager)?.setCurrentItem(0, false)
         loadMore()
     }
-
     override fun onPause() {
         super.onPause()
         player?.playWhenReady = false
     }
-
     override fun onResume() {
         super.onResume()
         player?.playWhenReady = true
     }
-
     override fun onDestroyView() {
         player?.release()
         player = null
         super.onDestroyView()
     }
-
     inner class ReelAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         inner class Holder(v: View) : RecyclerView.ViewHolder(v) {
             val playerView: PlayerView = v.findViewById(R.id.reel_player)
@@ -292,14 +259,11 @@ class WheelsFragment : Fragment() {
             val comments: MaterialButton = v.findViewById(R.id.reel_comments)
             val quality: MaterialButton = v.findViewById(R.id.reel_quality)
         }
-
         inner class EndHolder(v: View) : RecyclerView.ViewHolder(v) {
             val again: View = v.findViewById(R.id.end_again)
         }
-
         override fun getItemViewType(position: Int): Int =
             if (position < videos.size) 0 else 1
-
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             val inflater = LayoutInflater.from(parent.context)
             if (viewType == 1) {
@@ -307,10 +271,8 @@ class WheelsFragment : Fragment() {
             }
             return Holder(inflater.inflate(R.layout.item_reel, parent, false))
         }
-
         override fun getItemCount() =
             videos.size + if (exhausted && videos.isNotEmpty()) 1 else 0
-
         override fun onBindViewHolder(h: RecyclerView.ViewHolder, position: Int) {
             if (h is EndHolder) {
                 h.again.setOnClickListener { watchAgain() }
@@ -318,8 +280,6 @@ class WheelsFragment : Fragment() {
             }
             h as Holder
             val vid = videos[position]
-            // Single shared player: only the visible page holds the surface,
-            // otherwise the last-bound page steals it and current page is black.
             h.playerView.player = if (position == selectedPos) player else null
             h.thumb.loadMedia(vid.thumbnail)
             h.thumb.visibility =
@@ -342,7 +302,6 @@ class WheelsFragment : Fragment() {
             }
             h.quality.setOnClickListener { showQualityMenu(h.quality, vid) }
         }
-
         override fun onViewAttachedToWindow(holder: RecyclerView.ViewHolder) {
             super.onViewAttachedToWindow(holder)
             if (holder is Holder) {
@@ -350,18 +309,15 @@ class WheelsFragment : Fragment() {
                     if (holder.bindingAdapterPosition == selectedPos) player else null
             }
         }
-
         override fun onViewDetachedFromWindow(holder: RecyclerView.ViewHolder) {
             if (holder is Holder && holder.playerView.player != null) {
                 holder.playerView.player = null
             }
             super.onViewDetachedFromWindow(holder)
         }
-
         private fun togglePlayPause() {
             player?.let { if (it.isPlaying) it.pause() else it.play() }
         }
-
         private fun toggleLike(vid: Video, h: Holder) {
             lifecycleScope.launch {
                 try {
@@ -378,7 +334,6 @@ class WheelsFragment : Fragment() {
                 }
             }
         }
-
         private fun showQualityMenu(anchor: View, vid: Video) {
             val popup = PopupMenu(requireContext(), anchor)
             val options = mutableListOf("Auto" to null as String?)

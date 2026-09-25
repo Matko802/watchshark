@@ -1,5 +1,4 @@
-package org.watchshark.app.ui
-
+package watchshark.duckdns.org.ui
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -11,16 +10,14 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.launch
-import org.watchshark.app.MainActivity
-import org.watchshark.app.R
-import org.watchshark.app.data.ApiClient
-import org.watchshark.app.data.Updater
-
+import watchshark.duckdns.org.MainActivity
+import watchshark.duckdns.org.R
+import watchshark.duckdns.org.data.ApiClient
+import watchshark.duckdns.org.data.Updater
 class SettingsFragment : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, saved: Bundle?): View {
         return inflater.inflate(R.layout.fragment_settings, container, false)
     }
-
     override fun onViewCreated(view: View, saved: Bundle?) {
         view.clearBottomBar()
         view.findViewById<Button>(R.id.s_rename).setOnClickListener { rename() }
@@ -55,9 +52,9 @@ class SettingsFragment : Fragment() {
         }
         val crashBtn = view.findViewById<Button>(R.id.s_crash)
         crashBtn.visibility =
-            if (org.watchshark.app.data.CrashLog.lastCrash(requireContext()) != null) View.VISIBLE else View.GONE
+            if (watchshark.duckdns.org.data.CrashLog.lastCrash(requireContext()) != null) View.VISIBLE else View.GONE
         crashBtn.setOnClickListener {
-            org.watchshark.app.data.CrashLog.showNow(requireContext())
+            watchshark.duckdns.org.data.CrashLog.showNow(requireContext())
         }
         lifecycleScope.launch {
             try {
@@ -69,12 +66,9 @@ class SettingsFragment : Fragment() {
             }
         }
     }
-
     private fun msg(s: String) {
-        // Popup toast only — no inline status text.
         if (isAdded) requireContext().toast(s)
     }
-
     private fun rename() {
         val v = view ?: return
         val name = v.findViewById<TextInputEditText>(R.id.s_name).text.toString().trim()
@@ -87,7 +81,6 @@ class SettingsFragment : Fragment() {
             }
         }
     }
-
     private fun changePw() {
         val v = view ?: return
         val cur = v.findViewById<TextInputEditText>(R.id.s_cur).text.toString()

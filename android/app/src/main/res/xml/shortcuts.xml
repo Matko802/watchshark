@@ -6,9 +6,9 @@
         android:icon="@drawable/ic_home"
         android:shortcutShortLabel="@string/sh_home">
         <intent
-            android:action="org.watchshark.app.action.HOME"
-            android:targetPackage="org.watchshark.app"
-            android:targetClass="org.watchshark.app.MainActivity" />
+            android:action="watchshark.duckdns.org.action.HOME"
+            android:targetPackage="watchshark.duckdns.org"
+            android:targetClass="watchshark.duckdns.org.MainActivity" />
     </shortcut>
     <shortcut
         android:shortcutId="wheels"
@@ -16,9 +16,9 @@
         android:icon="@drawable/ic_movie"
         android:shortcutShortLabel="@string/sh_wheels">
         <intent
-            android:action="org.watchshark.app.action.WHEELS"
-            android:targetPackage="org.watchshark.app"
-            android:targetClass="org.watchshark.app.MainActivity" />
+            android:action="watchshark.duckdns.org.action.WHEELS"
+            android:targetPackage="watchshark.duckdns.org"
+            android:targetClass="watchshark.duckdns.org.MainActivity" />
     </shortcut>
     <shortcut
         android:shortcutId="music"
@@ -26,9 +26,9 @@
         android:icon="@drawable/ic_music_note"
         android:shortcutShortLabel="@string/sh_music">
         <intent
-            android:action="org.watchshark.app.action.MUSIC"
-            android:targetPackage="org.watchshark.app"
-            android:targetClass="org.watchshark.app.MainActivity" />
+            android:action="watchshark.duckdns.org.action.MUSIC"
+            android:targetPackage="watchshark.duckdns.org"
+            android:targetClass="watchshark.duckdns.org.MainActivity" />
     </shortcut>
     <shortcut
         android:shortcutId="upload"
@@ -36,8 +36,8 @@
         android:icon="@drawable/ic_add"
         android:shortcutShortLabel="@string/sh_upload">
         <intent
-            android:action="org.watchshark.app.action.UPLOAD"
-            android:targetPackage="org.watchshark.app"
-            android:targetClass="org.watchshark.app.MainActivity" />
+            android:action="watchshark.duckdns.org.action.UPLOAD"
+            android:targetPackage="watchshark.duckdns.org"
+            android:targetClass="watchshark.duckdns.org.MainActivity" />
     </shortcut>
 </shortcuts>

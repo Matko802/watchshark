@@ -4,15 +4,15 @@ plugins {
 }
 
 android {
-    namespace = "org.watchshark.app"
+    namespace = "watchshark.duckdns.org"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "org.watchshark.app"
+        applicationId = "watchshark.duckdns.org"
         minSdk = 26
         targetSdk = 34
-        versionCode = 10654
-        versionName = "1.6.54"
+        versionCode = 10655
+        versionName = "1.6.55"
         buildConfigField("String", "APP_URL", "\"https://watchshark.duckdns.org\"")
     }
 

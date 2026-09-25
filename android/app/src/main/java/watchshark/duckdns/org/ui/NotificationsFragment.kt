@@ -1,5 +1,4 @@
-package org.watchshark.app.ui
-
+package watchshark.duckdns.org.ui
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -11,18 +10,15 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.launch
-import org.watchshark.app.MainActivity
-import org.watchshark.app.R
-import org.watchshark.app.data.ApiClient
-import org.watchshark.app.data.Notif
-
+import watchshark.duckdns.org.MainActivity
+import watchshark.duckdns.org.R
+import watchshark.duckdns.org.data.ApiClient
+import watchshark.duckdns.org.data.Notif
 class NotificationsFragment : Fragment() {
     private lateinit var adapter: NotifAdapter
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, saved: Bundle?): View {
         return inflater.inflate(R.layout.fragment_notifications, container, false)
     }
-
     override fun onViewCreated(view: View, saved: Bundle?) {
         adapter = NotifAdapter(mutableListOf()) { n ->
             lifecycleScope.launch {
@@ -53,7 +49,6 @@ class NotificationsFragment : Fragment() {
         }
         reload()
     }
-
     private fun reload() {
         val v = view ?: return
         lifecycleScope.launch {
@@ -66,7 +61,6 @@ class NotificationsFragment : Fragment() {
             }
         }
     }
-
     class NotifAdapter(
         private val items: MutableList<Notif>,
         private val onTap: (Notif) -> Unit,
@@ -75,14 +69,11 @@ class NotificationsFragment : Fragment() {
             val title: TextView = v.findViewById(R.id.n_title)
             val body: TextView = v.findViewById(R.id.n_body)
         }
-
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
             val v = LayoutInflater.from(parent.context).inflate(R.layout.item_notif, parent, false)
             return Holder(v)
         }
-
         override fun getItemCount() = items.size
-
         override fun onBindViewHolder(h: Holder, position: Int) {
             val n = items[position]
             if (n.kind == "delete") {
@@ -95,7 +86,6 @@ class NotificationsFragment : Fragment() {
             h.title.alpha = if (n.read) 0.6f else 1.0f
             h.itemView.setOnClickListener { onTap(n) }
         }
-
         fun setItems(list: List<Notif>) {
             items.clear()
             items.addAll(list)

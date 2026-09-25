@@ -11,6 +11,8 @@
         <item name="colorOnPrimaryContainer">@android:color/white</item>
         <item name="colorSecondary">#A8A8A8</item>
         <item name="colorOnSecondary">@android:color/black</item>
+        <item name="colorSecondaryContainer">#2B2B2B</item>
+        <item name="colorOnSecondaryContainer">@android:color/white</item>
         <item name="colorTertiary">#DDDDDD</item>
         <item name="colorSurface">@android:color/black</item>
         <item name="colorOnSurface">@android:color/white</item>

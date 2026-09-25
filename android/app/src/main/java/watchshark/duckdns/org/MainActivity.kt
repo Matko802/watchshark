@@ -1,5 +1,4 @@
-package org.watchshark.app
-
+package watchshark.duckdns.org
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -16,23 +15,20 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.launch
-import org.watchshark.app.data.ApiClient
-import org.watchshark.app.ui.AdminFragment
-import org.watchshark.app.ui.AuthFragment
-import org.watchshark.app.ui.ChannelFragment
-import org.watchshark.app.ui.HomeFragment
-import org.watchshark.app.ui.MusicFragment
-import org.watchshark.app.ui.NotificationsFragment
-import org.watchshark.app.ui.SettingsFragment
-import org.watchshark.app.ui.UploadFragment
-import org.watchshark.app.ui.WheelsFragment
-import org.watchshark.app.ui.loadMedia
-
+import watchshark.duckdns.org.data.ApiClient
+import watchshark.duckdns.org.ui.AdminFragment
+import watchshark.duckdns.org.ui.AuthFragment
+import watchshark.duckdns.org.ui.ChannelFragment
+import watchshark.duckdns.org.ui.HomeFragment
+import watchshark.duckdns.org.ui.MusicFragment
+import watchshark.duckdns.org.ui.NotificationsFragment
+import watchshark.duckdns.org.ui.SettingsFragment
+import watchshark.duckdns.org.ui.UploadFragment
+import watchshark.duckdns.org.ui.WheelsFragment
+import watchshark.duckdns.org.ui.loadMedia
 class MainActivity : AppCompatActivity() {
-
     override fun onCreate(savedInstanceState: Bundle?) {
-        org.watchshark.app.data.CrashLog.install(this)
-        // let the app handle insets (root layout has fitsSystemWindows).
+        watchshark.duckdns.org.data.CrashLog.install(this)
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = android.graphics.Color.TRANSPARENT
         window.navigationBarColor = android.graphics.Color.TRANSPARENT
@@ -43,14 +39,10 @@ class MainActivity : AppCompatActivity() {
         setTheme(R.style.Theme_WatchShark)
         super.onCreate(savedInstanceState)
         ApiClient.init(this)
-        org.watchshark.app.data.Updater.init(this)
+        watchshark.duckdns.org.data.Updater.init(this)
         setContentView(R.layout.activity_main)
         applyEdgeToEdge()
-        // Back on a root tab goes to the previous tab (animated) instead of
-        // exiting; detail screens pop normally; otherwise finish.
         supportFragmentManager.addOnBackStackChangedListener {
-            // Returning from a detail (e.g. You channel) to its root tab:
-            // re-sync the highlight instead of leaving "you" selected.
             if (supportFragmentManager.backStackEntryCount == 0 && currentTab == "you") {
                 val tag = supportFragmentManager.findFragmentById(R.id.container)?.tag
                 if (tag == "home" || tag == "wheels" || tag == "music") {
@@ -80,11 +72,8 @@ class MainActivity : AppCompatActivity() {
                 onBackPressedDispatcher.onBackPressed()
             }
         })
-        // If the last session crashed, show the report right away so the
-        // user can copy + send it instead of just seeing "app stopped".
-        org.watchshark.app.data.CrashLog.showNow(this)
+        watchshark.duckdns.org.data.CrashLog.showNow(this)
         setupTopSearch()
-
         findViewById<View>(R.id.brand_icon).setOnClickListener { showHome() }
         findViewById<View>(R.id.brand_text).setOnClickListener { showHome() }
         findViewById<ImageButton>(R.id.bell_btn).setOnClickListener { openDetail(NotificationsFragment()) }
@@ -111,43 +100,37 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         handleShortcut(intent)
     }
-
     /** Launcher shortcut routing (long-press app icon). Returns true if handled. */
     private fun handleShortcut(intent: android.content.Intent?): Boolean {
         when (intent?.action) {
-            "org.watchshark.app.action.HOME" -> showHome()
-            "org.watchshark.app.action.WHEELS" -> showWheels()
-            "org.watchshark.app.action.MUSIC" -> showMusic()
-            "org.watchshark.app.action.UPLOAD" ->
+            "watchshark.duckdns.org.action.HOME" -> showHome()
+            "watchshark.duckdns.org.action.WHEELS" -> showWheels()
+            "watchshark.duckdns.org.action.MUSIC" -> showMusic()
+            "watchshark.duckdns.org.action.UPLOAD" ->
                 openDetail(UploadFragment.newInstance("video"))
             else -> return false
         }
         return true
     }
-
     override fun onResume() {
         super.onResume()
         if (findViewById<View>(R.id.topbar).visibility == View.VISIBLE) {
             refreshTopbar()
         }
-        // Automatic update check when coming back (throttled to once a day).
         if (!ApiClient.sessionToken().isNullOrEmpty()) {
             supportFragmentManager.findFragmentById(R.id.container)?.let { frag ->
-                if (frag.isAdded) org.watchshark.app.data.Updater.checkSilent(frag)
+                if (frag.isAdded) watchshark.duckdns.org.data.Updater.checkSilent(frag)
             }
         }
     }
-
     private var currentUsername: String? = null
     private var currentTab = "home"
     private var updateChecked = false
-
     /**
      * Pushes the system-bar insets INTO the top/bottom bars (as extra
      * padding) instead of padding the root. That way the #111111 bars
@@ -161,6 +144,7 @@ class MainActivity : AppCompatActivity() {
             val bars = insets.getInsets(
                 androidx.core.view.WindowInsetsCompat.Type.systemBars()
             )
+            val ime = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.ime())
             findViewById<View>(R.id.topbar)?.setPadding(
                 (8 * density).toInt(),
                 (8 * density).toInt() + bars.top,
@@ -173,10 +157,15 @@ class MainActivity : AppCompatActivity() {
                 0,
                 (7 * density).toInt() + bars.bottom
             )
+            root.setPadding(
+                root.paddingLeft,
+                root.paddingTop,
+                root.paddingRight,
+                ime.bottom
+            )
             insets
         }
     }
-
     fun refreshTopbar() {
         lifecycleScope.launch {
             try {
@@ -200,7 +189,7 @@ class MainActivity : AppCompatActivity() {
                 findViewById<View>(R.id.top_admin).visibility =
                     if (me.admin) View.VISIBLE else View.GONE
                 findViewById<View>(R.id.signin_btn).visibility = View.GONE
-                val avatar = findViewById<org.watchshark.app.ui.WebmAvatarView>(R.id.nav_avatar)
+                val avatar = findViewById<watchshark.duckdns.org.ui.WebmAvatarView>(R.id.nav_avatar)
                 val person = findViewById<ImageView>(R.id.nav_person)
                 if (me.avatar != null) {
                     avatar.visibility = View.VISIBLE
@@ -226,18 +215,15 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
     override fun onDestroy() {
-        findViewById<org.watchshark.app.ui.WebmAvatarView>(R.id.nav_avatar)?.release()
+        findViewById<watchshark.duckdns.org.ui.WebmAvatarView>(R.id.nav_avatar)?.release()
         super.onDestroy()
     }
-
     private fun circleOutline() = object : android.view.ViewOutlineProvider() {
         override fun getOutline(view: View, outline: android.graphics.Outline) {
             outline.setOval(0, 0, view.width, view.height)
         }
     }
-
     fun showAuth() {
         tabHistory.clear()
         findViewById<View>(R.id.topbar).visibility = View.GONE
@@ -247,7 +233,6 @@ class MainActivity : AppCompatActivity() {
             .replace(R.id.container, AuthFragment())
             .commit()
     }
-
     private fun setupTopSearch() {
         val btn: ImageButton = findViewById(R.id.top_search_btn)
         val input: EditText = findViewById(R.id.bottom_search)
@@ -272,7 +257,6 @@ class MainActivity : AppCompatActivity() {
             }
         })
     }
-
     /** Search input lives in a strip above the bottom nav: slides up + fades in. */
     private fun expandSearch() {
         val strip: View = findViewById(R.id.bottom_search_bar)
@@ -297,7 +281,6 @@ class MainActivity : AppCompatActivity() {
                 .start()
         }
     }
-
     private fun collapseSearch(clear: Boolean) {
         val strip: View = findViewById(R.id.bottom_search_bar)
         val input: EditText = findViewById(R.id.bottom_search)
@@ -326,7 +309,6 @@ class MainActivity : AppCompatActivity() {
             }
             .start()
     }
-
     private fun submitTopSearch(q: String) {
         val home = supportFragmentManager.findFragmentByTag("home") as? HomeFragment
         if (currentTab != "home" || home == null || !home.isAdded) {
@@ -334,7 +316,6 @@ class MainActivity : AppCompatActivity() {
         }
         (supportFragmentManager.findFragmentByTag("home") as? HomeFragment)?.setQuery(q)
     }
-
     /** Keep the input text in sync with the visible Home feed's query. */
     private fun syncSearchInput() {
         val input: EditText = findViewById(R.id.bottom_search) ?: return
@@ -345,47 +326,37 @@ class MainActivity : AppCompatActivity() {
             searchSyncing = false
         }
     }
-
     private fun showKeyboard(v: View) {
         v.post {
             (getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager)
                 ?.showSoftInput(v, InputMethodManager.SHOW_IMPLICIT)
         }
     }
-
     private fun hideKeyboard(v: View) {
         (getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager)
             ?.hideSoftInputFromWindow(v.windowToken, 0)
     }
-
     fun showMain() = showHome()
-
     fun showHome() = showRoot(HomeFragment(), "home")
     fun showWheels() = showRoot(WheelsFragment(), "wheels")
     fun showMusic() = showRoot(MusicFragment(), "music")
-
     fun restartToAuth() {
         ApiClient.clearSession()
         showAuth()
     }
-
     private fun showRoot(fragment: Fragment, tag: String) = goRoot(fragment, tag, true)
-
     private fun rootFragment(tag: String): Fragment = when (tag) {
         "wheels" -> WheelsFragment()
         "music" -> MusicFragment()
         else -> HomeFragment()
     }
-
     /** Root-tab history for back navigation (Music back to Home, etc.). */
     private val tabHistory = ArrayDeque<String>()
-
     /** Topbar expandable search (icon next to the bell, like the website). */
     private var searchExpanded = false
     private var searchSyncing = false
     private val searchHandler = Handler(Looper.getMainLooper())
     private var searchPending: Runnable? = null
-
     private fun goRoot(fragment: Fragment, tag: String, push: Boolean) {
         val order = listOf("home", "wheels", "music")
         val oldIdx = order.indexOf(currentTab)
@@ -421,17 +392,12 @@ class MainActivity : AppCompatActivity() {
         if (!updateChecked && ApiClient.sessionToken() != null) {
             updateChecked = true
             supportFragmentManager.findFragmentByTag(tag)?.let {
-                org.watchshark.app.data.Updater.checkSilent(it)
+                watchshark.duckdns.org.data.Updater.checkSilent(it)
             }
         }
         syncSearchInput()
     }
-
-
     private fun markNav() {
-        // Match the website bottom nav exactly: icons always stay outlined
-        // sharp; the active tab is only brighter (white vs #A8A8A8).
-        // The You tab highlights too when it's the current tab.
         data class Tab(val iconId: Int, val labelId: Int, val tag: String)
         val tabs = listOf(
             Tab(R.id.nav_home_icon, R.id.nav_home_label, "home"),
@@ -455,7 +421,6 @@ class MainActivity : AppCompatActivity() {
                 setTextColor(if (selected) active else idle)
             }
         }
-        // You tab: person/avatar icon + label highlight when selected.
         val youSelected = currentTab == "you"
         (findViewById<View>(R.id.nav_person) as? ImageView)?.apply {
             alpha = 1.0f
@@ -468,7 +433,6 @@ class MainActivity : AppCompatActivity() {
             setTextColor(if (youSelected) active else idle)
         }
     }
-
     /** Push a detail screen (watch, channel, upload, settings, admin, notifications). */
     fun openDetail(fragment: Fragment) {
         supportFragmentManager.beginTransaction()
@@ -481,7 +445,6 @@ class MainActivity : AppCompatActivity() {
             .addToBackStack(null)
             .commit()
     }
-
     fun openAdmin() = openDetail(AdminFragment())
     fun openChannel(name: String) {
         if (name == currentUsername) {

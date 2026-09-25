@@ -1,12 +1,10 @@
-package org.watchshark.app.data
-
+package watchshark.duckdns.org.data
 import android.os.SystemClock
 import androidx.media3.common.C
 import androidx.media3.common.Format
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.upstream.BandwidthMeter
-
 /**
  * Adaptive quality for the progressive renditions (360p / 480p / 720p /
  * Source). ExoPlayer's shared bandwidth meter measures the real connection
@@ -19,37 +17,31 @@ import androidx.media3.exoplayer.upstream.BandwidthMeter
  */
 object AutoQuality {
     data class Rung(val key: String, val needBps: Long)
-
     private val LADDER = listOf(
         Rung("360p", 0),
         Rung("480p", 1_500_000),
         Rung("720p", 4_000_000),
         Rung("src", 12_000_000)
     )
-
     /** Min time between upgrades (avoids yo-yoing). */
     const val UPGRADE_GAP_MS = 10_000L
     /** Min time between downgrades (still fast enough to unstick). */
     const val DOWNGRADE_GAP_MS = 5_000L
     /** Don't bother upgrading this close to the end. */
     private const val TAIL_MS = 5_000L
-
     @Volatile
     var meter: BandwidthMeter? = null
     @Volatile
     private var lastSwitchMs = 0L
-
     fun bind(m: BandwidthMeter) {
         if (meter == null) meter = m
     }
-
     fun estimateBps(): Long =
         try {
             meter?.bitrateEstimate ?: Format.NO_VALUE.toLong()
         } catch (_: Exception) {
             Format.NO_VALUE.toLong()
         }
-
     /** Highest rung fitting in 80% of the estimate (headroom). Unknown → 360p. */
     fun pickKey(): String {
         val est = estimateBps()
@@ -59,14 +51,10 @@ object AutoQuality {
         for (r in LADDER) if (r.needBps <= budget) key = r.key
         return key
     }
-
     fun rungIndex(key: String?): Int =
         LADDER.indexOfFirst { it.key == key }.coerceAtLeast(0)
-
     fun rungKey(idx: Int): String = LADDER[idx.coerceIn(LADDER.indices)].key
-
     fun rungCount(): Int = LADDER.size
-
     /** Throttle gate for any switch; stamps the clock when it opens. */
     fun tryBeginSwitch(gapMs: Long): Boolean {
         val now = SystemClock.uptimeMillis()
@@ -74,14 +62,12 @@ object AutoQuality {
         lastSwitchMs = now
         return true
     }
-
     /** Resolve a rung to an absolute playable URL. */
     fun urlFor(vid: Video, key: String): String? {
         if (key == "src") return ApiClient.fullUrl(vid.src)
         vid.renditions?.get(key)?.let { return ApiClient.fullUrl(it) }
         return dynRendition(vid, key)?.let { ApiClient.fullUrl(it) }
     }
-
     /** Dynamic rendition URL (generates on first request server-side). */
     private fun dynRendition(vid: Video, res: String): String? {
         val stem = Regex("""/v/(.+)\.[a-z0-9]+$""", RegexOption.IGNORE_CASE)
@@ -90,7 +76,6 @@ object AutoQuality {
             ?: return null
         return "/v/$stem-$res.webm"
     }
-
     /** Swap a single-item player's source, keeping position and play state. */
     fun switchSingle(exo: ExoPlayer, url: String) {
         val pos = exo.currentPosition.coerceAtLeast(0)
@@ -100,7 +85,6 @@ object AutoQuality {
         exo.seekTo(pos)
         exo.playWhenReady = resume
     }
-
     /**
      * Upgrade check for single-item players. Returns the new key, or null
      * when no switch happened (same/better rung, throttled, or near the end).
@@ -116,7 +100,6 @@ object AutoQuality {
         switchSingle(exo, url)
         return want
     }
-
     /** One rung down for single-item players. Returns the new key or null. */
     fun stepDownSingle(exo: ExoPlayer, vid: Video, curKey: String?): String? {
         val idx = rungIndex(curKey)

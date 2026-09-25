@@ -1,5 +1,4 @@
-package org.watchshark.app.data
-
+package watchshark.duckdns.org.data
 import android.content.Context
 import android.content.Intent
 import android.view.LayoutInflater
@@ -14,42 +13,31 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.watchshark.app.BuildConfig
-import org.watchshark.app.R
+import watchshark.duckdns.org.BuildConfig
+import watchshark.duckdns.org.R
 import java.io.File
 import java.util.concurrent.TimeUnit
-
 data class AppUpdate(
     val version: String,
     val notes: String,
     val url: String,
     val size: Long
 )
-
 sealed interface UpdateCheck {
     data class Available(val update: AppUpdate) : UpdateCheck
     data object UpToDate : UpdateCheck
     data class Failed(val reason: String) : UpdateCheck
 }
-
 object Updater {
-    // NOTE: intentionally NOT api.github.com — its 60 req/hour IP limit
-    // breaks update checks on shared mobile networks. The web endpoints
-    // below have no such limit.
     private const val LATEST_URL =
         "https://github.com/Matko802/watchshark/releases/latest"
     private const val TAG_URL_PREFIX =
         "https://github.com/Matko802/watchshark/releases/tag/"
-
     /** Silent auto-check at most once per this interval. */
     private const val SILENT_COOLDOWN_MS = 24 * 60 * 60 * 1000L
-    // Manual taps share a short cooldown so spam-tapping can't hammer
-    // GitHub. Kept tiny on purpose: a long cooldown makes the app claim
-    // "up to date" while newer releases drop in between checks.
     private const val MANUAL_COOLDOWN_MS = 5 * 60 * 1000L
     private const val PREFS = "watchshark_update"
     private const val KEY_LAST_CHECK = "last_check"
-
     @Volatile
     private var http: OkHttpClient? = null
     @Volatile
@@ -61,15 +49,12 @@ object Updater {
         .followRedirects(false)
         .followSslRedirects(false)
         .build()
-
     /** Must be called once at startup (alongside ApiClient.init). */
     fun init(ctx: Context) {
         appContext = ctx.applicationContext
         if (http == null) {
             synchronized(this) {
                 if (http == null) {
-                    // HTTP cache: GitHub answers conditional requests with 304,
-                    // which does NOT consume rate limit.
                     val cache = try {
                         okhttp3.Cache(File(ctx.cacheDir, "gh_api"), 1L * 1024 * 1024)
                     } catch (_: Exception) {
@@ -84,27 +69,22 @@ object Updater {
             }
         }
     }
-
     private fun client(): OkHttpClient {
         appContext?.let { init(it) }
         return http!!
     }
-
     private fun parseVer(v: String): List<Int> {
         val m = Regex("""(\d+)\.(\d+)\.(\d+)""").find(v) ?: return listOf(0, 0, 0)
         return (1..3).map { m.groupValues[it].toInt() }
     }
-
     private fun cmpVer(a: List<Int>, b: List<Int>): Int {
         for (i in 0..2) if (a[i] != b[i]) return a[i].compareTo(b[i])
         return 0
     }
-
     fun fmtSize(n: Long): String {
         if (n <= 0) return ""
         return if (n >= 1048576) "${n / 1048576} MB" else "${n / 1024} KB"
     }
-
     /** Installed app version, e.g. 1.6.8. */
     fun currentVersion(ctx: Context): String = try {
         ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName
@@ -112,7 +92,6 @@ object Updater {
     } catch (_: Exception) {
         BuildConfig.VERSION_NAME
     }
-
     /**
      * Returns Available / UpToDate / Failed (network, HTTP error).
      * Uses the public releases page (no API rate limits) and a
@@ -123,7 +102,6 @@ object Updater {
     suspend fun checkForUpdate(): UpdateCheck = withContext(Dispatchers.IO) {
         val current = parseVer(BuildConfig.VERSION_NAME)
         try {
-            // /releases/latest 302-redirects to /releases/tag/<tag>.
             var tag: String? = null
             Request.Builder().url(LATEST_URL).get().build().let { req ->
                 noRedirectHttp.newCall(req).execute().use { resp ->
@@ -131,9 +109,6 @@ object Updater {
                     if ((resp.code == 301 || resp.code == 302) && loc.startsWith(TAG_URL_PREFIX)) {
                         tag = loc.removePrefix(TAG_URL_PREFIX).substringBefore('/').substringBefore('?')
                     } else if (resp.isSuccessful) {
-                        // /latest should always redirect; a 200 here means we
-                        // got some page, not a version answer — never claim
-                        // "up to date" on a guess.
                         return@withContext UpdateCheck.Failed("Check failed (unexpected response)")
                     } else {
                         return@withContext UpdateCheck.Failed("Check failed (HTTP ${resp.code})")
@@ -159,7 +134,6 @@ object Updater {
             UpdateCheck.Failed("Could not check for updates (${e.message ?: "network error"})")
         }
     }
-
     /** Silent check (e.g. on launch): only shows a dialog when an update exists. */
     fun checkSilent(host: Fragment) {
         if (!checking.compareAndSet(false, true)) return
@@ -170,9 +144,6 @@ object Updater {
         host.lifecycleScope.launch {
             try {
                 val result = checkForUpdate()
-                // Only a clean "up to date" resets the silent timer. If an
-                // update was found but dismissed, it must prompt again on
-                // the next launch instead of going quiet for 24 hours.
                 if (result is UpdateCheck.UpToDate) {
                     stampCheck()
                 }
@@ -184,11 +155,8 @@ object Updater {
             }
         }
     }
-
     /** Manual check with feedback (status message when up to date or on error). */
     fun checkManual(host: Fragment, onStatus: (String) -> Unit) {
-        // Spam-tapping the button reuses the in-flight check instead of
-        // firing a new call per tap, plus a cooldown between checks.
         if (!checking.compareAndSet(false, true)) {
             onStatus("Already checking…")
             return
@@ -218,20 +186,16 @@ object Updater {
             }
         }
     }
-
     private fun prefs(): android.content.SharedPreferences? =
         appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-
     /** True if a successful check happened within [windowMs] (failures don't count). */
     private fun cooledDown(windowMs: Long): Boolean {
         val last = prefs()?.getLong(KEY_LAST_CHECK, 0) ?: 0
         return System.currentTimeMillis() - last < windowMs
     }
-
     private fun stampCheck() {
         prefs()?.edit()?.putLong(KEY_LAST_CHECK, System.currentTimeMillis())?.apply()
     }
-
     private fun promptUpdate(host: Fragment, update: AppUpdate) {
         val ctx = host.requireContext()
         MaterialAlertDialogBuilder(ctx)
@@ -241,7 +205,6 @@ object Updater {
             .setPositiveButton("Update") { _, _ -> downloadAndInstall(host, update) }
             .show()
     }
-
     private fun downloadAndInstall(host: Fragment, update: AppUpdate) {
         val ctx = host.requireContext()
         val view = LayoutInflater.from(ctx).inflate(R.layout.dialog_download, null)
@@ -261,7 +224,6 @@ object Updater {
             dialog.dismiss()
         }
         dialog.show()
-
         job = host.lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val req = Request.Builder().url(update.url).get().build()
@@ -313,7 +275,6 @@ object Updater {
             }
         }
     }
-
     private fun showError(host: Fragment, message: String) {
         if (!host.isAdded) return
         MaterialAlertDialogBuilder(host.requireContext())
@@ -322,7 +283,6 @@ object Updater {
             .setPositiveButton("Close", null)
             .show()
     }
-
     /**
      * Debug builds and release builds are signed with different keys, so a
      * release APK can never install over a debug one (and vice versa).
@@ -353,7 +313,6 @@ object Updater {
             true
         }
     }
-
     private fun showSignatureMismatch(host: Fragment) {
         if (!host.isAdded) return
         val ctx = host.requireContext()
@@ -378,7 +337,6 @@ object Updater {
             }
             .show()
     }
-
     private fun installApk(ctx: Context, file: File) {        val uri = FileProvider.getUriForFile(
             ctx, "${ctx.packageName}.fileprovider", file
         )

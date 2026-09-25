@@ -1,5 +1,4 @@
-package org.watchshark.app.ui
-
+package watchshark.duckdns.org.ui
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -10,17 +9,14 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.launch
-import org.watchshark.app.MainActivity
-import org.watchshark.app.R
-import org.watchshark.app.data.ApiClient
-
+import watchshark.duckdns.org.MainActivity
+import watchshark.duckdns.org.R
+import watchshark.duckdns.org.data.ApiClient
 class AuthFragment : Fragment() {
     private var modeLogin = true
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, saved: Bundle?): View {
         return inflater.inflate(R.layout.fragment_auth, container, false)
     }
-
     override fun onViewCreated(view: View, saved: Bundle?) {
         view.clearBottomBar()
         val go: Button = view.findViewById(R.id.auth_go)
@@ -42,7 +38,6 @@ class AuthFragment : Fragment() {
             }
         }
     }
-
     private fun toggle() {
         val v = requireView()
         modeLogin = !modeLogin
@@ -52,11 +47,9 @@ class AuthFragment : Fragment() {
         v.findViewById<Button>(R.id.auth_switch).text = if (modeLogin) "Create account" else "Log in"
         v.findViewById<Button>(R.id.auth_go).text = if (modeLogin) "Log in" else "Create account"
     }
-
     private fun err(msg: String) {
         view?.findViewById<TextView>(R.id.auth_err)?.text = msg
     }
-
     private fun doLogin() {
         val v = requireView()
         val login = v.findViewById<TextInputEditText>(R.id.login_id).text.toString()
@@ -75,7 +68,6 @@ class AuthFragment : Fragment() {
             }
         }
     }
-
     private fun doSignup() {
         val v = requireView()
         val body = mapOf(
@@ -102,7 +94,6 @@ class AuthFragment : Fragment() {
             }
         }
     }
-
     private fun afterAuth() {
         lifecycleScope.launch {
             try {

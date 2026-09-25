@@ -149,11 +149,6 @@
         android:orientation="vertical"
         android:visibility="gone">
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="#242424" />
-
         <LinearLayout
             android:id="@+id/nav_row"
             android:layout_width="match_parent"
@@ -271,7 +266,7 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp">
 
-                <org.watchshark.app.ui.WebmAvatarView
+                <watchshark.duckdns.org.ui.WebmAvatarView
                 android:id="@+id/nav_avatar"
                 android:layout_width="24dp"
                 android:layout_height="24dp"
