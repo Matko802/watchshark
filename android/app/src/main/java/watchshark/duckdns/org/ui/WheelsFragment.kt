@@ -103,12 +103,15 @@ class WheelsFragment : Fragment() {
         val url = AutoQuality.readyUrl(vid, want) ?: return
         if (!AutoQuality.tryBeginSwitch(AutoQuality.UPGRADE_GAP_MS)) return
         autoKeys[vid.id] = want
+        val wasIndex = exo.currentMediaItemIndex
         val time = exo.currentPosition.coerceAtLeast(0)
         val playing = exo.isPlaying
         exo.removeMediaItem(position)
         exo.addMediaItem(position, MediaItem.fromUri(url))
-        exo.seekTo(position, time)
-        if (playing) exo.play()
+        if (wasIndex == position) {
+            exo.seekTo(position, time)
+            if (playing) exo.play()
+        }
     }
     private fun autoStepDownCurrent(exo: ExoPlayer) {
         val pos = exo.currentMediaItemIndex
