@@ -39,9 +39,13 @@ class BlurBarView @JvmOverloads constructor(
             }
         private const val DOWNSCALE = 10
         private const val CAPTURE_MIN_MS = 150L
-        // AMOLED-friendly scrim: translucent black over the blur so the
-        // frosted content stays visible instead of drowning in black.
-        private const val SCRIM = 0x80000000
+        // Frosted-glass stack (bottom to top): a sheer black base so the
+        // bar never goes fully clear, the live-blurred content, then a
+        // light scrim for contrast. Kept deliberately sheer — an opaque
+        // background or a heavy scrim turns the bars solid and "covers"
+        // the content instead of frosting over it.
+        private const val BASE = 0x59000000
+        private const val SCRIM = 0x33000000
 
         private val live = mutableSetOf<BlurBarView>()
     }
@@ -59,6 +63,7 @@ class BlurBarView @JvmOverloads constructor(
     private var cached: Bitmap? = null
     private var lastCapture = 0L
     private val bitmapPaint = Paint(Paint.FILTER_BITMAP_FLAG)
+    private val basePaint = Paint().apply { color = BASE.toInt() }
     private val scrimPaint = Paint().apply { color = SCRIM.toInt() }
 
     /** Re-draw on an interval so video frames / list changes show through. */
@@ -79,6 +84,9 @@ class BlurBarView @JvmOverloads constructor(
 
     init {
         setWillNotDraw(false)
+        // The frost is drawn by hand in onDraw; any opaque XML background
+        // would sit underneath it and flatten everything to solid black.
+        background = null
     }
 
     override fun onAttachedToWindow() {
@@ -143,6 +151,9 @@ class BlurBarView @JvmOverloads constructor(
     }
 
     private fun drawBlurBehind(canvas: Canvas) {
+        // Sheer base first so the bar is never fully clear, even if the
+        // capture below fails for a frame.
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), basePaint)
         val t = target
         if (!blurEnabled || t == null || t.width <= 0 || width <= 0 || height <= 0) return
         val now = SystemClock.uptimeMillis()
