@@ -161,7 +161,8 @@ class MainActivity : AppCompatActivity() {
                 0,
                 (7 * density).toInt() + bars.bottom
             )
-            val imePx = (ime.bottom - bars.bottom).coerceAtLeast(0)
+            val navH = findViewById<View>(R.id.bottomnav)?.height ?: 0
+            val imePx = (ime.bottom - navH).coerceAtLeast(0)
             imeBottomPx = imePx
             findViewById<View>(R.id.bottom_search_bar)?.let { strip ->
                 if (searchExpanded && !searchAnimating) strip.translationY = -imePx.toFloat()
@@ -364,6 +365,41 @@ class MainActivity : AppCompatActivity() {
     private var searchAnimating = false
     private var imeBottomPx = 0
     private var searchSyncing = false
+    private val toastHandler = Handler(Looper.getMainLooper())
+    private var toastHide: Runnable? = null
+
+    fun showToast(msg: String) {
+        val toast: TextView = findViewById(R.id.app_toast)
+        val navH = findViewById<View>(R.id.bottomnav)?.height ?: 0
+        (toast.layoutParams as android.widget.FrameLayout.LayoutParams).bottomMargin =
+            navH + (16 * resources.displayMetrics.density).toInt()
+        toast.text = msg
+        toast.visibility = View.VISIBLE
+        toast.animate().cancel()
+        toast.alpha = 0f
+        toast.translationY = (24 * resources.displayMetrics.density)
+        toast.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(150)
+            .setInterpolator(android.view.animation.DecelerateInterpolator())
+            .withEndAction {
+                toastHide?.let { toastHandler.removeCallbacks(it) }
+                toastHide = Runnable { hideToast() }
+                toastHandler.postDelayed(toastHide!!, 1800)
+            }
+            .start()
+    }
+
+    private fun hideToast() {
+        val toast: TextView = findViewById(R.id.app_toast)
+        toast.animate().cancel()
+        toast.animate()
+            .alpha(0f)
+            .setDuration(150)
+            .withEndAction { toast.visibility = View.GONE }
+            .start()
+    }
     private val searchHandler = Handler(Looper.getMainLooper())
     private var searchPending: Runnable? = null
     private fun goRoot(fragment: Fragment, tag: String, push: Boolean) {

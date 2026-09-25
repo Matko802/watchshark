@@ -108,7 +108,7 @@ class AdminFragment : Fragment() {
             h.ban.setOnClickListener {
                 val days = h.days.text.toString().toDoubleOrNull() ?: 0.0
                 if (days <= 0) {
-                    android.widget.Toast.makeText(ctx, "Give ban days", android.widget.Toast.LENGTH_SHORT).show()
+                    ctx.toast("Give ban days")
                     return@setOnClickListener
                 }
                 scope.launch {
@@ -123,7 +123,7 @@ class AdminFragment : Fragment() {
                         )
                         onChanged()
                     } catch (e: Exception) {
-                        android.widget.Toast.makeText(ctx, httpErrorMessage(e), android.widget.Toast.LENGTH_SHORT).show()
+                        ctx.toast(httpErrorMessage(e))
                     }
                 }
             }
@@ -133,7 +133,7 @@ class AdminFragment : Fragment() {
                         ApiClient.api.adminUnban(mapOf("id" to u.id))
                         onChanged()
                     } catch (e: Exception) {
-                        android.widget.Toast.makeText(ctx, httpErrorMessage(e), android.widget.Toast.LENGTH_SHORT).show()
+                        ctx.toast(httpErrorMessage(e))
                     }
                 }
             }
@@ -143,7 +143,7 @@ class AdminFragment : Fragment() {
                         ApiClient.api.adminApprove(mapOf("id" to u.id))
                         onChanged()
                     } catch (e: Exception) {
-                        android.widget.Toast.makeText(ctx, httpErrorMessage(e), android.widget.Toast.LENGTH_SHORT).show()
+                        ctx.toast(httpErrorMessage(e))
                     }
                 }
             }
@@ -153,7 +153,7 @@ class AdminFragment : Fragment() {
                         ApiClient.api.adminRestore(mapOf("id" to u.id))
                         onChanged()
                     } catch (e: Exception) {
-                        android.widget.Toast.makeText(ctx, httpErrorMessage(e), android.widget.Toast.LENGTH_SHORT).show()
+                        ctx.toast(httpErrorMessage(e))
                     }
                 }
             }
@@ -163,7 +163,7 @@ class AdminFragment : Fragment() {
                         ApiClient.api.adminSoftDelete(mapOf("id" to u.id, "reason" to "Removed by admin"))
                         onChanged()
                     } catch (e: Exception) {
-                        android.widget.Toast.makeText(ctx, httpErrorMessage(e), android.widget.Toast.LENGTH_SHORT).show()
+                        ctx.toast(httpErrorMessage(e))
                     }
                 }
             }
@@ -173,7 +173,7 @@ class AdminFragment : Fragment() {
                         ApiClient.api.adminDelUser(u.id)
                         onChanged()
                     } catch (e: Exception) {
-                        android.widget.Toast.makeText(ctx, httpErrorMessage(e), android.widget.Toast.LENGTH_SHORT).show()
+                        ctx.toast(httpErrorMessage(e))
                     }
                 }
             }

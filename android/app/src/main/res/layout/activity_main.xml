@@ -291,4 +291,20 @@
         </LinearLayout>
     </LinearLayout>
     </LinearLayout>
+    <TextView
+        android:id="@+id/app_toast"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="96dp"
+        android:background="@drawable/toast_bg"
+        android:elevation="6dp"
+        android:maxWidth="320dp"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp"
+        android:textColor="@android:color/white"
+        android:textSize="14sp"
+        android:visibility="gone" />
 </FrameLayout>

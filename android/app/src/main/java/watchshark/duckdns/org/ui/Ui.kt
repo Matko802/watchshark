@@ -4,7 +4,7 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.Toast
 import coil.load
-import com.google.android.material.snackbar.Snackbar
+import watchshark.duckdns.org.MainActivity
 import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.ApiClient
 import java.text.SimpleDateFormat
@@ -104,9 +104,19 @@ fun fmtDateTime(s: String?): String {
         s
     }
 }
-fun Context.toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
-fun android.view.View.snack(msg: String) =
-    Snackbar.make(this, msg, Snackbar.LENGTH_SHORT).show()
+fun Context.toast(msg: String) {
+    var c: Context? = this
+    while (c != null) {
+        if (c is MainActivity) {
+            val act = c
+            act.runOnUiThread { act.showToast(msg) }
+            return
+        }
+        c = (c as? android.content.ContextWrapper)?.baseContext
+    }
+    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+}
+fun android.view.View.snack(msg: String) = context.toast(msg)
 fun apiErrorMessage(e: Exception): String =
     e.message?.takeIf { it.isNotBlank() } ?: "Network error"
 fun httpErrorMessage(e: Exception): String {

@@ -1,6 +1,7 @@
 package watchshark.duckdns.org.data
 import android.content.Context
 import android.util.Log
+import watchshark.duckdns.org.ui.toast
 /** Captures uncaught crashes to a file so users can send the exact stack trace. */
 object CrashLog {
     private const val PREFS = "watchshark_crash"
@@ -53,7 +54,7 @@ object CrashLog {
                 cm?.setPrimaryClip(
                     android.content.ClipData.newPlainText("crash", report)
                 )
-                android.widget.Toast.makeText(ctx, "Copied", android.widget.Toast.LENGTH_SHORT).show()
+                ctx.toast("Copied")
             }
             .show()
     }
