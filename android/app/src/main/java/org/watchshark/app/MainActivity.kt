@@ -12,7 +12,6 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.animation.doOnEnd
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
@@ -251,7 +250,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupTopSearch() {
         val btn: ImageButton = findViewById(R.id.top_search_btn)
-        val input: EditText = findViewById(R.id.top_search)
+        val input: EditText = findViewById(R.id.bottom_search)
         btn.setOnClickListener {
             if (searchExpanded) collapseSearch(clear = true) else expandSearch()
         }
@@ -274,20 +273,34 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    /** Search input lives in a strip above the bottom nav: slides up + fades in. */
     private fun expandSearch() {
-        val input: EditText = findViewById(R.id.top_search)
+        val strip: View = findViewById(R.id.bottom_search_bar)
+        val input: EditText = findViewById(R.id.bottom_search)
         val btn: ImageButton = findViewById(R.id.top_search_btn)
         searchExpanded = true
         btn.setImageResource(R.drawable.ic_close)
-        input.visibility = View.VISIBLE
-        animateSearchWidth(input.width, searchTargetWidth) {
-            input.requestFocus()
-            showKeyboard(input)
+        strip.animate().cancel()
+        strip.visibility = View.VISIBLE
+        strip.post {
+            strip.translationY = strip.height.toFloat()
+            strip.alpha = 0f
+            strip.animate()
+                .translationY(0f)
+                .alpha(1f)
+                .setDuration(250)
+                .setInterpolator(android.view.animation.DecelerateInterpolator())
+                .withEndAction {
+                    input.requestFocus()
+                    showKeyboard(input)
+                }
+                .start()
         }
     }
 
     private fun collapseSearch(clear: Boolean) {
-        val input: EditText = findViewById(R.id.top_search)
+        val strip: View = findViewById(R.id.bottom_search_bar)
+        val input: EditText = findViewById(R.id.bottom_search)
         val btn: ImageButton = findViewById(R.id.top_search_btn)
         searchExpanded = false
         searchPending?.let { searchHandler.removeCallbacks(it) }
@@ -299,29 +312,19 @@ class MainActivity : AppCompatActivity() {
             searchSyncing = false
             submitTopSearch("")
         }
-        animateSearchWidth(input.width, 0) {
-            input.visibility = View.GONE
-        }
         btn.setImageResource(R.drawable.ic_search)
-    }
-
-    /** Website-style expand: width + fade over 250ms. */
-    private fun animateSearchWidth(from: Int, to: Int, onDone: () -> Unit = {}) {
-        val input: EditText = findViewById(R.id.top_search)
-        searchAnimator?.cancel()
-        val range = (to - from).toFloat()
-        searchAnimator = android.animation.ValueAnimator.ofInt(from, to).apply {
-            duration = 250
-            interpolator = android.view.animation.DecelerateInterpolator()
-            addUpdateListener { anim ->
-                val w = anim.animatedValue as Int
-                input.layoutParams.width = w
-                input.requestLayout()
-                input.alpha = if (range == 0f) 1f else ((w - from) / range).coerceIn(0f, 1f)
+        strip.animate().cancel()
+        strip.animate()
+            .translationY(strip.height.toFloat())
+            .alpha(0f)
+            .setDuration(250)
+            .setInterpolator(android.view.animation.DecelerateInterpolator())
+            .withEndAction {
+                strip.visibility = View.GONE
+                strip.translationY = 0f
+                strip.alpha = 1f
             }
-            doOnEnd { onDone() }
-            start()
-        }
+            .start()
     }
 
     private fun submitTopSearch(q: String) {
@@ -334,7 +337,7 @@ class MainActivity : AppCompatActivity() {
 
     /** Keep the input text in sync with the visible Home feed's query. */
     private fun syncSearchInput() {
-        val input: EditText = findViewById(R.id.top_search) ?: return
+        val input: EditText = findViewById(R.id.bottom_search) ?: return
         val q = (supportFragmentManager.findFragmentByTag("home") as? HomeFragment)?.currentQuery().orEmpty()
         if (input.text.toString() != q) {
             searchSyncing = true
@@ -380,11 +383,8 @@ class MainActivity : AppCompatActivity() {
     /** Topbar expandable search (icon next to the bell, like the website). */
     private var searchExpanded = false
     private var searchSyncing = false
-    private var searchAnimator: android.animation.ValueAnimator? = null
     private val searchHandler = Handler(Looper.getMainLooper())
     private var searchPending: Runnable? = null
-    private val searchTargetWidth
-        get() = (200 * resources.displayMetrics.density).toInt()
 
     private fun goRoot(fragment: Fragment, tag: String, push: Boolean) {
         val order = listOf("home", "wheels", "music")

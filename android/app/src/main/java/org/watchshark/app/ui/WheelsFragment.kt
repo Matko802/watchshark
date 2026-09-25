@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 import org.watchshark.app.MainActivity
 import org.watchshark.app.R
 import org.watchshark.app.data.ApiClient
+import org.watchshark.app.data.AutoQuality
 import org.watchshark.app.data.Video
 
 class WheelsFragment : Fragment() {
@@ -34,6 +35,10 @@ class WheelsFragment : Fragment() {
     private var selectedPos = 0
     private var prepared = false
     private val qualityOverride = mutableMapOf<Long, String>()
+    /** Rung currently playing per reel (for adaptive switches). */
+    private val autoKeys = mutableMapOf<Long, String>()
+    /** True once the current item rendered a frame (initial buffering never downgrades). */
+    private var wheelReady = false
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, saved: Bundle?): View {
         return inflater.inflate(R.layout.fragment_wheels, container, false)
@@ -44,6 +49,7 @@ class WheelsFragment : Fragment() {
         player = ApiClient.buildPlayer(requireContext()).also { exo ->
             exo.addListener(object : Player.Listener {
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                    wheelReady = false
                     // No autoplay-next: when a reel ends the playlist would
                     // auto-advance on its own — hold position and stay paused.
                     if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
@@ -60,6 +66,11 @@ class WheelsFragment : Fragment() {
                     // of advancing the playlist.
                     if (state == Player.STATE_ENDED) {
                         exo.pause()
+                    } else if (state == Player.STATE_READY) {
+                        wheelReady = true
+                    } else if (state == Player.STATE_BUFFERING && exo.playWhenReady && wheelReady) {
+                        // Stall mid-reel: step quality down fast (unless manual).
+                        autoStepDownCurrent(exo)
                     }
                 }
             })
@@ -83,11 +94,52 @@ class WheelsFragment : Fragment() {
                     // Play on select with sound (no autoplay-next: ended reels
                     // hold position via the transition guard).
                     exo.playWhenReady = true
+                    // Fresh speed samples may allow a better rung for this reel.
+                    autoUpgradeCurrent(exo, position)
                 }
                 if (position >= videos.size - 3) loadMore()
             }
         })
         loadMore()
+    }
+
+    /** Faster internet than the current reel's rung: swap it up in place. */
+    private fun autoUpgradeCurrent(exo: ExoPlayer, position: Int) {
+        val vid = videos.getOrNull(position) ?: return
+        if (qualityOverride.containsKey(vid.id)) return
+        if (position >= exo.mediaItemCount) return
+        val want = AutoQuality.pickKey()
+        if (AutoQuality.rungIndex(want) <= AutoQuality.rungIndex(autoKeys[vid.id])) return
+        val url = fullUrl(AutoQuality.urlFor(vid, want) ?: vid.src) ?: return
+        if (!AutoQuality.tryBeginSwitch(AutoQuality.UPGRADE_GAP_MS)) return
+        autoKeys[vid.id] = want
+        val time = exo.currentPosition.coerceAtLeast(0)
+        val playing = exo.isPlaying
+        exo.removeMediaItem(position)
+        exo.addMediaItem(position, MediaItem.fromUri(url))
+        exo.seekTo(position, time)
+        if (playing) exo.play()
+    }
+
+    /** Stall mid-reel: one rung down in place (unless manual override). */
+    private fun autoStepDownCurrent(exo: ExoPlayer) {
+        val pos = exo.currentMediaItemIndex
+        val vid = videos.getOrNull(pos) ?: return
+        if (qualityOverride.containsKey(vid.id)) return
+        if (pos >= exo.mediaItemCount) return
+        val idx = AutoQuality.rungIndex(autoKeys[vid.id])
+        if (idx <= 0) return
+        val want = AutoQuality.rungKey(idx - 1)
+        val url = fullUrl(AutoQuality.urlFor(vid, want) ?: vid.src) ?: return
+        if (!AutoQuality.tryBeginSwitch(AutoQuality.DOWNGRADE_GAP_MS)) return
+        autoKeys[vid.id] = want
+        wheelReady = false
+        val time = exo.currentPosition.coerceAtLeast(0)
+        val playing = exo.isPlaying
+        exo.removeMediaItem(pos)
+        exo.addMediaItem(pos, MediaItem.fromUri(url))
+        exo.seekTo(pos, time)
+        if (playing) exo.play()
     }
 
     // Seen IDs are session-only, like the website (its _loadSeen is a no-op).
@@ -103,11 +155,20 @@ class WheelsFragment : Fragment() {
         val override = qualityOverride[v.id]
         val url = when {
             override != null -> v.renditions?.get(override) ?: dynRendition(v, override) ?: v.src
-            // Auto (like the website): light renditions first, Source last.
-            else -> v.renditions?.get("720p")
-                ?: v.renditions?.get("480p")
-                ?: v.renditions?.get("360p")
-                ?: v.src
+            // Auto: rung picked from live connection speed (see AutoQuality).
+            else -> {
+                val key = AutoQuality.pickKey()
+                val auto = AutoQuality.urlFor(v, key)
+                if (auto != null) {
+                    autoKeys[v.id] = key
+                    auto
+                } else {
+                    v.renditions?.get("720p")
+                        ?: v.renditions?.get("480p")
+                        ?: v.renditions?.get("360p")
+                        ?: v.src
+                }
+            }
         }
         return fullUrl(url)
     }
@@ -193,6 +254,7 @@ class WheelsFragment : Fragment() {
     private fun watchAgain() {
         seen.clear()
         videos.clear()
+        autoKeys.clear()
         selectedPos = 0
         exhausted = false
         prepared = false

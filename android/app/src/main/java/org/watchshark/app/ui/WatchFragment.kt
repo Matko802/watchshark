@@ -34,6 +34,10 @@ class WatchFragment : Fragment() {
     private var player: ExoPlayer? = null
     private var video: Video? = null
     private lateinit var commentsAdapter: CommentsAdapter
+    /** Adaptive quality state: manual picks disable auto for this video. */
+    private var autoMode = true
+    private var autoKey: String? = null
+    private var everReady = false
 
     companion object {
         fun newInstance(id: Long) = WatchFragment().apply {
@@ -114,15 +118,21 @@ class WatchFragment : Fragment() {
         startPlayer(fullUrl(autoSrc(vid)) ?: return)
     }
 
-    /** Auto quality (like the website): prefer light renditions over Source. */
+    /** Auto quality: rung picked from live connection speed (see AutoQuality). */
     private fun autoSrc(vid: Video): String {
-        val r = vid.renditions
-        return r?.get("720p") ?: r?.get("480p") ?: r?.get("360p") ?: vid.src
+        val key = org.watchshark.app.data.AutoQuality.pickKey()
+        autoKey = key
+        return org.watchshark.app.data.AutoQuality.urlFor(vid, key)
+            ?: vid.renditions?.get("720p")
+            ?: vid.renditions?.get("480p")
+            ?: vid.renditions?.get("360p")
+            ?: vid.src
     }
-
     private fun startPlayer(url: String) {
         val v = view ?: return
         releasePlayer()
+        autoMode = true
+        everReady = false
         val pv: PlayerView = v.findViewById(R.id.player)
         pv.useController = true
         pv.controllerShowTimeoutMs = 3000
@@ -159,7 +169,18 @@ class WatchFragment : Fragment() {
     private val ctrlTick = object : Runnable {
         override fun run() {
             updateCtrlTime()
+            autoTick()
             ctrlHandler.postDelayed(this, 500)
+        }
+    }
+
+    /** Periodic upgrade: faster internet mid-video steps quality up. */
+    private fun autoTick() {
+        val exo = player ?: return
+        val vid = video ?: return
+        if (!autoMode || !exo.playWhenReady || exo.playbackState != Player.STATE_READY) return
+        org.watchshark.app.data.AutoQuality.maybeUpgradeSingle(exo, vid, autoKey)?.let {
+            autoKey = it
         }
     }
 
@@ -167,7 +188,17 @@ class WatchFragment : Fragment() {
         override fun onIsPlayingChanged(isPlaying: Boolean) = syncCtrlButtons()
         override fun onPlaybackStateChanged(state: Int) {
             if (state == Player.STATE_READY) {
+                everReady = true
                 view?.findViewById<View>(R.id.web_poster)?.visibility = View.GONE
+            } else if (state == Player.STATE_BUFFERING) {
+                // Stall while playing: step quality down fast (unless manual).
+                val exo = player
+                val vid = video
+                if (exo != null && vid != null && autoMode && everReady && exo.playWhenReady) {
+                    org.watchshark.app.data.AutoQuality.stepDownSingle(exo, vid, autoKey)?.let {
+                        autoKey = it
+                    }
+                }
             }
             syncCtrlButtons()
         }
@@ -242,13 +273,27 @@ class WatchFragment : Fragment() {
             val (label, src) = options[item.itemId]
             view?.findViewById<android.widget.Button>(R.id.exo_qual)?.text = label
             val exo = player
-            if (src != null && exo != null) {
+            autoMode = (src == null)
+            if (exo == null) return@setOnMenuItemClickListener true
+            if (src != null) {
                 val t = exo.currentPosition
                 val playing = exo.isPlaying
                 exo.setMediaItem(MediaItem.fromUri(fullUrl(src) ?: src))
                 exo.prepare()
                 exo.seekTo(t)
                 if (playing) exo.play()
+            } else {
+                // Back to Auto: re-pick from the current speed right away.
+                val vid = video
+                if (vid != null) {
+                    val want = org.watchshark.app.data.AutoQuality.pickKey()
+                    if (want != autoKey) {
+                        org.watchshark.app.data.AutoQuality.urlFor(vid, want)?.let { url ->
+                            org.watchshark.app.data.AutoQuality.switchSingle(exo, url)
+                            autoKey = want
+                        }
+                    }
+                }
             }
             true
         }

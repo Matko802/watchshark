@@ -94,6 +94,15 @@ object ApiClient {
         authCookie()?.let { props["Cookie"] = it }
         val dataSource = DefaultHttpDataSource.Factory()
             .setDefaultRequestProperties(props)
+        // Shared bandwidth meter: every player reports its transfers here,
+        // so AutoQuality always has a live speed estimate to pick from.
+        try {
+            val meter = androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
+                .getSingletonInstance(ctx)
+            dataSource.setTransferListener(meter)
+            AutoQuality.bind(meter)
+        } catch (_: Exception) {
+        }
         return ExoPlayer.Builder(ctx)
             .setMediaSourceFactory(DefaultMediaSourceFactory(dataSource))
             .build()
