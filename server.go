@@ -273,6 +273,9 @@ CREATE TABLE IF NOT EXISTS resets(token TEXT PRIMARY KEY,user_id INTEGER NOT NUL
 CREATE TABLE IF NOT EXISTS follows(follower_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,followed_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,created_at DATETIME DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(follower_id,followed_id));
 CREATE TABLE IF NOT EXISTS notifications(id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,video_id INTEGER DEFAULT NULL,kind TEXT DEFAULT 'upload',title TEXT DEFAULT NULL,text TEXT DEFAULT NULL,created_at DATETIME DEFAULT CURRENT_TIMESTAMP,read INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS video_views(video_id INTEGER NOT NULL REFERENCES videos(id) ON DELETE CASCADE,user_id INTEGER NOT NULL,ip TEXT DEFAULT '',created_at DATETIME DEFAULT CURRENT_TIMESTAMP,UNIQUE(video_id,user_id,ip));
+CREATE TABLE IF NOT EXISTS dm_keys(user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,pubkey TEXT NOT NULL,created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE IF NOT EXISTS dm_messages(id INTEGER PRIMARY KEY AUTOINCREMENT,sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,recipient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,nonce TEXT NOT NULL,body TEXT NOT NULL,created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE INDEX IF NOT EXISTS idx_dm_pair ON dm_messages(sender_id,recipient_id,id);
 DROP TABLE IF EXISTS reset_requests;
 `
 
@@ -1375,6 +1378,11 @@ func handleEditVideo(w http.ResponseWriter, r *http.Request, id int64) {
 		writeErr(w, 400, "Title required")
 		return
 	}
+	kindRaw := strings.ToLower(truncateRunes(r.FormValue("kind"), 16))
+	kind := ""
+	if kindRaw == "video" || kindRaw == "wheel" || kindRaw == "music" {
+		kind = kindRaw
+	}
 	thumbName := ""
 	hasThumb := false
 	if f, _, ferr := r.FormFile("thumb"); ferr == nil {
@@ -1409,6 +1417,11 @@ func handleEditVideo(w http.ResponseWriter, r *http.Request, id int64) {
 		}
 	} else {
 		_, _ = db.Exec("UPDATE videos SET title=?,description=? WHERE id=?", title, desc, id)
+		dbMu.Unlock()
+	}
+	if kind != "" {
+		dbMu.Lock()
+		_, _ = db.Exec("UPDATE videos SET kind=? WHERE id=?", kind, id)
 		dbMu.Unlock()
 	}
 	writeJSON(w, 200, map[string]any{"ok": true})
@@ -1822,6 +1835,228 @@ func handleNotifRead(w http.ResponseWriter, r *http.Request, uid int64) {
 func readJSONBodyQuiet(w http.ResponseWriter, r *http.Request, v any) bool {
 	defer r.Body.Close()
 	return json.NewDecoder(io.LimitReader(r.Body, 65536)).Decode(v) == nil
+}
+
+func dmIsFriend(a, b int64) bool {
+	if a == b || a <= 0 || b <= 0 {
+		return false
+	}
+	dbMu.Lock()
+	defer dbMu.Unlock()
+	var x int
+	err := db.QueryRow("SELECT 1 FROM follows WHERE follower_id=? AND followed_id=? AND EXISTS (SELECT 1 FROM follows WHERE follower_id=? AND followed_id=?)", a, b, b, a).Scan(&x)
+	return err == nil
+}
+
+func dmUserIDByName(name string) int64 {
+	var id int64
+	dbMu.Lock()
+	defer dbMu.Unlock()
+	if err := db.QueryRow("SELECT id FROM users WHERE lower(username)=?", strings.ToLower(name)).Scan(&id); err != nil {
+		return 0
+	}
+	return id
+}
+
+func dmCleanName(name string) string {
+	var b strings.Builder
+	for _, c := range name {
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' {
+			b.WriteRune(c)
+		}
+	}
+	return b.String()
+}
+
+func handleDmSetKey(w http.ResponseWriter, r *http.Request, uid int64) {
+	var b struct {
+		Pubkey string `json:"pubkey"`
+	}
+	_ = readJSONBodyQuiet(w, r, &b)
+	pub := strings.TrimSpace(b.Pubkey)
+	if len(pub) < 40 || len(pub) > 200 {
+		writeErr(w, 400, "Bad key")
+		return
+	}
+	dbMu.Lock()
+	_, _ = db.Exec("INSERT INTO dm_keys (user_id,pubkey) VALUES (?,?) ON CONFLICT(user_id) DO UPDATE SET pubkey=excluded.pubkey", uid, pub)
+	dbMu.Unlock()
+	writeJSON(w, 200, map[string]any{"ok": true})
+}
+
+func handleDmGetKey(w http.ResponseWriter, r *http.Request, name string) {
+	clean := dmCleanName(name)
+	if clean == "" {
+		writeErr(w, 404, "Not found")
+		return
+	}
+	var un, pub sql.NullString
+	dbMu.Lock()
+	err := db.QueryRow("SELECT u.username,k.pubkey FROM users u LEFT JOIN dm_keys k ON k.user_id=u.id WHERE lower(u.username)=?", strings.ToLower(clean)).Scan(&un, &pub)
+	dbMu.Unlock()
+	if err != nil || !un.Valid || !pub.Valid || pub.String == "" {
+		writeErr(w, 404, "No key yet")
+		return
+	}
+	writeJSON(w, 200, map[string]any{"username": un.String, "pubkey": pub.String})
+}
+
+func handleFriends(w http.ResponseWriter, r *http.Request, uid int64) {
+	type friend struct {
+		ID       int64  `json:"id"`
+		Username string `json:"username"`
+		Avatar   any    `json:"avatar"`
+	}
+	out := []friend{}
+	dbMu.Lock()
+	rows, err := db.Query("SELECT u.id,u.username,u.avatar FROM users u JOIN follows f1 ON f1.followed_id=u.id AND f1.follower_id=? JOIN follows f2 ON f2.follower_id=u.id AND f2.followed_id=? ORDER BY u.username", uid, uid)
+	if err == nil {
+		for rows.Next() {
+			var f friend
+			var av sql.NullString
+			if err := rows.Scan(&f.ID, &f.Username, &av); err == nil {
+				if av.Valid && av.String != "" {
+					f.Avatar = "/a/" + av.String
+				}
+				out = append(out, f)
+			}
+		}
+		rows.Close()
+	}
+	dbMu.Unlock()
+	writeJSON(w, 200, map[string]any{"friends": out})
+}
+
+func handleDmSend(w http.ResponseWriter, r *http.Request, uid int64) {
+	var b struct {
+		To    string `json:"to"`
+		Nonce string `json:"nonce"`
+		Body  string `json:"body"`
+	}
+	_ = readJSONBodyQuiet(w, r, &b)
+	var rid int64
+	if n, err := strconv.ParseInt(strings.TrimSpace(b.To), 10, 64); err == nil {
+		rid = n
+	} else {
+		rid = dmUserIDByName(strings.TrimSpace(b.To))
+	}
+	if rid <= 0 {
+		writeErr(w, 404, "No such user")
+		return
+	}
+	if !dmIsFriend(uid, rid) {
+		writeErr(w, 403, "Not friends")
+		return
+	}
+	if len(b.Nonce) < 8 || len(b.Nonce) > 100 || b.Body == "" || len(b.Body) > 16384 {
+		writeErr(w, 400, "Bad message")
+		return
+	}
+	dbMu.Lock()
+	res, err := db.Exec("INSERT INTO dm_messages (sender_id,recipient_id,nonce,body) VALUES (?,?,?,?)", uid, rid, b.Nonce, b.Body)
+	var id int64
+	if err == nil {
+		id, _ = res.LastInsertId()
+	}
+	dbMu.Unlock()
+	if err != nil {
+		writeErr(w, 500, "Cannot store")
+		return
+	}
+	writeJSON(w, 200, map[string]any{"id": id})
+}
+
+func dmMessages(w http.ResponseWriter, uid, pid int64, after int64, limit int) {
+	type msg struct {
+		ID          int64  `json:"id"`
+		SenderID    int64  `json:"sender_id"`
+		RecipientID int64  `json:"recipient_id"`
+		Nonce       string `json:"nonce"`
+		Body        string `json:"body"`
+		CreatedAt   string `json:"created_at"`
+		Username    string `json:"username,omitempty"`
+	}
+	out := []msg{}
+	dbMu.Lock()
+	if after > 0 {
+		rows, err := db.Query("SELECT id,sender_id,recipient_id,nonce,body,created_at FROM dm_messages WHERE ((sender_id=? AND recipient_id=?) OR (sender_id=? AND recipient_id=?)) AND id>? ORDER BY id ASC LIMIT ?", uid, pid, pid, uid, after, limit)
+		if err == nil {
+			for rows.Next() {
+				var m msg
+				if err := rows.Scan(&m.ID, &m.SenderID, &m.RecipientID, &m.Nonce, &m.Body, &m.CreatedAt); err == nil {
+					out = append(out, m)
+				}
+			}
+			rows.Close()
+		}
+	} else {
+		rows, err := db.Query("SELECT id,sender_id,recipient_id,nonce,body,created_at FROM dm_messages WHERE ((sender_id=? AND recipient_id=?) OR (sender_id=? AND recipient_id=?)) ORDER BY id DESC LIMIT ?", uid, pid, pid, uid, limit)
+		if err == nil {
+			for rows.Next() {
+				var m msg
+				if err := rows.Scan(&m.ID, &m.SenderID, &m.RecipientID, &m.Nonce, &m.Body, &m.CreatedAt); err == nil {
+					out = append([]msg{m}, out...)
+				}
+			}
+			rows.Close()
+		}
+	}
+	dbMu.Unlock()
+	writeJSON(w, 200, map[string]any{"messages": out})
+}
+
+func handleDmThread(w http.ResponseWriter, r *http.Request, uid int64) {
+	peer := r.URL.Query().Get("user")
+	var pid int64
+	if n, err := strconv.ParseInt(strings.TrimSpace(peer), 10, 64); err == nil {
+		pid = n
+	} else {
+		pid = dmUserIDByName(strings.TrimSpace(peer))
+	}
+	if pid <= 0 {
+		writeErr(w, 404, "No such user")
+		return
+	}
+	if !dmIsFriend(uid, pid) {
+		writeErr(w, 403, "Not friends")
+		return
+	}
+	after, _ := strconv.ParseInt(r.URL.Query().Get("after_id"), 10, 64)
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit < 1 || limit > 100 {
+		limit = 50
+	}
+	dmMessages(w, uid, pid, after, limit)
+}
+
+func handleDmRecent(w http.ResponseWriter, r *http.Request, uid int64) {
+	type msg struct {
+		ID          int64  `json:"id"`
+		SenderID    int64  `json:"sender_id"`
+		RecipientID int64  `json:"recipient_id"`
+		Nonce       string `json:"nonce"`
+		Body        string `json:"body"`
+		CreatedAt   string `json:"created_at"`
+		Username    string `json:"username"`
+	}
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit < 1 || limit > 50 {
+		limit = 20
+	}
+	out := []msg{}
+	dbMu.Lock()
+	rows, err := db.Query("SELECT m.id,m.sender_id,m.recipient_id,m.nonce,m.body,m.created_at,u.username FROM dm_messages m JOIN users u ON u.id=m.sender_id WHERE m.sender_id=? OR m.recipient_id=? ORDER BY m.id DESC LIMIT ?", uid, uid, limit)
+	if err == nil {
+		for rows.Next() {
+			var m msg
+			if err := rows.Scan(&m.ID, &m.SenderID, &m.RecipientID, &m.Nonce, &m.Body, &m.CreatedAt, &m.Username); err == nil {
+				out = append(out, m)
+			}
+		}
+		rows.Close()
+	}
+	dbMu.Unlock()
+	writeJSON(w, 200, map[string]any{"messages": out})
 }
 
 func handlePfp(w http.ResponseWriter, r *http.Request, uid int64) {
@@ -3160,6 +3395,46 @@ func route(w http.ResponseWriter, r *http.Request) {
 		}
 		handleNotifRead(w, r, uid)
 		return
+	case m == "POST" && u == "/api/dm/key":
+		uid, _, ok := authUser(r)
+		if !ok {
+			writeErr(w, 401, "Login required")
+			return
+		}
+		handleDmSetKey(w, r, uid)
+		return
+	case m == "GET" && u == "/api/friends":
+		uid, _, ok := authUser(r)
+		if !ok {
+			writeErr(w, 401, "Login required")
+			return
+		}
+		handleFriends(w, r, uid)
+		return
+	case m == "POST" && u == "/api/dm/send":
+		uid, _, ok := authUser(r)
+		if !ok {
+			writeErr(w, 401, "Login required")
+			return
+		}
+		handleDmSend(w, r, uid)
+		return
+	case m == "GET" && u == "/api/dm/thread":
+		uid, _, ok := authUser(r)
+		if !ok {
+			writeErr(w, 401, "Login required")
+			return
+		}
+		handleDmThread(w, r, uid)
+		return
+	case m == "GET" && u == "/api/dm/recent":
+		uid, _, ok := authUser(r)
+		if !ok {
+			writeErr(w, 401, "Login required")
+			return
+		}
+		handleDmRecent(w, r, uid)
+		return
 	case m == "GET" && u == "/api/admin/pending":
 		uid, un, ok := requireAdmin(w, r)
 		if !ok {
@@ -3271,6 +3546,18 @@ func route(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			handleAdminDelUser(w, r, id, uid)
+			return
+		}
+		writeErr(w, 404, "Not found")
+		return
+	}
+	if strings.HasPrefix(u, "/api/dm/key/") {
+		if m == "GET" && len(u) > len("/api/dm/key/") {
+			if _, _, ok := authUser(r); ok {
+				handleDmGetKey(w, r, u[len("/api/dm/key/"):])
+				return
+			}
+			writeErr(w, 401, "Login required")
 			return
 		}
 		writeErr(w, 404, "Not found")
