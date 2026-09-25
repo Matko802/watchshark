@@ -46,6 +46,7 @@ class WheelsFragment : Fragment() {
             exo.addListener(object : Player.Listener {
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                     wheelReady = false
+                    readyPositions.clear()
                     if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
                         val back = (exo.currentMediaItemIndex - 1).coerceAtLeast(0)
                         exo.seekToDefaultPosition(back)
@@ -59,6 +60,8 @@ class WheelsFragment : Fragment() {
                         exo.pause()
                     } else if (state == Player.STATE_READY) {
                         wheelReady = true
+                        val idx = exo.currentMediaItemIndex
+                        if (readyPositions.add(idx)) adapter.notifyItemChanged(idx)
                     } else if (state == Player.STATE_BUFFERING && exo.playWhenReady && wheelReady) {
                         autoStepDownCurrent(exo)
                     }
@@ -94,9 +97,9 @@ class WheelsFragment : Fragment() {
         val vid = videos.getOrNull(position) ?: return
         if (qualityOverride.containsKey(vid.id)) return
         if (position >= exo.mediaItemCount) return
-        val want = AutoQuality.pickKey()
+        val want = AutoQuality.pickReadyKey(vid)
         if (AutoQuality.rungIndex(want) <= AutoQuality.rungIndex(autoKeys[vid.id])) return
-        val url = fullUrl(AutoQuality.urlFor(vid, want) ?: vid.src) ?: return
+        val url = AutoQuality.readyUrl(vid, want) ?: return
         if (!AutoQuality.tryBeginSwitch(AutoQuality.UPGRADE_GAP_MS)) return
         autoKeys[vid.id] = want
         val time = exo.currentPosition.coerceAtLeast(0)
@@ -106,16 +109,13 @@ class WheelsFragment : Fragment() {
         exo.seekTo(position, time)
         if (playing) exo.play()
     }
-    /** Stall mid-reel: one rung down in place (unless manual override). */
     private fun autoStepDownCurrent(exo: ExoPlayer) {
         val pos = exo.currentMediaItemIndex
         val vid = videos.getOrNull(pos) ?: return
         if (qualityOverride.containsKey(vid.id)) return
         if (pos >= exo.mediaItemCount) return
-        val idx = AutoQuality.rungIndex(autoKeys[vid.id])
-        if (idx <= 0) return
-        val want = AutoQuality.rungKey(idx - 1)
-        val url = fullUrl(AutoQuality.urlFor(vid, want) ?: vid.src) ?: return
+        val want = AutoQuality.lowerReadyKey(vid, autoKeys[vid.id]) ?: return
+        val url = AutoQuality.readyUrl(vid, want) ?: return
         if (!AutoQuality.tryBeginSwitch(AutoQuality.DOWNGRADE_GAP_MS)) return
         autoKeys[vid.id] = want
         wheelReady = false
@@ -135,17 +135,13 @@ class WheelsFragment : Fragment() {
         val url = when {
             override != null -> v.renditions?.get(override) ?: dynRendition(v, override) ?: v.src
             else -> {
-                val key = AutoQuality.pickKey()
-                val auto = AutoQuality.urlFor(v, key)
-                if (auto != null) {
-                    autoKeys[v.id] = key
-                    auto
-                } else {
-                    v.renditions?.get("720p")
-                        ?: v.renditions?.get("480p")
-                        ?: v.renditions?.get("360p")
-                        ?: v.src
-                }
+                val key = AutoQuality.pickReadyKey(v)
+                autoKeys[v.id] = key
+                AutoQuality.readyUrl(v, key)
+                    ?: v.renditions?.get("720p")
+                    ?: v.renditions?.get("480p")
+                    ?: v.renditions?.get("360p")
+                    ?: v.src
             }
         }
         return fullUrl(url)
@@ -226,6 +222,7 @@ class WheelsFragment : Fragment() {
         seen.clear()
         videos.clear()
         autoKeys.clear()
+        readyPositions.clear()
         selectedPos = 0
         exhausted = false
         prepared = false
@@ -283,7 +280,7 @@ class WheelsFragment : Fragment() {
             h.playerView.player = if (position == selectedPos) player else null
             h.thumb.loadMedia(vid.thumbnail)
             h.thumb.visibility =
-                if (position == selectedPos) View.GONE else View.VISIBLE
+                if (position == selectedPos && readyPositions.contains(position)) View.GONE else View.VISIBLE
             h.title.text = vid.title
             h.meta.text = "@${vid.username} • ${fmtNum(vid.views)} views"
             h.like.setIconResource(if (vid.liked) R.drawable.ic_favorite_fill else R.drawable.ic_favorite_outline)

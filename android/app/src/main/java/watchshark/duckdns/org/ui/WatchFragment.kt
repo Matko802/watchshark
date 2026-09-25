@@ -110,9 +110,9 @@ class WatchFragment : Fragment() {
     }
     /** Auto quality: rung picked from live connection speed (see AutoQuality). */
     private fun autoSrc(vid: Video): String {
-        val key = watchshark.duckdns.org.data.AutoQuality.pickKey()
+        val key = watchshark.duckdns.org.data.AutoQuality.pickReadyKey(vid)
         autoKey = key
-        return watchshark.duckdns.org.data.AutoQuality.urlFor(vid, key)
+        return watchshark.duckdns.org.data.AutoQuality.readyUrl(vid, key)
             ?: vid.renditions?.get("720p")
             ?: vid.renditions?.get("480p")
             ?: vid.renditions?.get("360p")
@@ -261,9 +261,9 @@ class WatchFragment : Fragment() {
             } else {
                 val vid = video
                 if (vid != null) {
-                    val want = watchshark.duckdns.org.data.AutoQuality.pickKey()
+                    val want = watchshark.duckdns.org.data.AutoQuality.pickReadyKey(vid)
                     if (want != autoKey) {
-                        watchshark.duckdns.org.data.AutoQuality.urlFor(vid, want)?.let { url ->
+                        watchshark.duckdns.org.data.AutoQuality.readyUrl(vid, want)?.let { url ->
                             watchshark.duckdns.org.data.AutoQuality.switchSingle(exo, url)
                             autoKey = want
                         }

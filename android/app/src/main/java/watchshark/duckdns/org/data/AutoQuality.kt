@@ -42,19 +42,41 @@ object AutoQuality {
         } catch (_: Exception) {
             Format.NO_VALUE.toLong()
         }
-    /** Highest rung fitting in 80% of the estimate (headroom). Unknown → 360p. */
-    fun pickKey(): String {
-        val est = estimateBps()
-        if (est <= 0) return "360p"
-        val budget = (est * 0.8).toLong()
-        var key = "360p"
-        for (r in LADDER) if (r.needBps <= budget) key = r.key
-        return key
-    }
     fun rungIndex(key: String?): Int =
         LADDER.indexOfFirst { it.key == key }.coerceAtLeast(0)
     fun rungKey(idx: Int): String = LADDER[idx.coerceIn(LADDER.indices)].key
     fun rungCount(): Int = LADDER.size
+    fun readyKeys(vid: Video): List<String> {
+        val keys = mutableListOf<String>()
+        for (r in LADDER) {
+            if (r.key == "src") {
+                if (!vid.src.isNullOrBlank()) keys.add("src")
+            } else if (vid.renditions?.containsKey(r.key) == true) {
+                keys.add(r.key)
+            }
+        }
+        return keys
+    }
+    fun readyUrl(vid: Video, key: String): String? {
+        if (key == "src") return ApiClient.fullUrl(vid.src)
+        return vid.renditions?.get(key)?.let { ApiClient.fullUrl(it) }
+    }
+    fun pickReadyKey(vid: Video): String {
+        val ready = readyKeys(vid)
+        if (ready.isEmpty()) return "360p"
+        val est = estimateBps()
+        if (est <= 0) {
+            return ready.filter { it != "src" }.maxByOrNull { rungIndex(it) } ?: "src"
+        }
+        val budget = (est * 0.8).toLong()
+        return ready.filter { LADDER[rungIndex(it)].needBps <= budget }
+            .maxByOrNull { rungIndex(it) }
+            ?: ready.minByOrNull { rungIndex(it) }!!
+    }
+    fun lowerReadyKey(vid: Video, curKey: String?): String? {
+        val cur = rungIndex(curKey)
+        return readyKeys(vid).filter { rungIndex(it) < cur }.maxByOrNull { rungIndex(it) }
+    }
     /** Throttle gate for any switch; stamps the clock when it opens. */
     fun tryBeginSwitch(gapMs: Long): Boolean {
         val now = SystemClock.uptimeMillis()
@@ -62,21 +84,6 @@ object AutoQuality {
         lastSwitchMs = now
         return true
     }
-    /** Resolve a rung to an absolute playable URL. */
-    fun urlFor(vid: Video, key: String): String? {
-        if (key == "src") return ApiClient.fullUrl(vid.src)
-        vid.renditions?.get(key)?.let { return ApiClient.fullUrl(it) }
-        return dynRendition(vid, key)?.let { ApiClient.fullUrl(it) }
-    }
-    /** Dynamic rendition URL (generates on first request server-side). */
-    private fun dynRendition(vid: Video, res: String): String? {
-        val stem = Regex("""/v/(.+)\.[a-z0-9]+$""", RegexOption.IGNORE_CASE)
-            .find(vid.src)?.groupValues?.get(1)
-            ?.removeSuffix("-720p")?.removeSuffix("-480p")?.removeSuffix("-360p")
-            ?: return null
-        return "/v/$stem-$res.webm"
-    }
-    /** Swap a single-item player's source, keeping position and play state. */
     fun switchSingle(exo: ExoPlayer, url: String) {
         val pos = exo.currentPosition.coerceAtLeast(0)
         val resume = exo.playWhenReady
@@ -90,22 +97,19 @@ object AutoQuality {
      * when no switch happened (same/better rung, throttled, or near the end).
      */
     fun maybeUpgradeSingle(exo: ExoPlayer, vid: Video, curKey: String?): String? {
-        val want = pickKey()
+        val want = pickReadyKey(vid)
         if (rungIndex(want) <= rungIndex(curKey)) return null
         val dur = exo.duration
         val pos = exo.currentPosition.coerceAtLeast(0)
         if (dur != C.TIME_UNSET && dur > 0 && dur - pos < TAIL_MS) return null
-        val url = urlFor(vid, want) ?: return null
+        val url = readyUrl(vid, want) ?: return null
         if (!tryBeginSwitch(UPGRADE_GAP_MS)) return null
         switchSingle(exo, url)
         return want
     }
-    /** One rung down for single-item players. Returns the new key or null. */
     fun stepDownSingle(exo: ExoPlayer, vid: Video, curKey: String?): String? {
-        val idx = rungIndex(curKey)
-        if (idx <= 0) return null
-        val want = rungKey(idx - 1)
-        val url = urlFor(vid, want) ?: return null
+        val want = lowerReadyKey(vid, curKey) ?: return null
+        val url = readyUrl(vid, want) ?: return null
         if (!tryBeginSwitch(DOWNGRADE_GAP_MS)) return null
         switchSingle(exo, url)
         return want
