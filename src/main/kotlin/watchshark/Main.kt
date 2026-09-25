@@ -14,6 +14,7 @@ val cleanPages = mapOf(
     "/channel" to "channel.html",
     "/wheels" to "wheels.html",
     "/music" to "music.html",
+    "/messages" to "messages.html",
     "/upload" to "upload.html",
     "/settings" to "settings.html",
     "/forgot" to "forgot.html",

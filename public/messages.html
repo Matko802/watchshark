@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Messages — WatchShark</title>
+<link rel="icon" type="image/png" href="/favicon.png?v=1">
+<link rel="stylesheet" href="/styles.css?v=36">
+<link rel="preload" href="/vendor/fonts/f1.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/vendor/fonts/f0.woff2" as="font" type="font/woff2" crossorigin>
+<link href="/vendor/fonts.css" rel="stylesheet">
+
+<script type="module">import '/vendor/material-web.js';</script>
+<meta property="og:site_name" content="WatchShark">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:title" content="WatchShark">
+<meta property="og:description" content="WatchShark — watch and share videos, wheels and music.">
+<meta property="og:image" content="https://watchshark.duckdns.org/watchshark.webp">
+<style>
+.dmwrap { display: flex; gap: 16px; align-items: flex-start; }
+#dmFriends { flex: 0 0 280px; max-width: 38vw; display: flex; flex-direction: column; gap: 2px; }
+#dmThread { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.dmrow { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; cursor: pointer; text-decoration: none; color: inherit; }
+.dmrow:hover { background: rgba(255,255,255,.06); }
+.dmrow.active { background: rgba(255,255,255,.1); }
+#dmMsgs { display: flex; flex-direction: column; gap: 6px; padding: 12px 4px; min-height: 200px; max-height: 52vh; overflow-y: auto; }
+.bubble { max-width: 75%; padding: 9px 14px; border-radius: 18px; background: #1e1e1e; color: #fff; font-size: 15px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.bubble.mine { align-self: flex-end; background: #f5f5f5; color: #000; }
+.bubble.theirs { align-self: flex-start; }
+.dmform { display: flex; gap: 8px; margin-top: 8px; }
+@media (max-width: 720px) {
+  .dmwrap { flex-direction: column; }
+  .dmwrap.chatting #dmFriends { display: none; }
+  .dmwrap:not(.chatting) #dmThread { display: none; }
+  #dmFriends { flex: none; max-width: none; width: 100%; }
+}
+</style>
+</head>
+<body data-pjax="1"><div id="bootloader"><div class="boots"></div></div>
+<header class="topbar">
+  <a class="brand" href="/"><img src="/watchshark.webp?v=2" alt="WatchShark logo"><span>WatchShark</span></a>
+  <span class="spacer"></span>
+  <span id="bellSlot" data-auth="in" style="display:none"></span>
+  <md-icon-button data-auth="in" href="/settings" aria-label="Settings" style="display:none"><md-icon>settings</md-icon></md-icon-button>
+  <md-text-button data-admin href="/admin" style="display:none">Admin</md-text-button>
+  <span id="whoami"></span>
+</header>
+<main>
+  <h2>Messages</h2>
+  <p class="muted">Chat with mutual follows. End-to-end encrypted.</p>
+  <p class="muted" id="dm-msg"></p>
+  <div class="dmwrap" id="dmWrap">
+    <div id="dmFriends"></div>
+    <div id="dmThread">
+      <h3 id="dmTitle" style="margin:0 0 4px"></h3>
+      <div id="dmMsgs"></div>
+      <div class="dmform" id="dmForm" style="display:none">
+        <md-outlined-text-field id="dmInput" label="Message" class="field" style="flex:1"></md-outlined-text-field>
+        <md-filled-button id="dmSend"><md-icon slot="icon">send</md-icon>Send</md-filled-button>
+      </div>
+    </div>
+  </div>
+</main>
+<nav id="bottomnav">
+  <a href="/" data-tab="home"><md-icon>home</md-icon><span>Home</span></a>
+  <a href="/wheels" data-tab="wheels"><md-icon>movie</md-icon><span>Wheels</span></a>
+  <a href="/upload" class="createbtn" aria-label="Create"><md-icon>add</md-icon></a>
+  <a href="/music" data-tab="music"><md-icon>music_note</md-icon><span>Music</span></a>
+  <a href="/settings" data-tab="account" id="navAccount"><span id="navAvatar"><md-icon>person</md-icon></span><span>You</span></a>
+</nav>
+<script>
+(function() {
+  const acc = document.getElementById('navAccount');
+  const navAv = document.getElementById('navAvatar');
+  fetch('/api/me', { credentials: 'include' }).then((r) => r.json()).then((j) => {
+    if (j && j.user) {
+      acc.href = '/channel?user=' + encodeURIComponent(j.user.username);
+      acc.dataset.user = j.user.username;
+      if (navAv) navAv.innerHTML = avatarHtml(j.user.avatar, 'navavatar');
+    }
+  }).catch(() => {});
+  acc.addEventListener('click', (e) => {
+    if (!acc.dataset.user) {
+      e.preventDefault();
+      if (typeof openAuth === 'function') openAuth('login');
+      else location.href = '/';
+    }
+  });
+})();
+</script>
+
+
+<script src="/app.js?v=14"></script>
+<script>
+let DM = { peer: null, peerKey: null, maxId: 0, timer: 0, me: null, myId: 0 };
+window.__destroy = function() { if (DM.timer) clearInterval(DM.timer); };
+async function initMessages() {
+  const u = await refreshAuth();
+  if (!u) { location.href = '/'; return; }
+  DM.me = u.username;
+  DM.myId = u.id || 0;
+  if (!await dmEnsureUploaded()) {
+    document.getElementById('dm-msg').textContent = 'Could not set up encryption on this browser.';
+    return;
+  }
+  const q = new URLSearchParams(location.search).get('user');
+  await loadFriends(q);
+  if (DM.timer) clearInterval(DM.timer);
+  DM.timer = setInterval(() => { if (DM.peer) loadThread(false); }, 3000);
+}
+async function loadFriends(select) {
+  const r = await fetch('/api/friends', { credentials: 'include' });
+  if (!r.ok) { location.href = '/'; return; }
+  const j = await r.json();
+  const box = document.getElementById('dmFriends');
+  const list = j.friends || [];
+  if (!list.length) {
+    box.innerHTML = '<p class="muted">No friends yet. Follow someone and have them follow you back.</p>';
+    return;
+  }
+  box.innerHTML = list.map((f) =>
+    `<a class="dmrow${f.username === DM.peer ? ' active' : ''}" href="/messages?user=${esc(f.username)}" data-user="${esc(f.username)}">` +
+    `${avatarHtml(f.avatar, 'pfp-sm')}<span>@${esc(f.username)}</span></a>`).join('');
+  box.querySelectorAll('[data-user]').forEach((a) => {
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      openThread(a.dataset.user);
+    });
+  });
+  const target = select || (list.length === 1 ? list[0].username : null);
+  if (target) openThread(target);
+}
+async function openThread(username) {
+  DM.peer = username;
+  DM.peerKey = null;
+  DM.maxId = 0;
+  document.getElementById('dmMsgs').innerHTML = '';
+  document.getElementById('dmWrap').classList.add('chatting');
+  document.getElementById('dmTitle').textContent = '@' + username;
+  document.getElementById('dmForm').style.display = '';
+  document.querySelectorAll('#dmFriends .dmrow').forEach((a) => {
+    a.classList.toggle('active', a.dataset.user === username);
+  });
+  try {
+    history.replaceState({}, '', '/messages?user=' + encodeURIComponent(username));
+  } catch {}
+  await loadThread(true);
+}
+async function peerKey() {
+  if (DM.peerKey) return DM.peerKey;
+  const r = await fetch('/api/dm/key/' + encodeURIComponent(DM.peer), { credentials: 'include' });
+  if (!r.ok) return null;
+  const j = await r.json();
+  DM.peerKey = j.pubkey || null;
+  return DM.peerKey;
+}
+async function loadThread(initial) {
+  if (!DM.peer) return;
+  const key = await peerKey();
+  if (!key) {
+    if (initial) document.getElementById('dm-msg').textContent =
+      '@' + DM.peer + ' has not opened messages yet.';
+    return;
+  }
+  document.getElementById('dm-msg').textContent = '';
+  const r = await fetch('/api/dm/thread?user=' + encodeURIComponent(DM.peer) +
+    '&after_id=' + DM.maxId + '&limit=50', { credentials: 'include' });
+  if (!r.ok) return;
+  const j = await r.json();
+  const box = document.getElementById('dmMsgs');
+  for (const m of (j.messages || [])) {
+    if (m.id <= DM.maxId) continue;
+    DM.maxId = m.id;
+    let text = null;
+    try { text = await dmDecrypt(key, m.nonce, m.body); } catch {}
+    if (text == null) continue;
+    appendBubble(text, m.sender_id === DM.myId);
+  }
+  box.scrollTop = box.scrollHeight;
+}
+function appendBubble(text, mine) {
+  const d = document.createElement('div');
+  d.className = 'bubble' + (mine ? ' mine' : ' theirs');
+  d.textContent = text;
+  const box = document.getElementById('dmMsgs');
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+async function sendDm() {
+  const inp = document.getElementById('dmInput');
+  const text = (inp.value || '').trim();
+  if (!text || !DM.peer) return;
+  const key = await peerKey();
+  if (!key) return;
+  let enc = null;
+  try { enc = await dmEncrypt(key, text); } catch {}
+  if (!enc) return;
+  const r = await fetch('/api/dm/send', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ to: DM.peer, nonce: enc.nonce, body: enc.body }),
+  });
+  if (!r.ok) return;
+  const j = await r.json();
+  if (j.id > DM.maxId) DM.maxId = j.id;
+  inp.value = '';
+  appendBubble(text, true);
+}
+document.getElementById('dmSend').addEventListener('click', sendDm);
+document.getElementById('dmInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') sendDm();
+});
+initMessages();
+hideBoot();
+</script>
+</body>
+</html>

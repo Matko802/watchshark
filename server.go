@@ -3276,6 +3276,7 @@ func route(w http.ResponseWriter, r *http.Request) {
 		"/channel": "channel.html",
 		"/wheels": "wheels.html",
 		"/music": "music.html",
+		"/messages": "messages.html",
 		"/upload": "upload.html",
 		"/settings": "settings.html",
 		"/forgot": "forgot.html",
