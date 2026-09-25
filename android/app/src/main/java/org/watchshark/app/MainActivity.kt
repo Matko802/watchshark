@@ -5,6 +5,7 @@ import android.view.View
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -40,6 +41,36 @@ class MainActivity : AppCompatActivity() {
         org.watchshark.app.data.Updater.init(this)
         setContentView(R.layout.activity_main)
         applyEdgeToEdge()
+        // Back on a root tab goes to the previous tab (animated) instead of
+        // exiting; detail screens pop normally; otherwise finish.
+        supportFragmentManager.addOnBackStackChangedListener {
+            // Returning from a detail (e.g. You channel) to its root tab:
+            // re-sync the highlight instead of leaving "you" selected.
+            if (supportFragmentManager.backStackEntryCount == 0 && currentTab == "you") {
+                val tag = supportFragmentManager.findFragmentById(R.id.container)?.tag
+                if (tag == "home" || tag == "wheels" || tag == "music") {
+                    currentTab = tag
+                    markNav()
+                }
+            }
+        }
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (supportFragmentManager.backStackEntryCount > 0) {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                    isEnabled = true
+                    return
+                }
+                if (tabHistory.size > 1) {
+                    tabHistory.removeLast()
+                    goRoot(rootFragment(tabHistory.last()), tabHistory.last(), false)
+                    return
+                }
+                isEnabled = false
+                onBackPressedDispatcher.onBackPressed()
+            }
+        })
         // If the last session crashed, show the report right away so the
         // user can copy + send it instead of just seeing "app stopped".
         org.watchshark.app.data.CrashLog.showNow(this)
@@ -198,6 +229,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun showAuth() {
+        tabHistory.clear()
         findViewById<View>(R.id.topbar).visibility = View.GONE
         findViewById<View>(R.id.bottomnav).visibility = View.GONE
         supportFragmentManager.popBackStackImmediate(null, 1)
@@ -217,17 +249,33 @@ class MainActivity : AppCompatActivity() {
         showAuth()
     }
 
-    private fun showRoot(fragment: Fragment, tag: String) {
+    private fun showRoot(fragment: Fragment, tag: String) = goRoot(fragment, tag, true)
+
+    private fun rootFragment(tag: String): Fragment = when (tag) {
+        "wheels" -> WheelsFragment()
+        "music" -> MusicFragment()
+        else -> HomeFragment()
+    }
+
+    /** Root-tab history for back navigation (Music back to Home, etc.). */
+    private val tabHistory = ArrayDeque<String>()
+
+    private fun goRoot(fragment: Fragment, tag: String, push: Boolean) {
         val order = listOf("home", "wheels", "music")
         val oldIdx = order.indexOf(currentTab)
         val newIdx = order.indexOf(tag)
         currentTab = tag
+        if (push && tabHistory.lastOrNull() != tag) {
+            tabHistory.addLast(tag)
+            while (tabHistory.size > 25) tabHistory.removeFirst()
+        }
         findViewById<View>(R.id.topbar).visibility = View.VISIBLE
         findViewById<View>(R.id.bottomnav).visibility = View.VISIBLE
         markNav()
         refreshTopbar()
         supportFragmentManager.popBackStackImmediate(null, 1)
         val tx = supportFragmentManager.beginTransaction()
+            .setReorderingAllowed(true)
         if (oldIdx >= 0 && newIdx >= 0 && oldIdx != newIdx) {
             if (newIdx > oldIdx) {
                 tx.setCustomAnimations(
@@ -297,6 +345,7 @@ class MainActivity : AppCompatActivity() {
     /** Push a detail screen (watch, channel, upload, settings, admin, notifications). */
     fun openDetail(fragment: Fragment) {
         supportFragmentManager.beginTransaction()
+            .setReorderingAllowed(true)
             .setCustomAnimations(
                 R.anim.slide_in_right, R.anim.slide_out_left,
                 R.anim.slide_in_left, R.anim.slide_out_right

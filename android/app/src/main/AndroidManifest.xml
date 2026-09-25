@@ -10,7 +10,7 @@
         android:icon="@mipmap/ic_launcher"
         android:theme="@style/Theme.WatchShark"
         android:hardwareAccelerated="true"
-        android:enableOnBackInvokedCallback="false"
+        android:enableOnBackInvokedCallback="true"
         android:usesCleartextTraffic="false">
         <activity
             android:name=".MainActivity"
