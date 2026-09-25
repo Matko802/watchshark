@@ -50,6 +50,10 @@ class MainActivity : AppCompatActivity() {
                     markNav()
                 }
             }
+            val onDetail = supportFragmentManager.backStackEntryCount > 0
+            findViewById<View>(R.id.top_search_btn)?.visibility =
+                if (onDetail) View.GONE else View.VISIBLE
+            if (onDetail && searchExpanded) collapseSearch(clear = false)
         }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -157,7 +161,7 @@ class MainActivity : AppCompatActivity() {
                 0,
                 (7 * density).toInt() + bars.bottom
             )
-            val imePx = ime.bottom
+            val imePx = (ime.bottom - bars.bottom).coerceAtLeast(0)
             imeBottomPx = imePx
             findViewById<View>(R.id.bottom_search_bar)?.let { strip ->
                 if (searchExpanded && !searchAnimating) strip.translationY = -imePx.toFloat()
