@@ -18,6 +18,7 @@ import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.ApiClient
 import watchshark.duckdns.org.data.DmCrypto
 import watchshark.duckdns.org.data.DmMessage
+import watchshark.duckdns.org.data.DmOutbox
 
 class ChatFragment : Fragment() {
     private var userId: Long = 0
