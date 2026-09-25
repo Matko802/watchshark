@@ -54,7 +54,8 @@ interface ApiService {
     suspend fun editVideo(
         @Path("id") id: Long,
         @Part("title") title: RequestBody,
-        @Part("description") desc: RequestBody
+        @Part("description") desc: RequestBody,
+        @Part("kind") kind: RequestBody
     ): JsonObject
     @HTTP(method = "DELETE", path = "api/videos/{id}", hasBody = true)
     suspend fun deleteVideo(@Path("id") id: Long, @Body b: Map<String, String>): JsonObject

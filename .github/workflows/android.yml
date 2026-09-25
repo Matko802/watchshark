@@ -1,0 +1,58 @@
+name: android
+on:
+  push:
+    branches: [main]
+    tags: ['android-v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build release APK
+        run: ./gradlew assembleRelease --no-daemon
+      - name: Check version matches tag
+        if: startsWith(github.ref, 'refs/tags/android-v')
+        run: |
+          VER="$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)"
+          TAG="${GITHUB_REF#refs/tags/android-v}"
+          echo "versionName=$VER tag=$TAG"
+          test "$VER" = "$TAG"
+      - name: Sign APK
+        if: startsWith(github.ref, 'refs/tags/android-v')
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > /tmp/release.jks
+          BT="$ANDROID_HOME/build-tools/34.0.0"
+          "$BT/zipalign" -p -f 4 app/build/outputs/apk/release/app-release-unsigned.apk /tmp/aligned.apk
+          "$BT/apksigner" sign --ks /tmp/release.jks --ks-pass "pass:$ANDROID_KEYSTORE_PASSWORD" \
+            --ks-key-alias "$ANDROID_KEY_ALIAS" --key-pass "pass:$ANDROID_KEY_PASSWORD" \
+            --out "/tmp/WatchShark-${GITHUB_REF#refs/tags/android-v}.apk" /tmp/aligned.apk
+          "$BT/apksigner" verify --print-certs "/tmp/WatchShark-${GITHUB_REF#refs/tags/android-v}.apk"
+          rm -f /tmp/release.jks /tmp/aligned.apk
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/android-v')
+        run: |
+          VER="${GITHUB_REF#refs/tags/android-v}"
+          gh release create "android-v$VER" --title "WatchShark Android $VER" --latest \
+            --notes "Debug-signed. Fresh install required (uninstall previous version first)." \
+            "/tmp/WatchShark-$VER.apk"
+        env:
+          GH_TOKEN: ${{ github.token }}

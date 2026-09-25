@@ -58,8 +58,7 @@ class WatchFragment : Fragment() {
         view.findViewById<Button>(R.id.comment_send).setOnClickListener { sendComment() }
         view.findViewById<Button>(R.id.like_btn).setOnClickListener { toggleLike() }
         view.findViewById<Button>(R.id.follow_btn).setOnClickListener { toggleFollow() }
-        view.findViewById<Button>(R.id.del_btn).setOnClickListener { askDelete() }
-        view.findViewById<Button>(R.id.edit_btn).setOnClickListener { askEdit() }
+        view.findViewById<Button>(R.id.manage_btn).setOnClickListener { anchor -> showManageMenu(anchor) }
         view.findViewById<View>(R.id.username).setOnClickListener {
             video?.let { (activity as? MainActivity)?.openDetail(ChannelFragment.newInstance(it.username)) }
         }
@@ -438,6 +437,16 @@ class WatchFragment : Fragment() {
             }
             .show()
     }
+    private fun showManageMenu(anchor: View) {
+        val popup = android.widget.PopupMenu(requireContext(), anchor)
+        popup.menu.add(0, 0, 0, "Edit")
+        popup.menu.add(0, 1, 1, "Delete")
+        popup.setOnMenuItemClickListener { item ->
+            if (item.itemId == 0) askEdit() else askDelete()
+            true
+        }
+        popup.show()
+    }
     private fun askEdit() {
         val vid = video ?: return
         val ctx = requireContext()
@@ -449,9 +458,34 @@ class WatchFragment : Fragment() {
         val descIn = TextInputEditText(ctx).apply { setText(vid.description ?: ""); hint = "Description" }
         layout.addView(titleIn)
         layout.addView(descIn)
+        val curKind = when (vid.kind) {
+            "wheel" -> "wheel"
+            "music" -> "music"
+            else -> "video"
+        }
+        val kindGroup = com.google.android.material.button.MaterialButtonToggleGroup(ctx).apply {
+            isSingleSelection = true
+            isSelectionRequired = true
+        }
+        for ((label, key) in listOf("Videos" to "video", "Shorts" to "wheel", "Music" to "music")) {
+            val b = com.google.android.material.button.MaterialButton(
+                ctx, null, com.google.android.material.R.attr.materialButtonOutlinedStyle
+            ).apply {
+                id = View.generateViewId()
+                text = label
+                tag = key
+            }
+            kindGroup.addView(b)
+            if (key == curKind) kindGroup.check(b.id)
+        }
+        layout.addView(kindGroup)
         AlertDialog.Builder(ctx)
             .setTitle("Edit video")
             .setView(layout)
+            .setNeutralButton("Delete") { d, _ ->
+                d.dismiss()
+                askDelete()
+            }
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Save") { _, _ ->
                 val title = titleIn.text.toString().trim()
@@ -459,11 +493,15 @@ class WatchFragment : Fragment() {
                     view?.snack("Title required")
                     return@setPositiveButton
                 }
+                val kindKey = kindGroup.findViewById<com.google.android.material.button.MaterialButton>(
+                    kindGroup.checkedButtonId
+                )?.tag as? String ?: curKind
                 lifecycleScope.launch {
                     try {
                         val tb = title.toRequestBody("text/plain".toMediaType())
                         val db = descIn.text.toString().toRequestBody("text/plain".toMediaType())
-                        ApiClient.api.editVideo(videoId, tb, db)
+                        val kb = kindKey.toRequestBody("text/plain".toMediaType())
+                        ApiClient.api.editVideo(videoId, tb, db, kb)
                         if (!isAdded) return@launch
                         load()
                     } catch (e: Exception) {

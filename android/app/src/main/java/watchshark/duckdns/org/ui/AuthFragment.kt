@@ -114,6 +114,9 @@ class AuthFragment : Fragment() {
                     return@launch
                 }
                 (activity as? MainActivity)?.showMain()
+                (activity as? MainActivity)?.let {
+                    watchshark.duckdns.org.data.UploadAlerts.ensureScheduled(it)
+                }
             } catch (e: Exception) {
                 if (isAdded) err(httpErrorMessage(e))
             }

@@ -293,6 +293,8 @@ object VideoHandlers {
             HttpUtil.writeErr(ctx, 400, "Title required")
             return
         }
+        val kindRaw = HttpUtil.truncateRunes(ctx.formParam("kind") ?: "", 16).lowercase()
+        val kind = if (kindRaw == "video" || kindRaw == "wheel" || kindRaw == "music") kindRaw else null
         var thumbName = ""
         var hasThumb = false
         try {
@@ -332,6 +334,12 @@ object VideoHandlers {
             } else {
                 Db.conn.prepareStatement("UPDATE videos SET title=?,description=? WHERE id=?").use { ps ->
                     ps.setString(1, title); ps.setString(2, desc); ps.setLong(3, id)
+                    ps.executeUpdate()
+                }
+            }
+            if (kind != null) {
+                Db.conn.prepareStatement("UPDATE videos SET kind=? WHERE id=?").use { ps ->
+                    ps.setString(1, kind); ps.setLong(2, id)
                     ps.executeUpdate()
                 }
             }

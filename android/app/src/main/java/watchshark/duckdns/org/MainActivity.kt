@@ -24,6 +24,7 @@ import watchshark.duckdns.org.ui.MusicFragment
 import watchshark.duckdns.org.ui.NotificationsFragment
 import watchshark.duckdns.org.ui.SettingsFragment
 import watchshark.duckdns.org.ui.UploadFragment
+import watchshark.duckdns.org.ui.WatchFragment
 import watchshark.duckdns.org.ui.WheelsFragment
 import watchshark.duckdns.org.ui.loadMedia
 class MainActivity : AppCompatActivity() {
@@ -117,6 +118,17 @@ class MainActivity : AppCompatActivity() {
             "watchshark.duckdns.org.action.MUSIC" -> showMusic()
             "watchshark.duckdns.org.action.UPLOAD" ->
                 openDetail(UploadFragment.newInstance("video"))
+            "watchshark.duckdns.org.action.WATCH" -> {
+                val vid = intent.getLongExtra("video_id", 0)
+                val nid = intent.getLongExtra("notif_id", 0)
+                if (nid > 0) lifecycleScope.launch {
+                    try {
+                        ApiClient.api.notifRead(mapOf("id" to nid))
+                    } catch (_: Exception) {
+                    }
+                }
+                if (vid > 0) openDetail(WatchFragment.newInstance(vid)) else showHome()
+            }
             else -> return false
         }
         return true
@@ -127,6 +139,7 @@ class MainActivity : AppCompatActivity() {
             refreshTopbar()
         }
         if (!ApiClient.sessionToken().isNullOrEmpty()) {
+            watchshark.duckdns.org.data.UploadAlerts.ensureScheduled(this)
             supportFragmentManager.findFragmentById(R.id.container)?.let { frag ->
                 if (frag.isAdded) watchshark.duckdns.org.data.Updater.checkSilent(frag)
             }
@@ -350,6 +363,7 @@ class MainActivity : AppCompatActivity() {
     fun showMusic() = showRoot(MusicFragment(), "music")
     fun restartToAuth() {
         ApiClient.clearSession()
+        watchshark.duckdns.org.data.UploadAlerts.cancel(this)
         showAuth()
     }
     private fun showRoot(fragment: Fragment, tag: String) = goRoot(fragment, tag, true)
