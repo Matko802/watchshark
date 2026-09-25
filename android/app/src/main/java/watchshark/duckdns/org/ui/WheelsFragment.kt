@@ -37,6 +37,7 @@ class WheelsFragment : Fragment() {
     private val autoKeys = mutableMapOf<Long, String>()
     /** True once the current item rendered a frame (initial buffering never downgrades). */
     private var wheelReady = false
+    private val readyPositions = mutableSetOf<Int>()
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, saved: Bundle?): View {
         return inflater.inflate(R.layout.fragment_wheels, container, false)
     }
