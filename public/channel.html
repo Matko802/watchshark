@@ -6,22 +6,22 @@
 <title>Channel — WatchShark</title>
 <link rel="icon" type="image/png" href="/favicon.png?v=1">
 <link rel="stylesheet" href="/styles.css?v=36">
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Material+Symbols+Outlined&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
-<script type="importmap">{ "imports": { "@material/web/": "https://esm.run/@material/web/" } }</script>
-<script type="module">import '@material/web/all.js';</script>
+<link rel="preload" href="/vendor/fonts/f1.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/vendor/fonts/f0.woff2" as="font" type="font/woff2" crossorigin>
+<link href="/vendor/fonts.css" rel="stylesheet">
+
+<script type="module">import '/vendor/material-web.js';</script>
 <meta property="og:site_name" content="WatchShark">
 <meta name="twitter:card" content="summary_large_image">
 </head>
-<body data-pjax="1">
+<body data-pjax="1"><div id="bootloader"><div class="boots"></div></div>
 <header class="topbar">
   <a class="brand" href="/"><img src="/watchshark.webp?v=2" alt="WatchShark logo"><span>WatchShark</span></a>
   <span class="spacer"></span>
-  <md-text-button href="/wheels"><md-icon slot="icon">movie</md-icon>Wheels</md-text-button>
-  <md-text-button href="/music"><md-icon slot="icon">music_note</md-icon>Music</md-text-button>
   <span id="bellSlot" data-auth="in" style="display:none"></span>
   <md-text-button data-admin href="/admin" style="display:none">Admin</md-text-button>
   <md-icon-button data-auth="in" href="/settings" aria-label="Settings" style="display:none"><md-icon>settings</md-icon></md-icon-button>
-  <md-filled-tonal-button data-auth="in" href="/upload" style="display:none">Create<md-icon slot="icon">add</md-icon></md-filled-tonal-button>
+  <a class="createcircle" data-auth="in" href="/upload" style="display:none" aria-label="Create"><md-icon>add</md-icon></a>
   <span id="whoami"></span>
   <md-filled-button data-auth="out" onclick="openAuth('login')" style="display:none">Sign in</md-filled-button>
 </header>
@@ -37,6 +37,7 @@
         <md-text-button id="cmoreBtn" onclick="toggleMore()">...more</md-text-button>
       </div>
       <span class="spacer"></span>
+      <md-outlined-button id="cmessage" onclick="messageChannel()" style="display:none"><md-icon slot="icon">chat</md-icon>Message</md-outlined-button>
       <md-filled-tonal-button id="cfollow" onclick="toggleChanFollow()" style="display:none"></md-filled-tonal-button>
     </div>
     <md-tabs id="chanTabs" aria-label="Channel sections">
@@ -126,7 +127,7 @@
 </script>
 
 
-<script src="/app.js?v=13"></script>
+<script src="/app.js?v=15"></script>
 <script>
 window.__boot = function() {
 let CHAN = null;
@@ -193,7 +194,7 @@ async function initChannel() {
   CHAN = j.user;
   document.getElementById('gate').style.display = 'none';
   document.getElementById('body').style.display = '';
-  document.getElementById('cpic').innerHTML = avatarHtml(CHAN.avatar, 'pfp-lg');
+  document.getElementById('cpic').innerHTML = avatarStatusHtml(CHAN.avatar, 'pfp-lg', CHAN.online);
   document.getElementById('cname').textContent = CHAN.username;
   document.getElementById('csub').textContent = '@' + CHAN.username + ' • ' + fmtNum(CHAN.followers) + ' followers • ' + CHAN.videos + ' videos';
   document.getElementById('cmore').textContent = fmtFull(CHAN.views) + ' total views • joined ' + CHAN.created_at;
@@ -211,11 +212,16 @@ document.getElementById('chanTabs').addEventListener('change', (e) => {
   chanTab = ['video', 'wheel', 'music'][e.target.activeTabIndex] || 'video';
   renderChanGrid();
 });
+function messageChannel() {
+  if (typeof CHAN !== "undefined" && CHAN) location.href = '/messages?user=' + encodeURIComponent(CHAN.username);
+}
 async function renderChanFollow() {
   const b = document.getElementById('cfollow');
+  const mb = document.getElementById('cmessage');
   const u = await me();
-  if (!u || (CHAN && u.id === CHAN.id)) { b.style.display = 'none'; return; }
+  if (!u || (CHAN && u.id === CHAN.id)) { b.style.display = 'none'; if (mb) mb.style.display = 'none'; return; }
   b.style.display = '';
+  if (mb) mb.style.display = '';
   b.innerHTML = `<md-icon slot="icon">${CHAN.following ? 'how_to_reg' : 'person_add'}</md-icon>${CHAN.following ? 'Following' : 'Follow'}`;
 }
 async function toggleChanFollow() {
@@ -233,9 +239,10 @@ function toggleMore() {
   document.getElementById('cmoreBtn').textContent = open ? 'Show less' : '...more';
 }
 initChannel();
-Object.assign(window, { toggleChanFollow, toggleMore });
+Object.assign(window, { toggleChanFollow, toggleMore, messageChannel });
 };
 window.__boot();
+hideBoot();
 </script>
 </body>
 </html>

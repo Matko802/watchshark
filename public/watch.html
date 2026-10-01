@@ -6,22 +6,22 @@
 <title>Watch — WatchShark</title>
 <link rel="icon" type="image/png" href="/favicon.png?v=1">
 <link rel="stylesheet" href="/styles.css?v=36">
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Material+Symbols+Outlined&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
-<script type="importmap">{ "imports": { "@material/web/": "https://esm.run/@material/web/" } }</script>
-<script type="module">import '@material/web/all.js';</script>
+<link rel="preload" href="/vendor/fonts/f1.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/vendor/fonts/f0.woff2" as="font" type="font/woff2" crossorigin>
+<link href="/vendor/fonts.css" rel="stylesheet">
+
+<script type="module">import '/vendor/material-web.js';</script>
 <meta property="og:site_name" content="WatchShark">
 <meta name="twitter:card" content="summary_large_image">
 </head>
-<body data-pjax="1">
+<body data-pjax="1"><div id="bootloader"><div class="boots"></div></div>
 <header class="topbar">
   <a class="brand" href="/"><img src="/watchshark.webp?v=2" alt="WatchShark logo"><span>WatchShark</span></a>
   <span class="spacer"></span>
-  <md-text-button href="/wheels"><md-icon slot="icon">movie</md-icon>Wheels</md-text-button>
-  <md-text-button href="/music"><md-icon slot="icon">music_note</md-icon>Music</md-text-button>
   <span id="bellSlot" data-auth="in" style="display:none"></span>
   <md-icon-button data-auth="in" href="/settings" aria-label="Settings" style="display:none"><md-icon>settings</md-icon></md-icon-button>
   <md-text-button data-admin href="/admin" style="display:none">Admin</md-text-button>
-  <md-filled-tonal-button data-auth="in" href="/upload" style="display:none">Create<md-icon slot="icon">add</md-icon></md-filled-tonal-button>
+  <a class="createcircle" data-auth="in" href="/upload" style="display:none" aria-label="Create"><md-icon>add</md-icon></a>
   <span id="whoami"></span>
   <md-filled-button data-auth="out" onclick="openAuth('login')" style="display:none">Sign in</md-filled-button>
 </header>
@@ -118,7 +118,7 @@
     <md-filled-button onclick="saveEdit()">Save</md-filled-button>
   </div>
 </md-dialog>
-<script src="/app.js?v=13"></script>
+<script src="/app.js?v=15"></script>
 <script>
 window.__boot = function() {
 const id = new URLSearchParams(location.search).get('id');
@@ -185,14 +185,35 @@ async function init() {
   cIdx = 0;
   cCollapsed = true;
   renderComments();
+  if (VID.thumbnail) document.getElementById('vid').poster = VID.thumbnail;
   initPlayer(VID.src);
   renderFollow();
   loadUpnext();
 }
+let replyParent = null;
+function startReply(id, username) {
+  replyParent = { id, username };
+  const box = document.getElementById('cbody');
+  box.placeholder = `Reply to @${username}...`;
+  box.focus();
+}
 function commentHTML(c) {
-  return `<md-list-item><div slot="start">${avatarHtml(c.avatar, 'pfp-sm')}</div><div slot="headline"><a class="ulink" href="/channel?user=${esc(c.username)}">${esc(c.username)}</a></div>`
-    + `<div slot="supporting-text">${esc(c.body)}</div>`
-    + `<div slot="trailing-supporting-text">${esc(c.created_at)}</div></md-list-item>`;
+  const kids = (c._replies || []).map(commentHTML).join('');
+  const who = c.parent_username ? `<span class="muted">↳ @${esc(c.parent_username)} </span>` : '';
+  const item = `<md-list-item><div slot="start">${avatarStatusHtml(c.avatar, 'pfp-sm', c.online)}</div><div slot="headline"><a class="ulink" href="/channel?user=${esc(c.username)}">${esc(c.username)}</a></div>`
+    + `<div slot="supporting-text">${who}${esc(c.body)}</div>`
+    + `<div slot="trailing-supporting-text">${esc(c.created_at)} <md-text-button onclick="startReply(${c.id}, '${esc(c.username)}')">Reply</md-text-button></div></md-list-item>`;
+  return item + (kids ? `<div style="margin-left:36px">${kids}</div>` : '');
+}
+function threadComments(items) {
+  const byId = new Map(items.map((c) => [c.id, { ...c, _replies: [] }]));
+  const top = [];
+  byId.forEach((c) => {
+    const p = c.parent_id != null ? byId.get(c.parent_id) : null;
+    if (p) p._replies.push(c);
+    else top.push(c);
+  });
+  return top;
 }
 function renderComments() {
   stopCmtTimer();
@@ -204,7 +225,7 @@ function renderComments() {
     prev.style.display = 'none';
     tog.style.display = '';
     list.style.display = '';
-    list.innerHTML = cItems.map(commentHTML).join('') || '<p class="muted">No comments yet.</p>';
+    list.innerHTML = threadComments(cItems).map(commentHTML).join('') || '<p class="muted">No comments yet.</p>';
     return;
   }
   list.style.display = 'none';
@@ -214,10 +235,10 @@ function renderComments() {
     prev.innerHTML = '<p class="muted">No comments yet.</p>';
     return;
   }
-  const c = cItems[cIdx % cItems.length];
-  prev.innerHTML = `<div class="crow">${avatarHtml(c.avatar, 'pfp-sm')}<div class="metatext"><b>${esc(c.username)}</b><p>${esc(c.body)}</p></div></div>`
-    + `<p class="muted">Tap to show all ${cItems.length} comments</p>`;
-  if (cItems.length > 1) cTimer = setTimeout(nextCmt, 4000);
+  const c = cItems[0];
+  prev.innerHTML = `<div class="crow">${avatarStatusHtml(c.avatar, 'pfp-sm', c.online)}<div class="metatext"><b>${esc(c.username)}</b><p>${esc(c.body)}</p></div></div>`
+    + `<md-outlined-button id="showAllBtn">Show all ${cItems.length} comments</md-outlined-button>`;
+  document.getElementById('showAllBtn').onclick = (e) => { e.stopPropagation(); expandComments(); };
 }
 function nextCmt() {
   cTimer = null;
@@ -230,6 +251,7 @@ function stopCmtTimer() {
   if (cTimer) { clearTimeout(cTimer); cTimer = null; }
 }
 function expandComments() {
+  stopCmtTimer();
   cCollapsed = false;
   renderComments();
 }
@@ -458,14 +480,8 @@ function autoPlay() {
     if (P) P.unmute.style.display = 'none';
   }).catch(() => {
     if (!P) return;
-    P.forceMuted = true;
-    P.vid.muted = true;
-    syncMuteIcon();
-    P.vid.play().then(() => {
-      if (P) P.unmute.style.display = '';
-    }).catch(() => {
-      if (P) P.unmute.style.display = 'none';
-    });
+    P.bigIcon.textContent = 'play_arrow';
+    P.bigplay.style.display = '';
   });
 }
 function unmuteGesture() {
@@ -550,6 +566,15 @@ function cycleSpeed() {
   P.speedBtn.textContent = SPEEDS[P.speedIdx] + 'x';
   poke();
 }
+function dynRend(o, src) {
+  const m = src && src.match(/\/v\/(.+)\.[a-z0-9]+$/i);
+  if (!m) return o;
+  const stem = m[1].replace(/-(720|480|360)p$/, '');
+  for (const r of ['720p', '480p', '360p']) {
+    if (!o.some((x) => x.label === r)) o.push({ label: r, src: `/v/${stem}-${r}.webm` });
+  }
+  return o;
+}
 function qualOptions() {
   const o = [{ label: 'Auto', src: null }];
   if (VID.renditions) {
@@ -557,19 +582,21 @@ function qualOptions() {
     if (VID.renditions['480p']) o.push({ label: '480p', src: VID.renditions['480p'] });
     if (VID.renditions['360p']) o.push({ label: '360p', src: VID.renditions['360p'] });
   }
+  dynRend(o, VID.src);
   o.push({ label: 'Source', src: VID.src });
   return o;
 }
 function applyAutoQuality() {
   const o = qualOptions();
-  let pick = o[o.length - 1].src;
+  let pick = o.find((x) => x.label === '720p') || o.find((x) => x.label === '480p') || o.find((x) => x.label === '360p') || o[o.length - 1];
+  pick = pick.src;
   try {
     const c = navigator.connection;
-    if (c && (c.saveData || c.effectiveType === 'slow-2g' || c.effectiveType === '2g' || c.effectiveType === '3g')) {
+    if (c && (c.saveData || c.effectiveType === 'slow-2g' || c.effectiveType === '2g')) {
       const low = o.find((x) => x.label === '360p') || o.find((x) => x.label === '480p') || o.find((x) => x.label === '720p');
       if (low) pick = low.src;
     }
-  } catch { pick = o[o.length - 1].src; }
+  } catch { /* keep rendition pick */ }
   setQualitySrc(pick, 'Auto');
 }
 function setQualitySrc(src, label) {
@@ -695,13 +722,17 @@ async function del() {
 async function sendComment() {
   if (!(await me())) return openAuth('login');
   const body = document.getElementById('cbody').value;
+  const payload = { body };
+  if (replyParent) payload.parent_id = replyParent.id;
   const r = await fetch(`/api/videos/${id}/comments`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    credentials: 'include', body: JSON.stringify({ body }),
+    credentials: 'include', body: JSON.stringify(payload),
   });
   const j = await r.json();
   if (!r.ok) return alert(j.error);
   document.getElementById('cbody').value = '';
+  document.getElementById('cbody').placeholder = 'Add a comment...';
+  replyParent = null;
   init();
 }
 document.getElementById('cbody').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendComment(); });
@@ -715,9 +746,10 @@ init();
 window.__destroy = function() {
   destroyPlayer();
 };
-Object.assign(window, { like, toggleFollow, sendComment, openDelDialog, closeDelDialog, adminDel, applyQualityOpt, openEditDialog, closeEditDialog, saveEdit });
+Object.assign(window, { like, toggleFollow, sendComment, startReply, openDelDialog, closeDelDialog, adminDel, applyQualityOpt, openEditDialog, closeEditDialog, saveEdit });
 };
 window.__boot();
+hideBoot();
 </script>
 </body>
 </html>

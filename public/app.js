@@ -26,6 +26,14 @@ function avatarHtml(file, cls) {
   if (file.endsWith('.webm')) return `<video class="${cls}" src="${file}" autoplay loop muted playsinline></video>`;
   return `<img class="${cls}" src="${file}" alt="">`;
 }
+/** Online presence dot (green = active in last 5 min, grey = offline). */
+function statusDot(online) {
+  return `<span class="onlinedot${online ? ' on' : ''}"></span>`;
+}
+/** Avatar with presence dot overlay. */
+function avatarStatusHtml(avatar, cls, online) {
+  return `<span class="avwrap">${avatarHtml(avatar, cls)}${statusDot(online)}</span>`;
+}
 async function doLogout() {
   await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
   location.reload();
@@ -163,6 +171,7 @@ async function pjaxHead(doc) {
 async function pjaxSwap(url, push) {
   if (pjaxBusy) { location.href = url; return false; }
   pjaxBusy = true;
+  pjaxBar(true);
   try {
     let html;
     try {
@@ -194,6 +203,9 @@ async function pjaxSwap(url, push) {
     document.title = doc.title;
     document.body.className = doc.body.className;
     document.body.innerHTML = doc.body.innerHTML;
+    hideBoot();
+    applyBlurPref();
+    ensureSidebar();
     await refreshAuth();
     initBell();
     for (const code of codes) {
@@ -206,6 +218,110 @@ async function pjaxSwap(url, push) {
     return true;
   } finally {
     pjaxBusy = false;
+    pjaxBar(false);
+  }
+}
+function hideBoot() {
+  const b = document.getElementById('bootloader');
+  if (b) b.remove();
+}
+/** Blur effects toggle (translucent bars); default on. */
+function blurDisabled() {
+  try {
+    if (localStorage.getItem('ws_blur') === '0') return true;
+  } catch {}
+  try {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-transparency: reduce)').matches) return true;
+  } catch {}
+  return false;
+}
+function applyBlurPref() {
+  try {
+    document.body.classList.toggle('no-blur', blurDisabled());
+  } catch {}
+  updateDynamicBlur();
+}
+/** Dynamic topbar blur: fades blur+background in over the first ~120px of scroll
+ *  instead of a static backdrop. Skipped when blur is disabled. */
+let __blurTick = false;
+function updateDynamicBlur() {
+  try {
+    const root = document.documentElement;
+    if (!root || blurDisabled()) {
+      if (root) { root.style.removeProperty('--ws-topblur'); root.style.removeProperty('--ws-topbg'); }
+      return;
+    }
+    const y = Math.max(0, window.scrollY || 0);
+    const t = Math.min(1, y / 120);
+    // 4px -> 20px blur, 0.25 -> 0.65 background alpha
+    const blur = (4 + 16 * t).toFixed(1) + 'px';
+    const bg = (0.25 + 0.40 * t).toFixed(3);
+    root.style.setProperty('--ws-topblur', blur);
+    root.style.setProperty('--ws-topbg', bg);
+  } catch {}
+}
+function __onBlurScroll() {
+  if (__blurTick) return;
+  __blurTick = true;
+  requestAnimationFrame(() => { __blurTick = false; updateDynamicBlur(); });
+}
+try {
+  if (!window.__wsBlurBound) {
+    window.__wsBlurBound = true;
+    window.addEventListener('scroll', __onBlurScroll, { passive: true });
+    window.addEventListener('resize', __onBlurScroll, { passive: true });
+    window.addEventListener('storage', (e) => {
+      if (e && (e.key === 'ws_blur' || e.key === null)) applyBlurPref();
+    });
+  }
+} catch {}
+applyBlurPref();
+updateDynamicBlur();
+document.addEventListener('DOMContentLoaded', () => setTimeout(hideBoot, 1500));
+/** Desktop left nav like YouTube (injected, desktop widths only). */
+function ensureSidebar() {
+  if (window.innerWidth < 1000) return;
+  const bare = ['/forgot', '/reset', '/verify'].some((p) => location.pathname.startsWith(p));
+  if (bare) return;
+  if (document.getElementById('sidebar')) {
+    markSidebar();
+    return;
+  }
+  const aside = document.createElement('aside');
+  aside.id = 'sidebar';
+  aside.innerHTML = `<nav>
+    <a href="/" data-side="home"><md-icon>home</md-icon><span>Home</span></a>
+    <a href="/wheels" data-side="wheels"><md-icon>movie</md-icon><span>Wheels</span></a>
+    <a href="/music" data-side="music"><md-icon>music_note</md-icon><span>Music</span></a>
+    <a href="/messages" data-side="messages"><md-icon>chat</md-icon><span>Messages</span></a>
+  </nav>`;
+  document.body.appendChild(aside);
+  document.body.classList.add('has-sidebar');
+  markSidebar();
+  if (typeof refreshAuth === 'function') refreshAuth();
+}
+function markSidebar() {
+  const path = location.pathname;
+  const tab = path === '/' ? 'home'
+    : path === '/wheels' ? 'wheels'
+    : path === '/music' ? 'music'
+    : path === '/messages' ? 'messages'
+    : (path === '/settings' || path === '/admin') ? 'account' : '';
+  document.querySelectorAll('#sidebar [data-side]').forEach((a) => {
+    a.classList.toggle('active', a.dataset.side === tab);
+  });
+}
+document.addEventListener('DOMContentLoaded', () => { ensureSidebar(); applyBlurPref(); });
+function pjaxBar(show) {  let bar = document.getElementById('pjaxbar');
+  if (show) {
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'pjaxbar';
+      document.body.appendChild(bar);
+    }
+    bar.style.display = '';
+  } else if (bar) {
+    bar.style.display = 'none';
   }
 }
 async function pjaxGo(url) {
@@ -231,15 +347,24 @@ document.addEventListener('click', (e) => {
 });
 window.addEventListener('popstate', async (e) => {
   const url = (e.state && e.state.url) || location.href;
-  if (await pjaxSwap(url, false)) window.scrollTo(0, (e.state && e.state.scroll) || 0);
+  if (await pjaxSwap(url, false)) {
+    window.scrollTo(0, (e.state && e.state.scroll) || 0);
+    updateDynamicBlur();
+  }
 });
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   }[c]));
 }
+/** Server timestamps are UTC ("YYYY-MM-DD HH:MM:SS") — anchor them so the client converts to local time. */
+function utcMs(s) {
+  const t = String(s).replace(' ', 'T').replace(/Z$/, '') + 'Z';
+  const ms = Date.parse(t);
+  return isNaN(ms) ? NaN : ms;
+}
 function fmtAge(s) {
-  const t = Date.parse(String(s).replace(' ', 'T').replace(/Z$/, ''));
+  const t = utcMs(s);
   if (isNaN(t)) return String(s);
   const sec = Math.max(0, Math.floor((Date.now() - t) / 1000));
   if (sec < 60) return sec <= 1 ? '1 second ago' : sec + ' seconds ago';
@@ -259,12 +384,12 @@ function fmtAge(s) {
   return y === 1 ? '1 year ago' : y + ' years ago';
 }
 function fmtDate(s) {
-  const t = Date.parse(String(s).replace(' ', 'T').replace(/Z$/, ''));
+  const t = utcMs(s);
   if (isNaN(t)) return String(s);
   return new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 function fmtAgeDual(s) {
-  const t = Date.parse(String(s).replace(' ', 'T').replace(/Z$/, ''));
+  const t = utcMs(s);
   if (isNaN(t)) return String(s);
   return fmtAge(s) + ' · ' + fmtDate(s);
 }
@@ -328,10 +453,15 @@ async function doChangePw() {
   msg.textContent = r.ok ? 'Password changed.' : (j.error || 'Failed');
 }
 let BELL = { unread: 0, items: [] };
+let DM_BADGE = { unread: 0 };
 async function initBell() {
   const slot = document.getElementById('bellSlot');
-  if (!slot) return;
+  if (!slot) { initDmFallback(); return; }
   slot.innerHTML = `
+    <span class="bellwrap">
+      <md-icon-button id="dmBtnTop" href="/messages" aria-label="Messages"><md-icon id="dmIcon">chat</md-icon></md-icon-button>
+      <span id="dmBadge" class="badge" style="display:none"></span>
+    </span>
     <span class="bellwrap">
       <md-icon-button id="bellBtn" aria-label="Notifications"><md-icon id="bellIcon">notifications</md-icon></md-icon-button>
       <span id="bellBadge" class="badge" style="display:none"></span>
@@ -345,6 +475,35 @@ async function initBell() {
     document.getElementById('bellMenu').show();
   });
   refreshBellBadge();
+  refreshDmBadge();
+}
+function initDmFallback() {
+  const bar = document.querySelector('header.topbar');
+  if (!bar || document.getElementById('dmBtnTop')) return;
+  me().then((u) => {
+    if (!u) return;
+    const who = document.getElementById('whoami');
+    const wrap = document.createElement('span');
+    wrap.className = 'bellwrap';
+    wrap.innerHTML = `<md-icon-button id="dmBtnTop" href="/messages" aria-label="Messages"><md-icon id="dmIcon">chat</md-icon></md-icon-button><span id="dmBadge" class="badge" style="display:none"></span>`;
+    bar.insertBefore(wrap, who || null);
+    refreshDmBadge();
+  }).catch(() => {});
+}
+async function refreshDmBadge() {
+  const badge = document.getElementById('dmBadge');
+  if (!badge) return;
+  try {
+    const r = await fetch('/api/dm/unread', { credentials: 'include' });
+    if (!r.ok) return;
+    const j = await r.json();
+    const n = Number(j.unread) || 0;
+    DM_BADGE.unread = n;
+    badge.style.display = n ? '' : 'none';
+    badge.textContent = n > 9 ? '9+' : String(n);
+    const icon = document.getElementById('dmIcon');
+    if (icon) icon.textContent = n ? 'mark_chat_unread' : 'chat';
+  } catch { return; }
 }
 async function refreshBellData() {
   try {
@@ -477,4 +636,5 @@ document.addEventListener('DOMContentLoaded', () => {
   refreshAuth();
   initBell();
   setInterval(refreshBellBadge, 60000);
+  setInterval(refreshDmBadge, 15000);
 });

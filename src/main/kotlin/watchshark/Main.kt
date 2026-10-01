@@ -19,13 +19,17 @@ val cleanPages = mapOf(
     "/forgot" to "forgot.html",
     "/reset" to "reset.html",
     "/verify" to "verify.html",
-    "/admin" to "admin.html"
+    "/admin" to "admin.html",
+    "/messages" to "messages.html"
 )
 
 fun main() {
     Config.load()
     File(Config.dataDir).mkdirs()
     File(Config.videosDir).mkdirs()
+    File("${Config.videosDir}/videos").mkdirs()
+    File("${Config.videosDir}/wheels").mkdirs()
+    File("${Config.videosDir}/music").mkdirs()
     File(Config.thumbsDir).mkdirs()
     File(Config.avatarsDir).mkdirs()
     try {
@@ -43,6 +47,10 @@ fun main() {
     val app = Javalin.create { cfg ->
         cfg.http.defaultContentType = "application/json"
         cfg.http.maxRequestSize = Config.maxBytes + 64L * 1024 * 1024
+        // Caddy already gzips at the edge. Javalin's compressor gzips bodies
+        // without fixing the explicit Content-Length set by Static.serveMedia,
+        // which truncates every compressed response and breaks all browsers.
+        cfg.http.disableCompression()
     }
 
     app.before { ctx ->
@@ -104,6 +112,32 @@ fun main() {
     app.post("/api/notifications/read") {
         val (uid, _, ok) = HandlersCommon.authUser(it)
         if (!ok) HttpUtil.writeErr(it, 401, "Login required") else VideoHandlers.notifRead(it, uid)
+    }
+
+    // ---- DMs (TikTok-like plaintext, any user can message any user) ----
+    app.get("/api/dm/conversations") {
+        val (uid, _, ok) = HandlersCommon.authUser(it)
+        if (!ok) HttpUtil.writeErr(it, 401, "Login required") else DmHandlers.conversations(it, uid)
+    }
+    app.get("/api/dm/thread") {
+        val (uid, _, ok) = HandlersCommon.authUser(it)
+        if (!ok) HttpUtil.writeErr(it, 401, "Login required") else DmHandlers.thread(it, uid)
+    }
+    app.post("/api/dm/send") {
+        val (uid, _, ok) = HandlersCommon.authUser(it)
+        if (!ok) HttpUtil.writeErr(it, 401, "Login required") else DmHandlers.send(it, uid)
+    }
+    app.post("/api/dm/read") {
+        val (uid, _, ok) = HandlersCommon.authUser(it)
+        if (!ok) HttpUtil.writeErr(it, 401, "Login required") else DmHandlers.markRead(it, uid)
+    }
+    app.get("/api/dm/unread") {
+        val (uid, _, ok) = HandlersCommon.authUser(it)
+        if (!ok) HttpUtil.writeErr(it, 401, "Login required") else DmHandlers.unread(it, uid)
+    }
+    app.get("/api/users/search") {
+        val (uid, _, ok) = HandlersCommon.authUser(it)
+        if (!ok) HttpUtil.writeErr(it, 401, "Login required") else DmHandlers.userSearch(it, uid)
     }
 
     // /api/videos/{id...} — use wildcard so /like /comments /thumbnail /edit suffixes match

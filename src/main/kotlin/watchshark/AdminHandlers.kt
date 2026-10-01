@@ -84,7 +84,7 @@ object AdminHandlers {
         }
         if (!changed) return false
         for (i in fns.indices) {
-            File("${Config.videosDir}/${fns[i]}").delete()
+            Config.resolveVideo(fns[i]).delete()
             Media.unlinkRenditions(fns[i])
             if (ths[i].isNotEmpty()) File("${Config.thumbsDir}/${ths[i]}").delete()
         }
@@ -111,7 +111,7 @@ object AdminHandlers {
         val now = System.currentTimeMillis() / 1000
         synchronized(Db.lock) {
             Db.conn.createStatement().use { st ->
-                st.executeQuery("SELECT id,username,verified,role,created_at,banned_until,ban_reason,deleted,deleted_reason FROM users ORDER BY id ASC").use { rs ->
+                st.executeQuery("SELECT id,username,verified,role,created_at,banned_until,ban_reason,deleted,deleted_reason,avatar,last_seen FROM users ORDER BY id ASC").use { rs ->
                     while (rs.next()) {
                         val id = rs.getLong(1)
                         val username = rs.getString(2) ?: ""
@@ -123,6 +123,8 @@ object AdminHandlers {
                         val breason = rs.getString(7) ?: ""
                         val del = rs.getInt(8) != 0
                         val dreason = rs.getString(9) ?: ""
+                        val av = rs.getString(10)
+                        val online = Db.isOnline(rs.getLong(11))
                         var banned = false
                         var daysLeft = 0.0
                         if (until > now && !del) {
@@ -135,7 +137,9 @@ object AdminHandlers {
                                 "role" to role.ifEmpty { "user" }, "created_at" to ca,
                                 "banned" to banned, "ban_days_left" to daysLeft,
                                 "ban_reason" to breason, "banned_until" to until,
-                                "deleted" to del, "deleted_reason" to dreason
+                                "deleted" to del, "deleted_reason" to dreason,
+                                "avatar" to if (!av.isNullOrEmpty()) "/a/$av" else null,
+                                "online" to online
                             )
                         )
                     }
@@ -238,7 +242,7 @@ object AdminHandlers {
             return
         }
         for (i in fns.indices) {
-            File("${Config.videosDir}/${fns[i]}").delete()
+            Config.resolveVideo(fns[i]).delete()
             Media.unlinkRenditions(fns[i])
             if (ths[i].isNotEmpty()) File("${Config.thumbsDir}/${ths[i]}").delete()
         }

@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Messages — WatchShark</title>
+<link rel="icon" type="image/png" href="/favicon.png?v=1">
+<link rel="stylesheet" href="/styles.css?v=37">
+<link rel="preload" href="/vendor/fonts/f1.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/vendor/fonts/f0.woff2" as="font" type="font/woff2" crossorigin>
+<link href="/vendor/fonts.css" rel="stylesheet">
+<script type="module">import '/vendor/material-web.js';</script>
+<meta property="og:site_name" content="WatchShark">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:title" content="Messages — WatchShark">
+<meta property="og:description" content="WatchShark direct messages.">
+<meta property="og:image" content="https://watchshark.duckdns.org/watchshark.webp">
+<style>
+.dmwrap{display:flex;gap:16px;align-items:stretch;height:calc(100dvh - 220px);min-height:420px}
+#dmLeft{flex:0 0 300px;max-width:38vw;display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--md-sys-color-outline-variant);padding-right:12px}
+#dmSearch{margin-bottom:8px}
+#dmSearchResults{display:flex;flex-direction:column;gap:2px;margin-bottom:8px}
+#dmFriends{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px;min-height:0}
+#dmThread{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0;position:relative}
+#dmPill{position:absolute;left:50%;transform:translateX(-50%);bottom:76px;z-index:5}
+#dmOlder{text-align:center;padding:4px}
+#dmChat{flex:1;min-height:0;display:flex;flex-direction:column}
+.dmrow{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;cursor:pointer;text-decoration:none;color:inherit;border:0;background:transparent;width:100%;text-align:left;font:inherit}
+.dmrow:hover{background:rgba(255,255,255,.06)}
+.dmrow.active{background:rgba(255,255,255,.1)}
+.dmrow .dmmeta{flex:1;min-width:0}
+.dmrow .dmname{display:flex;align-items:center;gap:6px;font-weight:600}
+.dmrow .dmprev{font-size:13px;color:var(--md-sys-color-on-surface-variant);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.dmrow .dmtime{font-size:11px;color:var(--md-sys-color-on-surface-variant);white-space:nowrap}
+.dmunread{min-width:20px;height:20px;border-radius:10px;background:var(--md-sys-color-error);color:var(--md-sys-color-on-error);font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0 6px}
+#dmMsgs{flex:1;display:flex;flex-direction:column;gap:2px;padding:12px 4px;overflow-y:auto;min-height:0}
+.msgrow{display:flex;flex-direction:column;max-width:78%}
+.msgrow.mine{align-self:flex-end;align-items:flex-end}
+.msgrow.theirs{align-self:flex-start;align-items:flex-start}
+.bubble{padding:10px 14px;border-radius:18px;background:#1e1e1e;color:#fff;font-size:15px;overflow-wrap:anywhere;white-space:pre-wrap}
+.msgrow.mine .bubble{background:#f5f5f5;color:#000;border-bottom-right-radius:6px}
+.msgrow.theirs .bubble{border-bottom-left-radius:6px}
+.msgtime{font-size:11px;color:var(--md-sys-color-on-surface-variant);margin:2px 6px 6px}
+.dmform{display:flex;gap:8px;margin-top:8px;align-items:center}
+#dmEmpty{margin:auto;text-align:center}
+#dmBack{display:none;margin-bottom:8px}
+@media (max-width:720px){
+  .dmwrap{flex-direction:column;height:calc(100dvh - 240px)}
+  .dmwrap.chatting #dmLeft{display:none}
+  .dmwrap:not(.chatting) #dmThread{display:none}
+  #dmLeft{flex:none;max-width:none;width:100%;border-right:none;padding-right:0}
+  #dmBack{display:inline-flex}
+}
+</style>
+</head>
+<body data-pjax="1"><div id="bootloader"><div class="boots"></div></div>
+<header class="topbar">
+  <a class="brand" href="/"><img src="/watchshark.webp?v=2" alt="WatchShark logo"><span>WatchShark</span></a>
+  <span class="spacer"></span>
+  <span id="bellSlot" data-auth="in" style="display:none"></span>
+  <md-icon-button data-auth="in" href="/settings" aria-label="Settings" style="display:none"><md-icon>settings</md-icon></md-icon-button>
+  <md-text-button data-admin href="/admin" style="display:none">Admin</md-text-button>
+  <a class="createcircle" data-auth="in" href="/upload" style="display:none" aria-label="Create"><md-icon>add</md-icon></a>
+  <span id="whoami"></span>
+  <md-filled-button data-auth="out" onclick="openAuth('login')" style="display:none">Sign in</md-filled-button>
+</header>
+<main>
+  <div class="dmwrap" id="dmWrap">
+    <div id="dmLeft">
+      <md-outlined-text-field id="dmSearch" label="Search users" class="field">
+        <md-icon slot="leading-icon">search</md-icon>
+      </md-outlined-text-field>
+      <div id="dmSearchResults"></div>
+      <div id="dmFriends"></div>
+    </div>
+    <div id="dmThread">
+      <div id="dmEmpty">
+        <h2>Messages</h2>
+        <p class="muted">Pick a conversation or search for someone to start chatting.</p>
+      </div>
+      <div id="dmChat" style="display:none">
+        <div class="row" style="align-items:center">
+          <md-icon-button id="dmBack" aria-label="Back"><md-icon>arrow_back</md-icon></md-icon-button>
+          <span id="dmTitleAv"></span>
+          <h3 id="dmTitle" style="margin:0 0 4px"></h3>
+        </div>
+        <div id="dmMsgs"></div>
+        <md-filled-button id="dmPill" style="display:none">↓ New messages</md-filled-button>
+        <div class="dmform" id="dmForm">
+          <md-outlined-text-field id="dmInput" label="Message" class="field" style="flex:1" maxlength="2000"></md-outlined-text-field>
+          <md-filled-button id="dmSend"><md-icon slot="icon">send</md-icon>Send</md-filled-button>
+        </div>
+      </div>
+      <p class="muted" id="dm-msg"></p>
+    </div>
+  </div>
+</main>
+<md-dialog id="authDialog">
+  <div slot="headline">Welcome to WatchShark</div>
+  <div slot="content">
+    <form id="loginPane" method="post" action="/api/auth/login" onsubmit="return submitLogin(event)">
+      <div class="nfield">
+        <label for="login-id">Email</label>
+        <input placeholder=" " id="login-id" name="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+      </div>
+      <div class="nfield">
+        <label for="login-pw">Password</label>
+        <input placeholder=" " id="login-pw" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <div class="auth-row"><md-text-button onclick="location.href='/forgot'">Forgot password?</md-text-button></div>
+      <button type="submit" tabindex="-1" aria-hidden="true" style="position:fixed;top:0;left:0;width:8px;height:8px;opacity:.01;pointer-events:none;border:0;padding:0"></button>
+    </form>
+    <form id="signupPane" method="post" action="/api/auth/signup" onsubmit="return submitSignup(event)" style="display:none">
+      <div class="nfield">
+        <label for="su-name">Handle (a-z, 0-9, _)</label>
+        <input placeholder=" " id="su-name" name="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" minlength="3" maxlength="30" required>
+      </div>
+      <div class="nfield">
+        <label for="su-email">Email</label>
+        <input placeholder=" " id="su-email" name="email" type="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+      </div>
+      <div class="nfield">
+        <label for="su-pw">Password (6+ chars)</label>
+        <input placeholder=" " id="su-pw" name="password" type="password" autocomplete="new-password" minlength="6" required>
+      </div>
+      <button type="submit" tabindex="-1" aria-hidden="true" style="position:fixed;top:0;left:0;width:8px;height:8px;opacity:.01;pointer-events:none;border:0;padding:0"></button>
+    </form>
+    <p id="auth-err" style="color:var(--md-sys-color-error)"></p>
+  </div>
+  <div slot="actions">
+    <md-text-button id="auth-switch" onclick="toggleAuth()">Create account</md-text-button>
+    <md-filled-button id="auth-go" onclick="authGo()">Log in</md-filled-button>
+    <md-text-button onclick="closeAuth()">Close</md-text-button>
+  </div>
+</md-dialog>
+<nav id="bottomnav">
+  <a href="/" data-tab="home"><md-icon>home</md-icon><span>Home</span></a>
+  <a href="/wheels" data-tab="wheels"><md-icon>movie</md-icon><span>Wheels</span></a>
+  <a href="/upload" class="createbtn" aria-label="Create"><md-icon>add</md-icon></a>
+  <a href="/music" data-tab="music"><md-icon>music_note</md-icon><span>Music</span></a>
+  <a href="/settings" data-tab="account" id="navAccount"><span id="navAvatar"><md-icon>person</md-icon></span><span>You</span></a>
+</nav>
+<script>
+(function() {
+  function mark(tab) {
+    document.querySelectorAll('#bottomnav [data-tab]').forEach((a) => {
+      a.classList.toggle('active', a.dataset.tab === tab);
+    });
+  }
+  const acc = document.getElementById('navAccount');
+  const navAv = document.getElementById('navAvatar');
+  fetch('/api/me', { credentials: 'include' }).then((r) => r.json()).then((j) => {
+    if (j && j.user) {
+      acc.href = '/channel?user=' + encodeURIComponent(j.user.username);
+      acc.dataset.user = j.user.username;
+      if (navAv) navAv.innerHTML = avatarHtml(j.user.avatar, 'navavatar');
+    }
+  }).catch(() => {});
+  acc.addEventListener('click', (e) => {
+    if (!acc.dataset.user) {
+      e.preventDefault();
+      if (typeof openAuth === 'function') openAuth('login');
+      else location.href = '/';
+    }
+  });
+})();
+</script>
+<script src="/app.js?v=15"></script>
+<script>
+let DM = { peer: null, peerId: 0, maxId: 0, minId: 0, timer: 0, convTimer: 0, me: null, myId: 0, loading: false, searchTimer: 0, historyDone: false, loadingOlder: false, convSig: '', lastUnread: -1, convPolls: 0 };
+window.__destroy = function() { if (DM.timer) clearInterval(DM.timer); if (DM.convTimer) clearInterval(DM.convTimer); };
+function dmNote(t) { const el = document.getElementById('dm-msg'); if (el) el.textContent = t || ''; }
+function fmtTime(s) {
+  const t = utcMs(s);
+  if (isNaN(t)) return '';
+  return new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+async function initMessages() {
+  const u = await refreshAuth();
+  if (!u) { openAuth('login'); dmNote('Sign in to use messages.'); return; }
+  DM.me = u.username;
+  DM.myId = u.id || 0;
+  const q = new URLSearchParams(location.search).get('user');
+  await loadConversations(q);
+  if (DM.convTimer) clearInterval(DM.convTimer);
+  DM.convTimer = setInterval(() => loadConversations(null), 5000);
+  if (DM.timer) clearInterval(DM.timer);
+  DM.timer = setInterval(() => { if (DM.peer) loadThread(false); }, 3000);
+  const si = document.getElementById('dmSearch');
+  si.addEventListener('input', () => { clearTimeout(DM.searchTimer); DM.searchTimer = setTimeout(doUserSearch, 350); });
+  document.getElementById('dmBack').addEventListener('click', () => {
+    document.getElementById('dmWrap').classList.remove('chatting');
+    try { history.replaceState({}, '', '/messages'); } catch {}
+    DM.peer = null;
+  });
+  document.getElementById('dmSend').addEventListener('click', sendDm);
+  document.getElementById('dmPill').addEventListener('click', () => {
+    const box = document.getElementById('dmMsgs');
+    box.scrollTop = box.scrollHeight;
+    hideDmPill();
+  });
+  document.getElementById('dmInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendDm(); }
+  });
+}
+async function doUserSearch() {
+  const inp = document.getElementById('dmSearch');
+  const q = (inp.value || '').trim();
+  const box = document.getElementById('dmSearchResults');
+  if (!q) { box.innerHTML = ''; return; }
+  try {
+    const r = await fetch('/api/users/search?q=' + encodeURIComponent(q), { credentials: 'include' });
+    if (!r.ok) return;
+    const j = await r.json();
+    const list = j.users || [];
+    box.innerHTML = list.map((x) =>
+      `<button class="dmrow" data-u="${esc(x.username)}">${avatarStatusHtml(x.avatar, 'pfp-sm', x.online)}<span>@${esc(x.username)}</span></button>`
+    ).join('');
+    box.querySelectorAll('[data-u]').forEach((b) => b.addEventListener('click', () => {
+      inp.value = '';
+      box.innerHTML = '';
+      openThread(b.dataset.u);
+    }));
+  } catch {}
+}
+async function loadConversations(select) {
+  try {
+    const r = await fetch('/api/dm/conversations', { credentials: 'include' });
+    if (!r.ok) return;
+    const j = await r.json();
+    const list = j.conversations || [];
+    const sig = JSON.stringify(list.map((c) => [c.username, c.last_message_id, c.unread, c.last_message]));
+    const box = document.getElementById('dmFriends');
+    if (sig !== DM.convSig) {
+      DM.convSig = sig;
+      if (!list.length) {
+        box.innerHTML = '<p class="muted">No conversations yet. Search above to start one.</p>';
+      } else {
+        box.innerHTML = list.map((c) =>
+          `<button class="dmrow${c.username === DM.peer ? ' active' : ''}" data-u="${esc(c.username)}">` +
+          `${avatarStatusHtml(c.avatar, 'pfp-sm', c.online)}` +
+          `<span class="dmmeta"><span class="dmname">@${esc(c.username)}${c.unread ? ` <span class="dmunread">${c.unread > 9 ? '9+' : c.unread}</span>` : ''}</span>` +
+          `<span class="dmprev">${esc(c.last_message || '')}</span></span>` +
+          `<span class="dmtime">${esc(c.last_at ? fmtAge(c.last_at) : '')}</span></button>`
+        ).join('');
+        box.querySelectorAll('[data-u]').forEach((b) => b.addEventListener('click', () => openThread(b.dataset.u)));
+      }
+    }
+    const target = select || (list.length === 1 && !DM.peer ? list[0].username : null);
+    if (target) openThread(target);
+    else if (DM.peer) {
+      box.querySelectorAll('[data-u]').forEach((a) => a.classList.toggle('active', a.dataset.u === DM.peer));
+    }
+  } catch {}
+}
+async function openThread(username) {
+  DM.peer = username;
+  DM.maxId = 0;
+  DM.minId = 0;
+  DM.historyDone = false;
+  DM.loadingOlder = false;
+  hideDmPill();
+  const oldBtn = document.getElementById('dmOlder');
+  if (oldBtn) oldBtn.remove();
+  document.getElementById('dmMsgs').innerHTML = '';
+  document.getElementById('dmWrap').classList.add('chatting');
+  document.getElementById('dmEmpty').style.display = 'none';
+  document.getElementById('dmChat').style.display = '';
+  document.getElementById('dmTitle').textContent = '@' + username;
+  document.getElementById('dmTitleAv').innerHTML = '';
+  document.querySelectorAll('#dmFriends .dmrow').forEach((a) => a.classList.toggle('active', a.dataset.u === username));
+  try { history.replaceState({}, '', '/messages?user=' + encodeURIComponent(username)); } catch {}
+  await loadThread(true);
+}
+async function loadThread(initial) {
+  if (!DM.peer || DM.loading) return;
+  DM.loading = true;
+  try {
+    const url = '/api/dm/thread?user=' + encodeURIComponent(DM.peer) +
+      (DM.maxId ? '&after_id=' + DM.maxId : '&limit=30');
+    const r = await fetch(url, { credentials: 'include' });
+    if (!r.ok) { if (initial) dmNote('Could not load chat.'); return; }
+    const j = await r.json();
+    if (j.peer) {
+      document.getElementById('dmTitleAv').innerHTML = avatarStatusHtml(j.peer.avatar, 'pfp-sm', j.peer.online);
+      DM.peerId = j.peer.user_id || 0;
+    }
+    if (j.me) DM.myId = j.me;
+    const box = document.getElementById('dmMsgs');
+    const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 150;
+    let added = false;
+    for (const m of (j.messages || [])) {
+      if (m.id <= DM.maxId && DM.maxId) continue;
+      if (m.id > DM.maxId) DM.maxId = m.id;
+      if (!DM.minId || m.id < DM.minId) DM.minId = m.id;
+      appendBubble(m.body || '', m.sender_id === DM.myId, m.created_at);
+      added = true;
+    }
+    if (added && (initial || nearBottom)) {
+      box.scrollTop = box.scrollHeight;
+      hideDmPill();
+    } else if (added) {
+      showDmPill();
+    }
+    if (initial) {
+      box.scrollTop = box.scrollHeight;
+      ensureOlderBtn((j.messages || []).length);
+    }
+    const unread = await markThreadRead();
+    if (added || unread !== DM.lastUnread) {
+      DM.lastUnread = unread;
+      DM.convPolls = 0;
+      await loadConversations(null);
+    } else if (++DM.convPolls >= 4) {
+      DM.convPolls = 0;
+      await loadConversations(null);
+    }
+  } finally { DM.loading = false; }
+}
+function dmBubbleEl(text, mine, at) {
+  const row = document.createElement('div');
+  row.className = 'msgrow' + (mine ? ' mine' : ' theirs');
+  const d = document.createElement('div');
+  d.className = 'bubble';
+  d.textContent = text;
+  row.appendChild(d);
+  const t = at ? fmtTime(at) : '';
+  if (t) {
+    const s = document.createElement('div');
+    s.className = 'msgtime';
+    s.title = at;
+    s.textContent = t;
+    row.appendChild(s);
+  }
+  return row;
+}
+function appendBubble(text, mine, at) {
+  document.getElementById('dmMsgs').appendChild(dmBubbleEl(text, mine, at));
+}
+function showDmPill() {
+  const p = document.getElementById('dmPill');
+  if (p) p.style.display = '';
+}
+function hideDmPill() {
+  const p = document.getElementById('dmPill');
+  if (p) p.style.display = 'none';
+}
+function ensureOlderBtn(count) {
+  const box = document.getElementById('dmMsgs');
+  if (DM.historyDone) {
+    const gone = document.getElementById('dmOlder');
+    if (gone) gone.remove();
+    return;
+  }
+  if (count < 30) {
+    DM.historyDone = true;
+    return;
+  }
+  if (document.getElementById('dmOlder')) return;
+  const wrap = document.createElement('div');
+  wrap.id = 'dmOlder';
+  wrap.innerHTML = '<md-text-button id="dmOlderBtn">Load older messages</md-text-button>';
+  box.prepend(wrap);
+  wrap.querySelector('#dmOlderBtn').addEventListener('click', loadOlder);
+}
+async function loadOlder() {
+  if (!DM.peer || DM.loadingOlder || DM.historyDone) return;
+  DM.loadingOlder = true;
+  try {
+    const box = document.getElementById('dmMsgs');
+    const btn = document.getElementById('dmOlderBtn');
+    if (btn) btn.textContent = 'Loading…';
+    const r = await fetch('/api/dm/thread?user=' + encodeURIComponent(DM.peer) + '&before_id=' + DM.minId + '&limit=30', { credentials: 'include' });
+    if (!r.ok) return;
+    const j = await r.json();
+    const msgs = (j.messages || []).slice().sort((a, b) => a.id - b.id);
+    if (msgs.length < 30) DM.historyDone = true;
+    if (!msgs.length) {
+      const gone = document.getElementById('dmOlder');
+      if (gone) gone.remove();
+      return;
+    }
+    const oldH = box.scrollHeight;
+    const frag = document.createDocumentFragment();
+    for (const m of msgs) {
+      if (DM.minId && m.id >= DM.minId) continue;
+      if (!DM.minId || m.id < DM.minId) DM.minId = m.id;
+      frag.appendChild(dmBubbleEl(m.body || '', m.sender_id === DM.myId, m.created_at));
+    }
+    const older = document.getElementById('dmOlder');
+    box.insertBefore(frag, older ? older.nextSibling : box.firstChild);
+    box.scrollTop += box.scrollHeight - oldH;
+    const btn2 = document.getElementById('dmOlderBtn');
+    if (DM.historyDone) {
+      const gone = document.getElementById('dmOlder');
+      if (gone) gone.remove();
+    } else if (btn2) {
+      btn2.textContent = 'Load older messages';
+    }
+  } finally { DM.loadingOlder = false; }
+}
+async function markThreadRead() {
+  if (!DM.peer) return -1;
+  try {
+    const r = await fetch('/api/dm/read', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', body: JSON.stringify({ user: DM.peer }),
+    });
+    const j = await r.json().catch(() => ({}));
+    return (j && typeof j.unread === 'number') ? j.unread : -1;
+  } catch { return -1; }
+}
+let dmSending = false;
+async function sendDm() {
+  const inp = document.getElementById('dmInput');
+  const text = (inp.value || '').trim();
+  if (!text || !DM.peer || dmSending) return;
+  if (text.length > 2000) { dmNote('Message too long (max 2000).'); return; }
+  dmSending = true;
+  dmNote('');
+  try {
+    const r = await fetch('/api/dm/send', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', body: JSON.stringify({ to: DM.peer, body: text }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { dmNote(j.error || 'Send failed.'); return; }
+    if (j.id && j.id > DM.maxId) DM.maxId = j.id;
+    inp.value = '';
+    appendBubble(text, true, j.created_at || new Date().toISOString());
+    const box = document.getElementById('dmMsgs');
+    box.scrollTop = box.scrollHeight;
+    loadConversations(null);
+  } catch { dmNote('Send failed. Check connection.'); }
+  finally { dmSending = false; }
+}
+initMessages();
+hideBoot();
+</script>
+</body>
+</html>

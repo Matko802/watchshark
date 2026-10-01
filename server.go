@@ -190,7 +190,7 @@ func cleanName(nm string) bool {
 	return true
 }
 
-func serveMedia(w http.ResponseWriter, r *http.Request, full, name string) {
+func serveMedia(w http.ResponseWriter, r *http.Request, full, name string, immutable ...bool) {
 	ext := strings.ToLower(filepath.Ext(name))
 	ct, ok := mediaTypes[ext]
 	if !ok {
@@ -208,6 +208,11 @@ func serveMedia(w http.ResponseWriter, r *http.Request, full, name string) {
 		return
 	}
 	w.Header().Set("Content-Type", ct)
+	if len(immutable) > 0 && immutable[0] {
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	} else {
+		w.Header().Set("Cache-Control", "no-cache")
+	}
 	http.ServeContent(w, r, name, fi.ModTime(), f)
 }
 
@@ -231,7 +236,7 @@ func serveStatic(w http.ResponseWriter, r *http.Request, uri string) {
 		default:
 			base = avatarsDir
 		}
-		serveMedia(w, r, filepath.Join(base, nm), nm)
+		serveMedia(w, r, filepath.Join(base, nm), nm, true)
 		return
 	}
 	if strings.Contains(uri, "..") {
@@ -268,6 +273,9 @@ CREATE TABLE IF NOT EXISTS resets(token TEXT PRIMARY KEY,user_id INTEGER NOT NUL
 CREATE TABLE IF NOT EXISTS follows(follower_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,followed_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,created_at DATETIME DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(follower_id,followed_id));
 CREATE TABLE IF NOT EXISTS notifications(id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,video_id INTEGER DEFAULT NULL,kind TEXT DEFAULT 'upload',title TEXT DEFAULT NULL,text TEXT DEFAULT NULL,created_at DATETIME DEFAULT CURRENT_TIMESTAMP,read INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS video_views(video_id INTEGER NOT NULL REFERENCES videos(id) ON DELETE CASCADE,user_id INTEGER NOT NULL,ip TEXT DEFAULT '',created_at DATETIME DEFAULT CURRENT_TIMESTAMP,UNIQUE(video_id,user_id,ip));
+CREATE TABLE IF NOT EXISTS dm_messages(id INTEGER PRIMARY KEY AUTOINCREMENT,sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,recipient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,body TEXT NOT NULL,created_at DATETIME DEFAULT CURRENT_TIMESTAMP,read INTEGER DEFAULT 0);
+CREATE INDEX IF NOT EXISTS idx_dm_pair ON dm_messages(sender_id,recipient_id,id);
+DROP TABLE IF EXISTS dm_keys;
 DROP TABLE IF EXISTS reset_requests;
 `
 
@@ -304,6 +312,7 @@ func openDB() error {
 		"ALTER TABLE videos ADD COLUMN orientation TEXT DEFAULT 'h'",
 		"ALTER TABLE videos ADD COLUMN renditions TEXT DEFAULT NULL",
 		"ALTER TABLE videos ADD COLUMN kind TEXT DEFAULT NULL",
+		"ALTER TABLE comments ADD COLUMN parent_id INTEGER DEFAULT NULL",
 	} {
 		if _, err = db.Exec(col); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
 			return err
@@ -1194,22 +1203,32 @@ func handleGetVideo(w http.ResponseWriter, r *http.Request, id int64) {	viewer :
 		return
 	}
 	type comment struct {
-		ID        int64  `json:"id"`
-		Body      string `json:"body"`
-		CreatedAt string `json:"created_at"`
-		Username  string `json:"username"`
-		Avatar    any    `json:"avatar"`
+		ID             int64  `json:"id"`
+		Body           string `json:"body"`
+		CreatedAt      string `json:"created_at"`
+		Username       string `json:"username"`
+		Avatar         any    `json:"avatar"`
+		ParentID       any    `json:"parent_id"`
+		ParentUsername any    `json:"parent_username"`
 	}
 	comments := []comment{}
 	dbMu.Lock()
-	rows, err := db.Query("SELECT c.id,c.body,c.created_at,u.username,u.avatar FROM comments c JOIN users u ON u.id=c.user_id WHERE c.video_id=? ORDER BY c.id DESC LIMIT 50", id)
+	rows, err := db.Query(`SELECT c.id,c.body,c.created_at,u.username,u.avatar,c.parent_id,pu.username FROM comments c JOIN users u ON u.id=c.user_id LEFT JOIN comments pc ON pc.id=c.parent_id LEFT JOIN users pu ON pu.id=pc.user_id WHERE c.video_id=? ORDER BY c.id DESC LIMIT 50`, id)
 	if err == nil {
 		for rows.Next() {
 			var c comment
 			var av sql.NullString
-			if err := rows.Scan(&c.ID, &c.Body, &c.CreatedAt, &c.Username, &av); err == nil {
+			var pid sql.NullInt64
+			var pun sql.NullString
+			if err := rows.Scan(&c.ID, &c.Body, &c.CreatedAt, &c.Username, &av, &pid, &pun); err == nil {
 				if av.Valid {
 					c.Avatar = "/a/" + av.String
+				}
+				if pid.Valid {
+					c.ParentID = pid.Int64
+				}
+				if pun.Valid {
+					c.ParentUsername = pun.String
 				}
 				comments = append(comments, c)
 			}
@@ -1359,6 +1378,11 @@ func handleEditVideo(w http.ResponseWriter, r *http.Request, id int64) {
 		writeErr(w, 400, "Title required")
 		return
 	}
+	kindRaw := strings.ToLower(truncateRunes(r.FormValue("kind"), 16))
+	kind := ""
+	if kindRaw == "video" || kindRaw == "wheel" || kindRaw == "music" {
+		kind = kindRaw
+	}
 	thumbName := ""
 	hasThumb := false
 	if f, _, ferr := r.FormFile("thumb"); ferr == nil {
@@ -1393,6 +1417,11 @@ func handleEditVideo(w http.ResponseWriter, r *http.Request, id int64) {
 		}
 	} else {
 		_, _ = db.Exec("UPDATE videos SET title=?,description=? WHERE id=?", title, desc, id)
+		dbMu.Unlock()
+	}
+	if kind != "" {
+		dbMu.Lock()
+		_, _ = db.Exec("UPDATE videos SET kind=? WHERE id=?", kind, id)
 		dbMu.Unlock()
 	}
 	writeJSON(w, 200, map[string]any{"ok": true})
@@ -1448,7 +1477,8 @@ func handleComment(w http.ResponseWriter, r *http.Request, id int64) {
 		return
 	}
 	var b struct {
-		Body string `json:"body"`
+		Body     string `json:"body"`
+		ParentID *int64 `json:"parent_id"`
 	}
 	if !readJSONBody(w, r, &b) {
 		return
@@ -1461,9 +1491,19 @@ func handleComment(w http.ResponseWriter, r *http.Request, id int64) {
 	dbMu.Lock()
 	var one int
 	exists := db.QueryRow("SELECT 1 FROM videos WHERE id=?", id).Scan(&one) == nil
+	var pid any
+	if b.ParentID != nil {
+		var pv int64
+		if err := db.QueryRow("SELECT video_id FROM comments WHERE id=?", *b.ParentID).Scan(&pv); err != nil || pv != id {
+			dbMu.Unlock()
+			writeErr(w, 400, "Bad parent comment")
+			return
+		}
+		pid = *b.ParentID
+	}
 	var cid int64
 	if exists {
-		if res, err := db.Exec("INSERT INTO comments (video_id,user_id,body) VALUES (?,?,?)", id, uid, body); err == nil {
+		if res, err := db.Exec("INSERT INTO comments (video_id,user_id,body,parent_id) VALUES (?,?,?,?)", id, uid, body, pid); err == nil {
 			cid, _ = res.LastInsertId()
 		}
 	}
@@ -1505,7 +1545,7 @@ func handleWheels(w http.ResponseWriter, r *http.Request) {
 		}
 		sb.WriteString(")")
 	}
-	sb.WriteString(" ORDER BY RANDOM() LIMIT 1")
+	sb.WriteString(" ORDER BY id DESC LIMIT 1")
 	var id int64
 	dbMu.Lock()
 	err := db.QueryRow(sb.String(), args...).Scan(&id)
@@ -3014,6 +3054,7 @@ func route(w http.ResponseWriter, r *http.Request) {
 		"/channel": "channel.html",
 		"/wheels": "wheels.html",
 		"/music": "music.html",
+		"/messages": "messages.html",
 		"/upload": "upload.html",
 		"/settings": "settings.html",
 		"/forgot": "forgot.html",

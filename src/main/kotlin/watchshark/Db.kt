@@ -19,7 +19,10 @@ CREATE TABLE IF NOT EXISTS resets(token TEXT PRIMARY KEY,user_id INTEGER NOT NUL
 CREATE TABLE IF NOT EXISTS follows(follower_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,followed_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,created_at DATETIME DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(follower_id,followed_id));
 CREATE TABLE IF NOT EXISTS notifications(id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,video_id INTEGER DEFAULT NULL,kind TEXT DEFAULT 'upload',title TEXT DEFAULT NULL,text TEXT DEFAULT NULL,created_at DATETIME DEFAULT CURRENT_TIMESTAMP,read INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS video_views(video_id INTEGER NOT NULL REFERENCES videos(id) ON DELETE CASCADE,user_id INTEGER NOT NULL,ip TEXT DEFAULT '',created_at DATETIME DEFAULT CURRENT_TIMESTAMP,UNIQUE(video_id,user_id,ip));
+CREATE TABLE IF NOT EXISTS dm_messages(id INTEGER PRIMARY KEY AUTOINCREMENT,sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,recipient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,body TEXT NOT NULL,created_at DATETIME DEFAULT CURRENT_TIMESTAMP,read INTEGER DEFAULT 0);
+CREATE INDEX IF NOT EXISTS idx_dm_pair ON dm_messages(sender_id,recipient_id,id);
 DROP TABLE IF EXISTS reset_requests;
+DROP TABLE IF EXISTS dm_keys;
 """
 
     fun openDb() {
@@ -47,7 +50,9 @@ DROP TABLE IF EXISTS reset_requests;
                 "ALTER TABLE videos ADD COLUMN status TEXT DEFAULT 'ready'",
                 "ALTER TABLE videos ADD COLUMN orientation TEXT DEFAULT 'h'",
                 "ALTER TABLE videos ADD COLUMN renditions TEXT DEFAULT NULL",
-                "ALTER TABLE videos ADD COLUMN kind TEXT DEFAULT NULL"
+                "ALTER TABLE videos ADD COLUMN kind TEXT DEFAULT NULL",
+                "ALTER TABLE comments ADD COLUMN parent_id INTEGER DEFAULT NULL",
+                "ALTER TABLE users ADD COLUMN last_seen INTEGER DEFAULT 0"
             )
             for (col in alters) {
                 try {
@@ -108,6 +113,33 @@ DROP TABLE IF EXISTS reset_requests;
                 }
             }
             conn.createStatement().use { it.execute("UPDATE users SET verified=1, verify_token=NULL WHERE verified=0") }
+            // ---- DMs: migrate legacy E2EE schema (nonce column) to simple plaintext ----
+            try {
+                val cols = mutableSetOf<String>()
+                conn.createStatement().use { st ->
+                    st.executeQuery("PRAGMA table_info(dm_messages)").use { rs ->
+                        while (rs.next()) cols.add(rs.getString("name"))
+                    }
+                }
+                if (cols.contains("nonce")) {
+                    for (s in listOf(
+                        "DROP TABLE IF EXISTS dm_messages",
+                        "CREATE TABLE dm_messages(id INTEGER PRIMARY KEY AUTOINCREMENT,sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,recipient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,body TEXT NOT NULL,created_at DATETIME DEFAULT CURRENT_TIMESTAMP,read INTEGER DEFAULT 0)",
+                        "CREATE INDEX IF NOT EXISTS idx_dm_pair ON dm_messages(sender_id,recipient_id,id)",
+                        "CREATE INDEX IF NOT EXISTS idx_dm_recipient ON dm_messages(recipient_id,read,id)",
+                        "CREATE INDEX IF NOT EXISTS idx_dm_thread ON dm_messages(sender_id,recipient_id,id)"
+                    )) {
+                        conn.createStatement().use { it.execute(s) }
+                    }
+                } else if (cols.isNotEmpty() && !cols.contains("read")) {
+                    try {
+                        conn.createStatement().use { it.execute("ALTER TABLE dm_messages ADD COLUMN read INTEGER DEFAULT 0") }
+                    } catch (_: Exception) {}
+                }
+                conn.createStatement().use { it.execute("DROP TABLE IF EXISTS dm_keys") }
+                conn.createStatement().use { it.execute("CREATE INDEX IF NOT EXISTS idx_dm_recipient ON dm_messages(recipient_id,read,id)") }
+                conn.createStatement().use { it.execute("CREATE INDEX IF NOT EXISTS idx_dm_thread ON dm_messages(sender_id,recipient_id,id)") }
+            } catch (_: Exception) {}
         }
     }
 
@@ -118,5 +150,43 @@ DROP TABLE IF EXISTS reset_requests;
                 return rs.getLong(1)
             }
         }
+    }
+
+    /** Online presence: online = active in the last 5 minutes. */
+    private val seenWrite = java.util.concurrent.ConcurrentHashMap<Long, Long>()
+
+    fun touchSeen(uid: Long) {
+        if (uid <= 0) return
+        val now = System.currentTimeMillis() / 1000
+        val last = seenWrite.putIfAbsent(uid, now) ?: 0L
+        if (now - last < 300 && last != 0L) return
+        seenWrite[uid] = now
+        try {
+            synchronized(lock) {
+                conn.prepareStatement("UPDATE users SET last_seen=? WHERE id=?").use { ps ->
+                    ps.setLong(1, now)
+                    ps.setLong(2, uid)
+                    ps.executeUpdate()
+                }
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    fun isOnline(lastSeen: Long): Boolean {
+        if (lastSeen <= 0) return false
+        return System.currentTimeMillis() / 1000 - lastSeen < 300
+    }
+
+    fun usernameOf(uid: Long): String? {
+        synchronized(lock) {
+            conn.prepareStatement("SELECT username FROM users WHERE id=?").use { ps ->
+                ps.setLong(1, uid)
+                ps.executeQuery().use { rs ->
+                    if (rs.next()) return rs.getString(1)
+                }
+            }
+        }
+        return null
     }
 }

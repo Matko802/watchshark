@@ -6,10 +6,12 @@
 <title>Wheels — WatchShark</title>
 <link rel="icon" type="image/png" href="/favicon.png?v=1">
 <link rel="stylesheet" href="/styles.css?v=36">
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Material+Symbols+Outlined&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="preload" href="/vendor/fonts/f1.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/vendor/fonts/f0.woff2" as="font" type="font/woff2" crossorigin>
+<link href="/vendor/fonts.css" rel="stylesheet">
 <link rel="stylesheet" href="/swiper-bundle.min.css?v=1">
-<script type="importmap">{ "imports": { "@material/web/": "https://esm.run/@material/web/" } }</script>
-<script type="module">import '@material/web/all.js';</script>
+
+<script type="module">import '/vendor/material-web.js';</script>
 <script src="/swiper-bundle.min.js?v=1"></script>
 <meta property="og:site_name" content="WatchShark">
 <meta property="og:type" content="website">
@@ -18,11 +20,11 @@
 <meta property="og:description" content="WatchShark — watch and share videos, wheels and music.">
 <meta property="og:image" content="https://watchshark.duckdns.org/watchshark.webp">
 </head>
-<body class="reelbody" data-pjax="1">
+<body class="reelbody" data-pjax="1"><div id="bootloader"><div class="boots"></div></div>
 <header class="topbar">
-  <md-icon-button href="/" aria-label="Back"><md-icon>arrow_back</md-icon></md-icon-button>
-  <a class="brand" href="/"><img src="/watchshark.webp?v=2" alt="WatchShark logo"><span>Wheels</span></a>
+  <a class="brand" href="/"><img src="/watchshark.webp?v=2" alt="WatchShark logo"><span>WatchShark</span></a>
   <span class="spacer"></span>
+  <span id="bellSlot" data-auth="in" style="display:none"></span>
   <span id="whoami"></span>
 </header>
 <main class="reelmain">
@@ -98,14 +100,14 @@
 </script>
 
 
-<script src="/app.js?v=13"></script>
+<script src="/app.js?v=15"></script>
 <script>
 window.__boot = function() {
 let VID = null;
 let VDATA = [];
 let seen = [];
 let SW = null;
-let mutedAll = true;
+let mutedAll = false;
 let loadingBatch = false;
 let exhausted = false;
 function activeVideo() {
@@ -139,9 +141,6 @@ async function fetchOne() {
 }
 function wireVideo(v) {
   v.muted = mutedAll;
-  v.addEventListener('ended', () => {
-    if (v === activeVideo() && SW) SW.slideNext();
-  });
   v.addEventListener('waiting', () => {
     if (v === activeVideo()) document.getElementById('rspin').style.display = '';
   });
@@ -157,6 +156,20 @@ function wireVideo(v) {
   v.addEventListener('loadedmetadata', () => {
     if (v === activeVideo()) onTimeReel();
   });
+  v.addEventListener('error', () => {
+    if (v.dataset.stepped) return;
+    const wrap = v.closest('.swiper-slide');
+    const sibs = wrap && wrap.parentNode ? wrap.parentNode.children : [];
+    const idx = wrap ? Array.prototype.indexOf.call(sibs, wrap) : -1;
+    const vid = (idx >= 0 && VDATA[idx]) || VID;
+    const r = (vid && vid.renditions) || {};
+    const low = r['360p'] || r['480p'] || r['720p'];
+    if (!low) return;
+    const cur = v.currentSrc || v.src || '';
+    if (cur === low || cur.endsWith(low)) return;
+    v.dataset.stepped = '1';
+    try { v.src = low; v.dataset.src = low; v.load(); v.play().catch(() => {}); } catch {}
+  });
 }
 function appendOne(j) {
   if (!SW || !j || !j.video || seen.includes(j.video.id)) return false;
@@ -164,8 +177,11 @@ function appendOne(j) {
   saveSeen();
   VDATA.push(j.video);
   const d = document.createElement('div');
-  d.className = 'swiper-slide';
-  d.innerHTML = `<video playsinline preload="metadata" poster="${j.video.thumbnail || ''}" data-src="${j.video.src}"></video>`;
+  const ori = j.video.orientation === 'h' ? 'h' : 'v';
+  d.className = 'swiper-slide ' + ori + 'slide';
+  const thumb = j.video.thumbnail || '';
+  const first = reelAutoSrc(j.video) || j.video.src;
+  d.innerHTML = `<div class="vbg"${thumb ? ` style="background-image:url(&quot;${thumb}&quot;)"` : ''}></div><video playsinline preload="metadata" poster="${thumb}" data-src="${first}"></video>`;
   const v = d.querySelector('video');
   wireVideo(v);
   SW.appendSlide(d);
@@ -174,10 +190,10 @@ function appendOne(j) {
 async function loadBatch() {
   if (loadingBatch || exhausted) return false;
   loadingBatch = true;
-  const got = await Promise.all([fetchOne(), fetchOne(), fetchOne(), fetchOne(), fetchOne()]);
   let added = 0;
-  for (const j of got) {
-    if (appendOne(j)) added++;
+  for (let i = 0; i < 5; i++) {
+    const j = await fetchOne();
+    if (j && appendOne(j)) added++;
   }
   if (!added) exhausted = true;
   if (exhausted && !endShown) showEndCard();
@@ -263,38 +279,16 @@ function onSlide() {
       v.src = v.dataset.src;
       v.load();
     }
-    v.muted = mutedAll;
-    document.getElementById('rmuteIcon').textContent = v.muted ? 'volume_off' : 'volume_up';
+    v.muted = false;
+    document.getElementById('rmuteIcon').textContent = 'volume_up';
     applyReelAutoQuality();
     onTimeReel();
-    if (localStorage.getItem('ws_autoplay') !== '0') {
-      if (!v.muted) {
-        v.play().then(() => {
-          document.getElementById('rbig').style.display = 'none';
-        }).catch(() => {
-          reelForced = true;
-          v.muted = true;
-          document.getElementById('rmuteIcon').textContent = 'volume_off';
-          v.play().then(() => {
-            document.getElementById('rbig').style.display = 'none';
-          }).catch(() => {
-            document.getElementById('rbigIcon').textContent = 'play_arrow';
-            document.getElementById('rbig').style.display = '';
-          });
-        });
-      } else {
-        v.play().then(() => {
-          document.getElementById('rbig').style.display = 'none';
-        }).catch(() => {
-          document.getElementById('rbigIcon').textContent = 'play_arrow';
-          document.getElementById('rbig').style.display = '';
-        });
-      }
-    } else {
-      pauseOthers();
+    v.play().then(() => {
+      document.getElementById('rbig').style.display = 'none';
+    }).catch(() => {
       document.getElementById('rbigIcon').textContent = 'play_arrow';
       document.getElementById('rbig').style.display = '';
-    }
+    });
   }
   if (SW.activeIndex >= SW.slides.length - 3) loadBatch();
   warmNeighbors();
@@ -347,6 +341,15 @@ function reelQualOptions() {
     if (VID.renditions['480p']) o.push({ label: '480p', src: VID.renditions['480p'] });
     if (VID.renditions['360p']) o.push({ label: '360p', src: VID.renditions['360p'] });
   }
+  if (VID) {
+    const m = (VID.src || '').match(/\/v\/(.+)\.[a-z0-9]+$/i);
+    if (m) {
+      const stem = m[1].replace(/-(720|480|360)p$/, '');
+      for (const r of ['720p', '480p', '360p']) {
+        if (!o.some((x) => x.label === r)) o.push({ label: r, src: `/v/${stem}-${r}.webm` });
+      }
+    }
+  }
   if (VID) o.push({ label: 'Source', src: VID.src });
   return o;
 }
@@ -364,16 +367,19 @@ function setReelQualitySrc(src, label) {
   if (playing) v.play().catch(() => {});
 }
 function applyReelAutoQuality() {
-  const o = reelQualOptions();
-  let pick = o[o.length - 1].src;
+  setReelQualitySrc(reelAutoSrc(VID), 'Auto');
+}
+/** Best encoded rendition for a video object, falling back to Source. */
+function reelAutoSrc(vid) {
+  if (!vid) return null;
+  const r = vid.renditions || {};
   try {
     const cn = navigator.connection;
-    if (cn && (cn.saveData || cn.effectiveType === 'slow-2g' || cn.effectiveType === '2g' || cn.effectiveType === '3g')) {
-      const low = o.find((x) => x.label === '360p') || o.find((x) => x.label === '480p') || o.find((x) => x.label === '720p');
-      if (low) pick = low.src;
+    if (cn && (cn.saveData || cn.effectiveType === 'slow-2g' || cn.effectiveType === '2g')) {
+      return r['360p'] || r['480p'] || r['720p'] || vid.src;
     }
-  } catch { pick = o[o.length - 1].src; }
-  setReelQualitySrc(pick, 'Auto');
+  } catch {}
+  return r['720p'] || r['480p'] || r['360p'] || vid.src;
 }
 function openRsetMenu() {
   if (!VID) return;
@@ -454,7 +460,7 @@ async function initWheels() {
   SW = new Swiper('#wswiper', {
     direction: 'vertical',
     effect: 'slide',
-    speed: 0,
+    speed: 300,
     resistanceRatio: 0.85,
     mousewheel: true,
   });
@@ -605,8 +611,8 @@ function reelMute() {
   Pjax.on(document, 'fullscreenchange', syncReelFullIcon);
   bindReelTap(document.getElementById('rgleft'), -10);
   bindReelTap(document.getElementById('rgright'), 10);
-  mutedAll = localStorage.getItem('ws_muted') === '1';
-  document.getElementById('rmuteIcon').textContent = mutedAll ? 'volume_off' : 'volume_up';
+  mutedAll = false;
+  document.getElementById('rmuteIcon').textContent = 'volume_up';
   initWheels();
 })();
 window.__destroy = function() {
@@ -616,6 +622,7 @@ window.__destroy = function() {
 };
 };
 window.__boot();
+hideBoot();
 </script>
 </body>
 </html>
