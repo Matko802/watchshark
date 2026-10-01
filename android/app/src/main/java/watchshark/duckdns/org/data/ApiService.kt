@@ -83,4 +83,21 @@ interface ApiService {
     suspend fun rename(@Body b: Map<String, String>): JsonObject
     @POST("api/auth/change")
     suspend fun changePw(@Body b: Map<String, String>): JsonObject
+    @GET("api/dm/conversations")
+    suspend fun dmConversations(): ConversationsResponse
+    @GET("api/dm/thread")
+    suspend fun dmThread(
+        @Query("user") user: String,
+        @Query("after_id") after: Long?,
+        @Query("before_id") before: Long?,
+        @Query("limit") limit: Int?
+    ): DmThreadResponse
+    @POST("api/dm/send")
+    suspend fun dmSend(@Body b: Map<String, String>): JsonObject
+    @POST("api/dm/read")
+    suspend fun dmRead(@Body b: Map<String, @JvmSuppressWildcards Any?>): JsonObject
+    @GET("api/dm/unread")
+    suspend fun dmUnread(): DmUnreadResponse
+    @GET("api/users/search")
+    suspend fun dmUserSearch(@Query("q") q: String): DmUserSearchResponse
 }

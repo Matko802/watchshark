@@ -56,6 +56,11 @@ class ChannelFragment : Fragment() {
             },
         )
         view.findViewById<Button>(R.id.ch_follow).setOnClickListener { toggleFollow() }
+        view.findViewById<Button>(R.id.ch_message).setOnClickListener {
+            (activity as? watchshark.duckdns.org.MainActivity)?.openDetail(
+                ChatFragment.newInstance(user.id, user.username)
+            )
+        }
         load()
     }
     override fun onDestroyView() {
@@ -85,9 +90,11 @@ class ChannelFragment : Fragment() {
                 }
                 if (!isAdded) return@launch
                 val follow: Button = v.findViewById(R.id.ch_follow)
+                val msg: Button = v.findViewById(R.id.ch_message)
                 if (me != null && me.id != user.id) {
                     follow.visibility = View.VISIBLE
                     follow.text = if (user.following) "Following" else "Follow"
+                    msg.visibility = View.VISIBLE
                 }
                 renderGrid()
             } catch (e: Exception) {

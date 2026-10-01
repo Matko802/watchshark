@@ -188,6 +188,13 @@ class WheelsFragment : Fragment() {
                                 created_at = it.get("created_at")?.asString ?: "",
                                 avatar = it.get("avatar")?.asString,
                                 kind = it.get("kind")?.asString ?: "wheel",
+                                renditions = try {
+                                    it.getAsJsonObject("renditions")?.entrySet()
+                                        ?.associate { e -> e.key to e.value.asString }
+                                } catch (_: Exception) { null },
+                                orientation = try {
+                                    it.get("orientation")?.asString
+                                } catch (_: Exception) { null },
                             )
                         }
                         if (vid == null || vid.id == 0L || seen.contains(vid.id)) return@repeat

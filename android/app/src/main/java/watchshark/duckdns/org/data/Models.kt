@@ -17,7 +17,8 @@ data class Video(
     val kind: String = "",
     val status: String = "",
     val description: String? = null,
-    val renditions: Map<String, String>? = null
+    val renditions: Map<String, String>? = null,
+    val orientation: String? = null
 )
 data class MeUser(
     val id: Long = 0,
@@ -89,3 +90,42 @@ data class ChannelResponse(val user: ChannelUser, val videos: List<Video>? = nul
 data class VideoDetailResponse(val video: Video?, val comments: List<Comment>? = null)
 data class NotificationsResponse(val notifications: List<Notif>? = null, val unread: Int = 0)
 data class AdminUsersResponse(val users: List<AdminUser>? = null)
+data class DmConversation(
+    @SerializedName("user_id") val userId: Long = 0,
+    val username: String = "",
+    val avatar: String? = null,
+    val online: Boolean = false,
+    @SerializedName("last_message") val lastMessage: String = "",
+    @SerializedName("last_message_id") val lastMessageId: Long = 0,
+    @SerializedName("last_at") val lastAt: String = "",
+    @SerializedName("last_sender_id") val lastSenderId: Long = 0,
+    val unread: Long = 0
+)
+data class DmMessage(
+    val id: Long = 0,
+    @SerializedName("sender_id") val senderId: Long = 0,
+    @SerializedName("recipient_id") val recipientId: Long = 0,
+    val body: String = "",
+    @SerializedName("created_at") val createdAt: String = "",
+    val read: Boolean = false
+)
+data class DmPeer(
+    @SerializedName("user_id") val userId: Long = 0,
+    val username: String = "",
+    val avatar: String? = null,
+    val online: Boolean = false
+)
+data class ConversationsResponse(val conversations: List<DmConversation>? = null)
+data class DmThreadResponse(
+    val messages: List<DmMessage>? = null,
+    val peer: DmPeer? = null,
+    val me: Long = 0
+)
+data class DmUnreadResponse(val unread: Long = 0)
+data class DmUserEntry(
+    @SerializedName("user_id") val userId: Long = 0,
+    val username: String = "",
+    val avatar: String? = null,
+    val online: Boolean = false
+)
+data class DmUserSearchResponse(val users: List<DmUserEntry>? = null)
