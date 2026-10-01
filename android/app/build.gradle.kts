@@ -3,6 +3,8 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+import java.util.Properties
+
 android {
     namespace = "watchshark.duckdns.org"
     compileSdk = 34
@@ -16,9 +18,24 @@ android {
         buildConfigField("String", "APP_URL", "\"https://watchshark.duckdns.org\"")
     }
 
+    signingConfigs {
+        create("release") {
+            val props = Properties()
+            val propFile = rootProject.file("keystore.properties")
+            if (propFile.exists()) propFile.inputStream().use { stream -> props.load(stream) }
+            keyAlias = props.getProperty("keyAlias")
+            keyPassword = props.getProperty("keyPassword")
+            val storePath = props.getProperty("storeFile")
+            if (storePath != null) storeFile = rootProject.file(storePath)
+            storePassword = props.getProperty("storePassword")
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            val propFile = rootProject.file("keystore.properties")
+            if (propFile.exists()) signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
