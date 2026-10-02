@@ -16,9 +16,19 @@ android {
         buildConfigField("String", "APP_URL", "\"https://watchshark.duckdns.org\"")
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = rootProject.file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
