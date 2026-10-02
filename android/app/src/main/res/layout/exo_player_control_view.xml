@@ -31,7 +31,7 @@
             android:id="@+id/web_play"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:background="@drawable/pill_ctrl"
             android:contentDescription="Play"
             android:src="@drawable/ic_play_arrow"
             android:tint="@android:color/white" />
@@ -78,7 +78,7 @@
             android:id="@id/exo_fullscreen"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:background="@drawable/pill_ctrl"
             android:contentDescription="Fullscreen"
             android:src="@drawable/ic_fullscreen"
             android:tint="@android:color/white" />
