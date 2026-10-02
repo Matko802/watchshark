@@ -18,8 +18,24 @@ class SettingsFragment : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, saved: Bundle?): View {
         return inflater.inflate(R.layout.fragment_settings, container, false)
     }
+    private val panes = listOf(R.id.pane_account, R.id.pane_security, R.id.pane_notif, R.id.pane_app)
+
+    private fun selectPane(view: View, id: Int) {
+        for (p in panes) view.findViewById<View>(p).visibility = if (p == id) View.VISIBLE else View.GONE
+    }
+
     override fun onViewCreated(view: View, saved: Bundle?) {
         view.clearBottomBar()
+        val tabs = view.findViewById<com.google.android.material.tabs.TabLayout>(R.id.s_tabs)
+        for (t in listOf("Account", "Security", "Notifications", "App")) tabs.addTab(tabs.newTab().setText(t))
+        tabs.addOnTabSelectedListener(object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab) {
+                selectPane(view, panes[tab.position])
+            }
+            override fun onTabUnselected(tab: com.google.android.material.tabs.TabLayout.Tab) {}
+            override fun onTabReselected(tab: com.google.android.material.tabs.TabLayout.Tab) {}
+        })
+        selectPane(view, panes[0])
         view.findViewById<Button>(R.id.s_rename).setOnClickListener { rename() }
         view.findViewById<Button>(R.id.s_changepw).setOnClickListener { changePw() }
         view.findViewById<SwitchMaterial>(R.id.s_notif).setOnCheckedChangeListener { _, on ->
