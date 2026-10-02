@@ -33,11 +33,7 @@ object Updater {
         "https://github.com/Matko802/watchshark/releases/latest"
     private const val TAG_URL_PREFIX =
         "https://github.com/Matko802/watchshark/releases/tag/"
-    /** Silent auto-check at most once per this interval. */
-    private const val SILENT_COOLDOWN_MS = 24 * 60 * 60 * 1000L
-    private const val MANUAL_COOLDOWN_MS = 5 * 60 * 1000L
-    private const val PREFS = "watchshark_update"
-    private const val KEY_LAST_CHECK = "last_check"
+
     @Volatile
     private var http: OkHttpClient? = null
     @Volatile
@@ -137,16 +133,9 @@ object Updater {
     /** Silent check (e.g. on launch): only shows a dialog when an update exists. */
     fun checkSilent(host: Fragment) {
         if (!checking.compareAndSet(false, true)) return
-        if (cooledDown(SILENT_COOLDOWN_MS)) {
-            checking.set(false)
-            return
-        }
         host.lifecycleScope.launch {
             try {
                 val result = checkForUpdate()
-                if (result is UpdateCheck.UpToDate) {
-                    stampCheck()
-                }
                 if (result is UpdateCheck.Available && host.isAdded) {
                     promptUpdate(host, result.update)
                 }
@@ -161,20 +150,13 @@ object Updater {
             onStatus("Already checking…")
             return
         }
-        if (cooledDown(MANUAL_COOLDOWN_MS)) {
-            checking.set(false)
-            onStatus("Checked recently — try again in a few minutes")
-            return
-        }
         host.lifecycleScope.launch {
             try {
                 when (val result = checkForUpdate()) {
                     is UpdateCheck.Available -> {
-                        stampCheck()
                         if (host.isAdded) promptUpdate(host, result.update)
                     }
                     UpdateCheck.UpToDate -> {
-                        stampCheck()
                         if (host.isAdded) onStatus("Already on the latest version")
                     }
                     is UpdateCheck.Failed -> {
@@ -185,16 +167,6 @@ object Updater {
                 checking.set(false)
             }
         }
-    }
-    private fun prefs(): android.content.SharedPreferences? =
-        appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-    /** True if a successful check happened within [windowMs] (failures don't count). */
-    private fun cooledDown(windowMs: Long): Boolean {
-        val last = prefs()?.getLong(KEY_LAST_CHECK, 0) ?: 0
-        return System.currentTimeMillis() - last < windowMs
-    }
-    private fun stampCheck() {
-        prefs()?.edit()?.putLong(KEY_LAST_CHECK, System.currentTimeMillis())?.apply()
     }
     private fun promptUpdate(host: Fragment, update: AppUpdate) {
         val ctx = host.requireContext()
