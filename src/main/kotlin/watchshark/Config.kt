@@ -79,9 +79,6 @@ object Config {
     fun userThumbsDir(username: String): java.io.File =
         java.io.File(userDir(username), "thumbs").apply { mkdirs() }
 
-    fun userAvatarsDir(username: String): java.io.File =
-        java.io.File(userDir(username), "avatars").apply { mkdirs() }
-
     /** Thumbs dir matching a video dir (per-user layout or legacy flat). */
     fun thumbsForVideoDir(vdir: java.io.File): java.io.File {
         val p = vdir.parentFile
@@ -111,10 +108,6 @@ object Config {
         "music" -> "music"
         else -> "videos"
     }
-
-    /** Upload target dir for a kind (created on demand). */
-    fun videoDirFor(kind: String?): java.io.File =
-        java.io.File("$videosDir/${videoKindDir(kind)}").apply { mkdirs() }
 
     /**
      * Resolve a stored video filename to its file. New uploads live in

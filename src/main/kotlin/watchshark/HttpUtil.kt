@@ -40,6 +40,7 @@ object HttpUtil {
         ctx.status(code)
         ctx.header("Content-Type", "application/json")
         ctx.header("X-Content-Type-Options", "nosniff")
+        ctx.header("Cache-Control", "no-store")
         ctx.json(v)
     }
 

@@ -5,11 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Settings — WatchShark</title>
 <link rel="icon" type="image/png" href="/favicon.png?v=1">
-<link rel="stylesheet" href="/styles.css?v=36">
+<script>try{var t=localStorage.getItem('ws_theme');if(t!=='dark'&&t!=='light'){t=(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark'}document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="/styles.css?v=42">
 <link rel="preload" href="/vendor/fonts/f1.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/vendor/fonts/f0.woff2" as="font" type="font/woff2" crossorigin>
 <link href="/vendor/fonts.css" rel="stylesheet">
 
+<link rel="modulepreload" href="/vendor/material-web.js">
 <script type="module">import '/vendor/material-web.js';</script>
 <meta property="og:site_name" content="WatchShark">
 <meta property="og:type" content="website">
@@ -30,11 +32,15 @@
 <main>
   <h2 id="sname"></h2>
   <p class="muted" id="sinfo"></p>
-  <md-tabs id="setTabs" aria-label="Settings sections">
-    <md-primary-tab><md-icon slot="icon">person</md-icon>Account</md-primary-tab>
-    <md-primary-tab><md-icon slot="icon">lock</md-icon>Password</md-primary-tab>
-    <md-primary-tab><md-icon slot="icon">notifications</md-icon>Notifications</md-primary-tab>
-  </md-tabs>
+  <div class="setwrap">
+  <div class="setnav" id="setNav" role="tablist" aria-label="Settings sections">
+    <button class="setnavbtn active" data-pane="paneAccount" role="tab"><md-icon>person</md-icon><span>Account</span></button>
+    <button class="setnavbtn" data-pane="panePassword" role="tab"><md-icon>lock</md-icon><span>Security</span></button>
+    <button class="setnavbtn" data-pane="paneNotif" role="tab"><md-icon>notifications</md-icon><span>Notifications</span></button>
+    <button class="setnavbtn" data-pane="paneFx" role="tab"><md-icon>palette</md-icon><span>Appearance</span></button>
+    <button class="setnavbtn" data-pane="paneAbout" role="tab"><md-icon>info</md-icon><span>About</span></button>
+  </div>
+  <div class="setpanes">
   <div id="paneAccount">
     <div id="spic"></div>
     <h3>Profile picture</h3>
@@ -57,6 +63,10 @@
         <md-switch id="sw-adminview"></md-switch>
         <span>Show admin controls (turn off to preview as a normal user)</span>
       </div>
+    </div>
+    <div style="margin-top:32px">
+      <h3>Sign out</h3>
+      <md-outlined-button onclick="doLogout()"><md-icon slot="icon">logout</md-icon>Sign out</md-outlined-button>
     </div>
   </div>
   <div id="panePassword" style="display:none">
@@ -85,16 +95,30 @@
     </div>
     <p id="nt-msg" class="muted"></p>
   </div>
-  <div id="paneFx">
-    <h3>Effects</h3>
+  <div id="paneFx" style="display:none">
+    <h3>Appearance</h3>
     <div class="row">
       <md-switch id="sw-blur"></md-switch>
       <span>Blur effects (translucent bars)</span>
     </div>
+    <h3 style="margin-top:20px">Theme</h3>
+    <p class="muted">Auto follows your browser. Pick one to override it.</p>
+    <div class="row">
+      <select id="themeSel" class="themesel" aria-label="Theme">
+        <option value="auto">Auto (browser)</option>
+        <option value="dark">Dark</option>
+        <option value="light">White</option>
+      </select>
+    </div>
   </div>
-  <div style="margin-top:32px">
-    <h3>Sign out</h3>
-    <md-outlined-button onclick="doLogout()"><md-icon slot="icon">logout</md-icon>Sign out</md-outlined-button>
+  <div id="paneAbout" style="display:none">
+    <h3>About</h3>
+    <p class="muted">What WatchShark is, where the code lives, and where to get the Android app.</p>
+    <div class="row">
+      <md-filled-tonal-button href="/about"><md-icon slot="icon">info</md-icon>About WatchShark</md-filled-tonal-button>
+    </div>
+  </div>
+  </div>
   </div>
 </main>
 <nav id="bottomnav">
@@ -138,8 +162,9 @@
 </script>
 
 
-<script src="/app.js?v=15"></script>
+<script src="/app.js?v=27"></script>
 <script>
+{
 async function initSettings() {
   const u = await refreshAuth();
   if (!u) { location.href = '/'; return; }
@@ -147,6 +172,12 @@ async function initSettings() {
   document.getElementById('sinfo').textContent = 'Member since ' + fmtDate(u.since) + ' (' + fmtAge(u.since) + ')';
   document.getElementById('spic').innerHTML = avatarHtml(u.avatar, 'pfp-lg');
   document.getElementById('sw-notif').selected = u.notify_uploads !== false;
+  document.getElementById('themeSel').value = themePref();
+  const tsel = document.getElementById('themeSel');
+  if (!tsel.dataset.bound) {
+    tsel.dataset.bound = '1';
+    tsel.addEventListener('change', () => setThemePref(tsel.value));
+  }
   document.getElementById('sw-blur').selected = localStorage.getItem('ws_blur') !== '0';
   const swBlur = document.getElementById('sw-blur');
   if (!swBlur.dataset.bound) {
@@ -169,12 +200,30 @@ async function initSettings() {
     }
   }
 }
-document.getElementById('setTabs').addEventListener('change', (e) => {
-  const panes = ['paneAccount', 'panePassword', 'paneNotif'];
-  panes.forEach((id, i) => {
-    document.getElementById(id).style.display = i === e.target.activeTabIndex ? '' : 'none';
+function selectSetPane(id, push) {
+  document.querySelectorAll('#setNav .setnavbtn').forEach((b) => {
+    b.classList.toggle('active', b.dataset.pane === id);
   });
+  ['paneAccount', 'panePassword', 'paneNotif', 'paneFx', 'paneAbout'].forEach((pid) => {
+    document.getElementById(pid).style.display = pid === id ? '' : 'none';
+  });
+  if (push) {
+    try {
+      const u = new URL(location.href);
+      u.searchParams.set('tab', id.replace(/^pane/, '').toLowerCase());
+      history.replaceState({}, '', u);
+    } catch {}
+  }
+}
+document.querySelectorAll('#setNav .setnavbtn').forEach((b) => {
+  b.addEventListener('click', () => selectSetPane(b.dataset.pane, true));
 });
+(function() {
+  const panes = ['paneAccount', 'panePassword', 'paneNotif', 'paneFx', 'paneAbout'];
+  const q = (new URLSearchParams(location.search).get('tab') || '').toLowerCase();
+  const match = panes.find((pid) => pid.replace(/^pane/, '').toLowerCase() === q);
+  selectSetPane(match || 'paneAccount', false);
+})();
 async function doRename() {
   const username = document.getElementById('nm-new').value.trim();
   const msg = document.getElementById('nm-msg');
@@ -215,6 +264,9 @@ async function uploadPfp() {
 }
 initSettings();
 hideBoot();
+
+Object.assign(window, { uploadPfp, doRename, saveNotif });
+}
 </script>
 </body>
 </html>

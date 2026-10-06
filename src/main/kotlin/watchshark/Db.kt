@@ -189,4 +189,25 @@ DROP TABLE IF EXISTS dm_keys;
         }
         return null
     }
+
+    fun backupTo(dst: String): Boolean {
+        var c: Connection? = null
+        return try {
+            c = DriverManager.getConnection("jdbc:sqlite:${Config.dbPath}")
+            c.createStatement().use { it.execute("PRAGMA busy_timeout=10000") }
+            c.createStatement().use { it.execute("VACUUM INTO '${dst.replace("'", "''")}'") }
+            try {
+                c.createStatement().use { it.execute("PRAGMA wal_checkpoint(TRUNCATE)") }
+            } catch (_: Exception) {
+            }
+            true
+        } catch (_: Exception) {
+            false
+        } finally {
+            try {
+                c?.close()
+            } catch (_: Exception) {
+            }
+        }
+    }
 }

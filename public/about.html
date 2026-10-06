@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>About — WatchShark</title>
+<link rel="icon" type="image/png" href="/favicon.png?v=1">
+<script>try{var t=localStorage.getItem('ws_theme');if(t!=='dark'&&t!=='light'){t=(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark'}document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="/styles.css?v=42">
+<link rel="preload" href="/vendor/fonts/f1.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/vendor/fonts/f0.woff2" as="font" type="font/woff2" crossorigin>
+<link href="/vendor/fonts.css" rel="stylesheet">
+<link rel="modulepreload" href="/vendor/material-web.js">
+<script type="module">import '/vendor/material-web.js';</script>
+<meta property="og:site_name" content="WatchShark">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:title" content="About — WatchShark">
+<meta property="og:description" content="What WatchShark is, where the code lives, and where to get the Android app.">
+<meta property="og:image" content="https://watchshark.duckdns.org/watchshark.webp">
+<style>
+.about-hero{display:flex;align-items:center;gap:16px;margin:8px 0 20px}
+.about-hero img{width:72px;height:72px;border-radius:20px}
+.about-hero h2{margin:0}
+.about-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:8px}
+.about-card{padding:20px}
+.about-card h3{margin:0 0 8px;display:flex;align-items:center;gap:8px}
+.about-card p{margin:8px 0}
+.ghicon{width:22px;height:22px;fill:currentColor;flex:none}
+.dlrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+</style>
+</head>
+<body data-pjax="1"><div id="bootloader"><div class="boots"></div></div>
+<header class="topbar">
+  <a class="brand" href="/"><img src="/watchshark.webp?v=2" alt="WatchShark logo"><span>WatchShark</span></a>
+  <span class="spacer"></span>
+  <span id="bellSlot" data-auth="in" style="display:none"></span>
+  <md-icon-button data-auth="in" href="/settings" aria-label="Settings" style="display:none"><md-icon>settings</md-icon></md-icon-button>
+  <md-text-button data-admin href="/admin" style="display:none">Admin</md-text-button>
+  <a class="createcircle" data-auth="in" href="/upload" style="display:none" aria-label="Create"><md-icon>add</md-icon></a>
+  <span id="whoami"></span>
+  <md-filled-button data-auth="out" onclick="openAuth('login')" style="display:none">Sign in</md-filled-button>
+</header>
+<main>
+  <div class="about-hero">
+    <img src="/watchshark.webp?v=2" alt="WatchShark logo">
+    <div>
+      <h2>WatchShark</h2>
+      <p class="muted" style="margin:4px 0 0">Your own video platform. No ads, no tracking, your server, your rules.</p>
+    </div>
+  </div>
+  <div class="about-grid">
+    <md-elevated-card class="about-card">
+      <h3><md-icon>movie</md-icon>What is it</h3>
+      <p>WatchShark is a self-hosted place to watch and share video: full-length <b>videos</b>, vertical <b>wheels</b> you swipe through, and a <b>music</b> corner.</p>
+      <p>Follow creators, get upload alerts, and chat over <b>messages</b> — DMs only ever open between mutual friends.</p>
+      <p class="muted">Everything runs on this server. Your account, uploads and messages stay here.</p>
+    </md-elevated-card>
+    <md-elevated-card class="about-card">
+      <h3><md-icon>smartphone</md-icon>Android app</h3>
+      <p>Get the native app for the smoothest watching, with built-in update checks.</p>
+      <div class="dlrow">
+        <md-filled-button id="apkBtn" href="https://github.com/Matko802/watchshark/releases/latest" disabled><md-icon slot="icon">download</md-icon><span id="apkLbl">Finding latest version…</span></md-filled-button>
+      </div>
+      <p class="muted" id="apkNote" style="font-size:13px"></p>
+    </md-elevated-card>
+    <md-elevated-card class="about-card">
+      <h3><md-icon>code</md-icon>Source code</h3>
+      <p>WatchShark is open source. The server, the web UI and the Android app all live in one repo.</p>
+      <div class="dlrow">
+        <md-filled-tonal-button href="https://github.com/Matko802/watchshark"><svg class="ghicon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>GitHub repo</md-filled-tonal-button>
+      </div>
+      <p class="muted" style="font-size:13px">github.com/Matko802/watchshark</p>
+    </md-elevated-card>
+  </div>
+</main>
+<nav id="bottomnav">
+  <a href="/" data-tab="home"><md-icon>home</md-icon><span>Home</span></a>
+  <a href="/wheels" data-tab="wheels"><md-icon>movie</md-icon><span>Wheels</span></a>
+  <a href="/upload" class="createbtn" aria-label="Create"><md-icon>add</md-icon></a>
+  <a href="/music" data-tab="music"><md-icon>music_note</md-icon><span>Music</span></a>
+  <a href="/settings" data-tab="account" id="navAccount"><span id="navAvatar"><md-icon>person</md-icon></span><span>You</span></a>
+</nav>
+<script>
+(function() {
+  function mark(tab) {
+    document.querySelectorAll('#bottomnav [data-tab]').forEach((a) => {
+      a.classList.toggle('active', a.dataset.tab === tab);
+    });
+  }
+  const path = location.pathname;
+  if (path === '/') mark('home');
+  else if (path === '/wheels') mark('wheels');
+  else if (path === '/music') mark('music');
+  else if (path === '/settings' || path === '/admin') mark('account');
+  const acc = document.getElementById('navAccount');
+  const navAv = document.getElementById('navAvatar');
+  fetch('/api/me', { credentials: 'include' }).then((r) => r.json()).then((j) => {
+    if (j && j.user) {
+      acc.href = '/channel?user=' + encodeURIComponent(j.user.username);
+      acc.dataset.user = j.user.username;
+      if (navAv) navAv.innerHTML = avatarHtml(j.user.avatar, 'navavatar');
+    }
+  }).catch(() => {});
+  acc.addEventListener('click', (e) => {
+    if (!acc.dataset.user) {
+      e.preventDefault();
+      if (typeof openAuth === 'function') openAuth('login');
+      else location.href = '/';
+    }
+  });
+})();
+</script>
+<script src="/app.js?v=27"></script>
+<script>
+(function() {
+  const btn = document.getElementById('apkBtn');
+  const lbl = document.getElementById('apkLbl');
+  const note = document.getElementById('apkNote');
+  function fmtSize(n) {
+    if (!n || n <= 0) return '';
+    return n >= 1048576 ? Math.round(n / 1048576) + ' MB' : Math.round(n / 1024) + ' KB';
+  }
+  fetch('/api/app/latest').then((r) => r.json()).then((j) => {
+    if (j && j.apk_url) {
+      btn.href = j.apk_url;
+      btn.removeAttribute('disabled');
+      lbl.textContent = 'Download for Android' + (j.version ? ' • v' + j.version : '') + (j.size ? ' • ' + fmtSize(j.size) : '');
+      note.textContent = 'Direct APK from the latest release' + (j.tag ? ' (' + j.tag + ')' : '') + '.';
+    } else {
+      throw 0;
+    }
+  }).catch(() => {
+    btn.removeAttribute('disabled');
+    lbl.textContent = 'Download for Android';
+    note.textContent = 'Grab the newest APK from the releases page.';
+  });
+})();
+hideBoot();
+</script>
+</body>
+</html>

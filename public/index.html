@@ -5,11 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>WatchShark</title>
 <link rel="icon" type="image/png" href="/favicon.png?v=1">
-<link rel="stylesheet" href="/styles.css?v=36">
+<script>try{var t=localStorage.getItem('ws_theme');if(t!=='dark'&&t!=='light'){t=(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark'}document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="/styles.css?v=42">
 <link rel="preload" href="/vendor/fonts/f1.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/vendor/fonts/f0.woff2" as="font" type="font/woff2" crossorigin>
 <link href="/vendor/fonts.css" rel="stylesheet">
 
+<link rel="modulepreload" href="/vendor/material-web.js">
 <script type="module">import '/vendor/material-web.js';</script>
 <meta property="og:site_name" content="WatchShark">
 <meta property="og:type" content="website">
@@ -41,7 +43,7 @@
     <md-primary-tab><md-icon slot="icon">local_fire_department</md-icon>Trending</md-primary-tab>
   </md-tabs>
   <div id="grid" class="grid stripe"></div>
-  <div class="center"><md-outlined-button id="more" onclick="load(page+1)">Load more</md-outlined-button></div>
+  <div id="sentinel" aria-hidden="true" style="min-height:4px"></div>
 </main>
 <md-dialog id="authDialog">
   <div slot="headline">Welcome to WatchShark</div>
@@ -122,8 +124,9 @@
 </script>
 
 
-<script src="/app.js?v=15"></script>
+<script src="/app.js?v=27"></script>
 <script>
+{
 window.__boot = function() {
 let page = 1, sort = 'new';
 document.getElementById('sortTabs').addEventListener('change', (e) => {
@@ -150,10 +153,13 @@ document.addEventListener('click', (e) => {
   toggleSearch(false);
 });
 let searchTimer = null;
-document.getElementById('q').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => load(1), 500); });
+let searchAbort = null;
+let loading = false, hasMore = true;
+document.getElementById('q').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => load(1), 250); });
 async function load(p = 1) {
   if (p === 1) {
     page = 1;
+    hasMore = true;
     const g0 = document.getElementById('grid');
     g0.innerHTML = '';
     for (let i = 0; i < 6; i++) {
@@ -161,13 +167,27 @@ async function load(p = 1) {
       d.innerHTML = `<div class="skel skel-media"></div><div class="skel skel-line"></div><div class="skel skel-line short"></div>`;
       g0.appendChild(d);
     }
+  } else if (loading || !hasMore) {
+    return;
   }
+  loading = true;
+  // abort superseded requests so slow responses can't overwrite fresh results
+  if (searchAbort) searchAbort.abort();
+  searchAbort = new AbortController();
   const q = document.getElementById('q').value || '';
-  const r = await fetch(`/api/videos?q=${encodeURIComponent(q)}&sort=${sort}&page=${p}&limit=12`);
+  let r;
+  try {
+    r = await fetch(`/api/videos?q=${encodeURIComponent(q)}&sort=${sort}&page=${p}&limit=12`, { signal: searchAbort.signal });
+  } catch (e) {
+    loading = false;
+    if (e && e.name === 'AbortError') return;
+    throw e;
+  }
   const j = await r.json();
+  loading = false;
   if (!document.getElementById('grid')) return;
   page = p;
-  document.getElementById('more').style.display = p < j.pages ? '' : 'none';
+  hasMore = p < j.pages;
   const g = document.getElementById('grid');
   if (p === 1) g.innerHTML = '';
   for (const v of j.videos) {
@@ -182,11 +202,18 @@ async function load(p = 1) {
     g.appendChild(a);
   }
 }
+if (window.__moreObs) window.__moreObs.disconnect();
+window.__moreObs = new IntersectionObserver((es) => {
+  if (es.some((e) => e.isIntersecting)) load(page + 1);
+}, { rootMargin: '700px' });
+window.__moreObs.observe(document.getElementById('sentinel'));
+window.__destroy = function() { if (window.__moreObs) { window.__moreObs.disconnect(); window.__moreObs = null; } };
 load(1);
 Object.assign(window, { load, toggleSearch });
 };
 window.__boot();
 hideBoot();
+}
 </script>
 </body>
 </html>

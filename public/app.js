@@ -166,6 +166,22 @@ async function pjaxHead(doc) {
       document.head.appendChild(el);
     }
   });
+  // Page-specific <style> blocks (e.g. messages.html DM layout) live in
+  // <head>, which pjaxSwap does not replace (only body is swapped). Without
+  // this, PJAX navigation renders the page unstyled — a different-looking
+  // menu than a full refresh. Drop stale page styles, then copy the new
+  // page's ones.
+  try {
+    document.querySelectorAll('head style[data-pjax-style]').forEach((el) => el.remove());
+  } catch {}
+  doc.querySelectorAll('head style').forEach((s) => {
+    try {
+      const el = document.createElement('style');
+      el.setAttribute('data-pjax-style', '1');
+      el.textContent = s.textContent;
+      document.head.appendChild(el);
+    } catch {}
+  });
   await Promise.all(loads);
 }
 async function pjaxSwap(url, push) {
@@ -214,7 +230,12 @@ async function pjaxSwap(url, push) {
       document.body.appendChild(el);
       el.remove();
     }
-    if (typeof window.__boot === 'function') window.__boot();
+    // NOTE: do NOT call window.__boot() here. Every page script auto-invokes
+    // its own __boot on eval, so calling it again double-boots the page
+    // (two Swipers on wheels = duplicate slides + unpausable videos).
+    try {
+      if (!vendorComponentsOk()) setTimeout(ensureVendor, 1500);
+    } catch {}
     return true;
   } finally {
     pjaxBusy = false;
@@ -277,6 +298,48 @@ try {
 } catch {}
 applyBlurPref();
 updateDynamicBlur();
+function themePref() {
+  try {
+    const v = localStorage.getItem('ws_theme');
+    if (v === 'dark' || v === 'light') return v;
+  } catch {}
+  return 'auto';
+}
+function themeResolve() {
+  const p = themePref();
+  if (p !== 'auto') return p;
+  try {
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) return 'light';
+  } catch {}
+  return 'dark';
+}
+function applyThemePref() {
+  try {
+    document.documentElement.dataset.theme = themeResolve();
+  } catch {}
+}
+function setThemePref(v) {
+  try {
+    if (v === 'dark' || v === 'light') localStorage.setItem('ws_theme', v);
+    else localStorage.removeItem('ws_theme');
+  } catch {}
+  applyThemePref();
+}
+try {
+  if (!window.__wsThemeBound) {
+    window.__wsThemeBound = true;
+    window.addEventListener('storage', (e) => {
+      if (e && (e.key === 'ws_theme' || e.key === null)) applyThemePref();
+    });
+    if (window.matchMedia) {
+      const mq = window.matchMedia('(prefers-color-scheme: light)');
+      const onMq = () => { if (themePref() === 'auto') applyThemePref(); };
+      if (mq.addEventListener) mq.addEventListener('change', onMq);
+      else if (mq.addListener) mq.addListener(onMq);
+    }
+  }
+} catch {}
+applyThemePref();
 document.addEventListener('DOMContentLoaded', () => setTimeout(hideBoot, 1500));
 /** Desktop left nav like YouTube (injected, desktop widths only). */
 function ensureSidebar() {
@@ -633,8 +696,88 @@ document.addEventListener('DOMContentLoaded', () => {
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     history.replaceState({ url: location.href, scroll: 0 }, '');
   } catch {}
+  try {
+    sessionStorage.setItem('ws_page_ts', String(Date.now()));
+  } catch {}
   refreshAuth();
   initBell();
   setInterval(refreshBellBadge, 60000);
   setInterval(refreshDmBadge, 15000);
 });
+try {
+  if (!window.__wsBfcacheBound) {
+    window.__wsBfcacheBound = true;
+    window.addEventListener('pageshow', (e) => {
+      if (!e || !e.persisted) return;
+      let t = 0;
+      try {
+        t = parseInt(sessionStorage.getItem('ws_page_ts') || '0', 10) || 0;
+      } catch {}
+      if (Date.now() - t > 2 * 60 * 1000) location.reload();
+    });
+  }
+} catch {}
+function vendorComponentsOk() {
+  try {
+    if (!window.customElements || !customElements.get('md-filled-button') || !customElements.get('md-icon-button')) return false;
+  } catch {
+    return false;
+  }
+  return true;
+}
+function vendorReady() {
+  if (!vendorComponentsOk()) return false;
+  try {
+    if (document.fonts && document.fonts.check && !document.fonts.check('24px "Material Symbols Sharp"')) return false;
+  } catch {}
+  return true;
+}
+function vendorClearRetry() {
+  try {
+    sessionStorage.removeItem('ws_vendor_retry');
+  } catch {}
+}
+function vendorNote() {
+  if (document.getElementById('vendorNote')) return;
+  const d = document.createElement('div');
+  d.id = 'vendorNote';
+  d.innerHTML = '<span>Parts of the page failed to load. Check your connection.</span> <button type="button" id="vendorRetry">Reload</button> <button type="button" id="vendorX" aria-label="Dismiss">✕</button>';
+  document.body.appendChild(d);
+  const r = document.getElementById('vendorRetry');
+  if (r) r.addEventListener('click', () => location.reload());
+  const x = document.getElementById('vendorX');
+  if (x) x.addEventListener('click', () => d.remove());
+}
+function ensureVendor() {
+  if (vendorReady()) {
+    vendorClearRetry();
+    return;
+  }
+  let n = 0;
+  try {
+    n = parseInt(sessionStorage.getItem('ws_vendor_retry') || '0', 10) || 0;
+  } catch {}
+  if (n < 2) {
+    try {
+      sessionStorage.setItem('ws_vendor_retry', String(n + 1));
+    } catch {}
+    location.reload();
+    return;
+  }
+  vendorNote();
+}
+function vendorBoot() {
+  if (document.readyState === 'complete') {
+    setTimeout(ensureVendor, 2500);
+  } else {
+    window.addEventListener('load', () => {
+      setTimeout(ensureVendor, 2500);
+    });
+  }
+}
+try {
+  if (!window.__wsVendorBound) {
+    window.__wsVendorBound = true;
+    vendorBoot();
+  }
+} catch {}

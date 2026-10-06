@@ -131,8 +131,10 @@ object Static {
                 serveMedia(ctx, f.absolutePath, nm, true)
                 return
             }
-            val base = if (uri[1] == 't') Config.thumbsDir else Config.avatarsDir
-            serveMedia(ctx, "$base/$nm", nm, true)
+            // thumbs/avatars live in per-user dirs for new uploads (flat dir
+            // for legacy files) — resolve instead of assuming the flat dir.
+            val f = if (uri[1] == 't') Config.resolveThumb(nm) else Config.resolveAvatar(nm)
+            serveMedia(ctx, f.absolutePath, nm, true)
             return
         }
         if (uri.contains("..")) {

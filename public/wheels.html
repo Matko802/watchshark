@@ -5,12 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Wheels — WatchShark</title>
 <link rel="icon" type="image/png" href="/favicon.png?v=1">
-<link rel="stylesheet" href="/styles.css?v=36">
+<script>try{var t=localStorage.getItem('ws_theme');if(t!=='dark'&&t!=='light'){t=(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark'}document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="/styles.css?v=42">
 <link rel="preload" href="/vendor/fonts/f1.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/vendor/fonts/f0.woff2" as="font" type="font/woff2" crossorigin>
 <link href="/vendor/fonts.css" rel="stylesheet">
 <link rel="stylesheet" href="/swiper-bundle.min.css?v=1">
 
+<link rel="modulepreload" href="/vendor/material-web.js">
 <script type="module">import '/vendor/material-web.js';</script>
 <script src="/swiper-bundle.min.js?v=1"></script>
 <meta property="og:site_name" content="WatchShark">
@@ -100,9 +102,14 @@
 </script>
 
 
-<script src="/app.js?v=15"></script>
+<script src="/app.js?v=27"></script>
 <script>
+{
 window.__boot = function() {
+// single-init guard: a second boot on the same DOM would create a second
+// Swiper (duplicate slides, videos that can't be paused)
+if (window.__wheelsAlive) return;
+window.__wheelsAlive = true;
 let VID = null;
 let VDATA = [];
 let seen = [];
@@ -131,13 +138,16 @@ function loadSeen() {
 function saveSeen() {
   try { localStorage.setItem('ws_seen', JSON.stringify(seen.slice(-400))); } catch {}
 }
-async function fetchOne() {
+async function fetchBatch(n) {
   const q = seen.length ? '?seen=' + seen.slice(-128).join(',') : '';
+  const sep = q ? '&' : '?';
   try {
-    const r = await fetch('/api/wheels' + q);
-    if (!r.ok) return null;
-    return await r.json();
-  } catch { return null; }
+    const r = await fetch('/api/wheels' + q + sep + 'limit=' + n);
+    if (!r.ok) return [];
+    const j = await r.json();
+    if (Array.isArray(j.videos)) return j.videos;
+    return j.video ? [j.video] : [];
+  } catch { return []; }
 }
 function wireVideo(v) {
   v.muted = mutedAll;
@@ -180,8 +190,10 @@ function appendOne(j) {
   const ori = j.video.orientation === 'h' ? 'h' : 'v';
   d.className = 'swiper-slide ' + ori + 'slide';
   const thumb = j.video.thumbnail || '';
+  // Best rendition up front (progressive streaming shows the first frame as soon
+  // as chunks arrive); sharp poster paints instantly. No blurred backdrop.
   const first = reelAutoSrc(j.video) || j.video.src;
-  d.innerHTML = `<div class="vbg"${thumb ? ` style="background-image:url(&quot;${thumb}&quot;)"` : ''}></div><video playsinline preload="metadata" poster="${thumb}" data-src="${first}"></video>`;
+  d.innerHTML = `<video playsinline preload="metadata" poster="${thumb}" data-src="${first}"></video>`;
   const v = d.querySelector('video');
   wireVideo(v);
   SW.appendSlide(d);
@@ -191,9 +203,10 @@ async function loadBatch() {
   if (loadingBatch || exhausted) return false;
   loadingBatch = true;
   let added = 0;
-  for (let i = 0; i < 5; i++) {
-    const j = await fetchOne();
-    if (j && appendOne(j)) added++;
+  // single round-trip for the whole batch (was: one request per video)
+  const vids = await fetchBatch(5);
+  for (const vd of vids) {
+    if (appendOne({ video: vd })) added++;
   }
   if (!added) exhausted = true;
   if (exhausted && !endShown) showEndCard();
@@ -460,8 +473,8 @@ async function initWheels() {
   SW = new Swiper('#wswiper', {
     direction: 'vertical',
     effect: 'slide',
-    speed: 300,
-    resistanceRatio: 0.85,
+    speed: 220,
+    resistanceRatio: 0.75,
     mousewheel: true,
   });
   SW.on('slideChange', onSlide);
@@ -616,6 +629,7 @@ function reelMute() {
   initWheels();
 })();
 window.__destroy = function() {
+  window.__wheelsAlive = false;
   try { document.querySelectorAll('#wwrap video').forEach((v) => { try { v.pause(); } catch {} }); } catch {}
   try { if (SW) SW.destroy(true, true); } catch {}
   SW = null;
@@ -623,6 +637,7 @@ window.__destroy = function() {
 };
 window.__boot();
 hideBoot();
+}
 </script>
 </body>
 </html>

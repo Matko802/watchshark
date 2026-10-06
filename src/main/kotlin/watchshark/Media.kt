@@ -25,7 +25,7 @@ object Media {
         return total
     }
 
-    fun storedBytes(): Long = dirSize(Config.videosDir) + dirSize(Config.thumbsDir) + dirSize(Config.avatarsDir)
+    fun storedBytes(): Long = dirSize(Config.videosDir) + dirSize(Config.thumbsDir) + dirSize(Config.avatarsDir) + dirSize("${Config.dataDir}/users")
 
     fun runOut(name: String, vararg args: String, timeoutSec: Long = 60): Pair<String, Boolean> {
         return try {
@@ -436,13 +436,7 @@ object Media {
         val dir = File("${Config.dataDir}/backups")
         dir.mkdirs()
         val dst = "${dir.absolutePath}/backup-${java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"))}.sqlite"
-        synchronized(Db.lock) {
-            try {
-                Db.conn.createStatement().use { it.execute("VACUUM INTO '${dst.replace("'", "''")}'") }
-            } catch (_: Exception) {
-                return
-            }
-        }
+        if (!Db.backupTo(dst)) return
         val names = dir.listFiles { f -> f.name.startsWith("backup-") && f.isFile }?.map { it.name }?.sorted() ?: return
         var mutable = names.toMutableList()
         while (mutable.size > 24) {

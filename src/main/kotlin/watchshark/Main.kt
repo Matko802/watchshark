@@ -8,6 +8,11 @@ import kotlin.system.exitProcess
 
 val authLimiter = HttpUtil.RateLimiter(30, 3600_000L)
 val apiLimiter = HttpUtil.RateLimiter(120, 60_000L)
+val pollLimiter = HttpUtil.RateLimiter(300, 60_000L)
+
+fun isPollPath(u: String): Boolean {
+    return u == "/api/me" || u == "/api/notifications" || u.startsWith("/api/dm/")
+}
 
 val cleanPages = mapOf(
     "/watch" to "watch.html",
@@ -20,7 +25,8 @@ val cleanPages = mapOf(
     "/reset" to "reset.html",
     "/verify" to "verify.html",
     "/admin" to "admin.html",
-    "/messages" to "messages.html"
+    "/messages" to "messages.html",
+    "/about" to "about.html"
 )
 
 fun main() {
@@ -62,7 +68,8 @@ fun main() {
                 ctx.skipRemainingHandlers()
             }
         } else if (u.startsWith("/api/")) {
-            if (!apiLimiter.allow(HttpUtil.clientIp(ctx))) {
+            val limiter = if (isPollPath(u)) pollLimiter else apiLimiter
+            if (!limiter.allow(HttpUtil.clientIp(ctx))) {
                 HttpUtil.writeErr(ctx, 429, "Rate limit exceeded, slow down")
                 ctx.skipRemainingHandlers()
             }
@@ -71,6 +78,15 @@ fun main() {
 
     // ---- health ----
     app.get("/health") { ctx -> HttpUtil.writeJson(ctx, 200, mapOf("ok" to true)) }
+    app.get("/api/app/latest") { AppHandlers.latest(it) }
+    app.post("/api/clientlog") { ctx ->
+        try {
+            val body = ctx.body().take(300).replace("\n", " ")
+            println("[clientlog ip=${HttpUtil.clientIp(ctx)}] $body")
+        } catch (_: Exception) {
+        }
+        HttpUtil.writeJson(ctx, 200, mapOf("ok" to true))
+    }
 
     // ---- auth ----
     app.post("/api/auth/signup") { AuthHandlers.signup(it) }
@@ -101,6 +117,19 @@ fun main() {
         if (!ok) HttpUtil.writeErr(it, 401, "Login required") else VideoHandlers.upload(it, uid)
     }
     app.get("/api/wheels") { VideoHandlers.wheels(it) }
+    // ---- music API (public, custom-client friendly) ----
+    app.get("/api/music") { MusicHandlers.list(it) }
+    app.get("/api/music/*") { ctx ->
+        val u = ctx.path()
+        val prefix = "/api/music/"
+        val rest = if (u.startsWith(prefix)) u.substring(prefix.length) else ""
+        val (id, leftover, ok) = HttpUtil.parseId(rest)
+        if (!ok || leftover != "") {
+            HttpUtil.writeErr(ctx, 404, "Not found")
+            return@get
+        }
+        MusicHandlers.get(ctx, id)
+    }
     app.post("/api/pfp") {
         val (uid, _, ok) = HandlersCommon.authUser(it)
         if (!ok) HttpUtil.writeErr(it, 401, "Login required") else VideoHandlers.pfp(it, uid)
@@ -114,7 +143,15 @@ fun main() {
         if (!ok) HttpUtil.writeErr(it, 401, "Login required") else VideoHandlers.notifRead(it, uid)
     }
 
-    // ---- DMs (TikTok-like plaintext, any user can message any user) ----
+    // ---- DMs (TikTok-style: mutual friends only) ----
+    app.get("/api/dm/friends") {
+        val (uid, _, ok) = HandlersCommon.authUser(it)
+        if (!ok) HttpUtil.writeErr(it, 401, "Login required") else DmHandlers.friends(it, uid)
+    }
+    app.get("/api/dm/sync") {
+        val (uid, _, ok) = HandlersCommon.authUser(it)
+        if (!ok) HttpUtil.writeErr(it, 401, "Login required") else DmHandlers.sync(it, uid)
+    }
     app.get("/api/dm/conversations") {
         val (uid, _, ok) = HandlersCommon.authUser(it)
         if (!ok) HttpUtil.writeErr(it, 401, "Login required") else DmHandlers.conversations(it, uid)

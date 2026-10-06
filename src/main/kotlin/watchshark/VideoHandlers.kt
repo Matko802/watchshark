@@ -196,7 +196,7 @@ object VideoHandlers {
         }
         Config.resolveVideo(fn).delete()
         Media.unlinkRenditions(fn)
-        if (!th.isNullOrEmpty()) File("${Config.thumbsDir}/$th").delete()
+        if (!th.isNullOrEmpty()) { try { Config.resolveThumb(th).delete() } catch (_: Exception) {} }
         HttpUtil.writeJson(ctx, 200, mapOf("ok" to true))
     }
 
@@ -260,7 +260,7 @@ object VideoHandlers {
                 ps.setString(1, name); ps.setLong(2, id); ps.executeUpdate()
             }
         }
-        if (!oldTh.isNullOrEmpty() && oldTh != name) File("${Config.thumbsDir}/$oldTh").delete()
+        if (!oldTh.isNullOrEmpty() && oldTh != name) { try { Config.resolveThumb(oldTh).delete() } catch (_: Exception) {} }
         HttpUtil.writeJson(ctx, 200, mapOf("ok" to true, "thumbnail" to "/t/$name"))
     }
 
@@ -328,7 +328,7 @@ object VideoHandlers {
                     ps.setString(1, title); ps.setString(2, desc); ps.setString(3, thumbName); ps.setLong(4, id)
                     ps.executeUpdate()
                 }
-                if (!oldTh.isNullOrEmpty() && oldTh != thumbName) File("${Config.thumbsDir}/$oldTh").delete()
+                if (!oldTh.isNullOrEmpty() && oldTh != thumbName) { try { Config.resolveThumb(oldTh).delete() } catch (_: Exception) {} }
             } else {
                 Db.conn.prepareStatement("UPDATE videos SET title=?,description=? WHERE id=?").use { ps ->
                     ps.setString(1, title); ps.setString(2, desc); ps.setLong(3, id)
@@ -456,30 +456,44 @@ object VideoHandlers {
             sb.append(seen.joinToString(",") { "?" })
             sb.append(")")
         }
-        sb.append(" ORDER BY id DESC LIMIT 1")
-        var vid = 0L
-        var found = false
+        // Batch mode (?limit=N): one round-trip returns up to N videos.
+        // Single mode (no limit param): legacy shape {"video": ...} / 404 when empty.
+        val batch = ctx.queryParam("limit") != null
+        var limit = ctx.queryParam("limit")?.toIntOrNull() ?: 1
+        if (limit < 1) limit = 1
+        if (limit > 10) limit = 10
+        sb.append(" ORDER BY id DESC LIMIT $limit")
+        val vids = mutableListOf<Long>()
         synchronized(Db.lock) {
             Db.conn.prepareStatement(sb.toString()).use { ps ->
                 seen.forEachIndexed { i, v -> ps.setLong(i + 1, v) }
                 ps.executeQuery().use { rs ->
-                    if (rs.next()) {
-                        vid = rs.getLong(1); found = true
-                    }
+                    while (rs.next()) vids.add(rs.getLong(1))
                 }
             }
-            if (found && viewer >= 0) HandlersCommon.recordViewLocked(vid, viewer, "")
+            if (viewer >= 0) {
+                for (vid in vids) HandlersCommon.recordViewLocked(vid, viewer, "")
+            }
         }
-        if (!found) {
-            HttpUtil.writeErr(ctx, 404, "No videos yet")
+        if (!batch) {
+            val vid = vids.firstOrNull()
+            if (vid == null) {
+                HttpUtil.writeErr(ctx, 404, "No videos yet")
+                return
+            }
+            val v = HandlersCommon.videoJson(vid, viewer)
+            if (v == null) {
+                HttpUtil.writeErr(ctx, 404, "Not found")
+                return
+            }
+            HttpUtil.writeJson(ctx, 200, mapOf("video" to v))
             return
         }
-        val v = HandlersCommon.videoJson(vid, viewer)
-        if (v == null) {
-            HttpUtil.writeErr(ctx, 404, "Not found")
-            return
+        val videos = mutableListOf<Any?>()
+        for (vid in vids) {
+            videos.add(HandlersCommon.videoJson(vid, viewer))
         }
-        HttpUtil.writeJson(ctx, 200, mapOf("video" to v))
+        HttpUtil.writeJson(ctx, 200, mapOf("videos" to videos))
     }
 
     fun upload(ctx: Context, uid: Long) {
@@ -798,7 +812,7 @@ object VideoHandlers {
                 ps.setString(1, name); ps.setLong(2, uid); ps.executeUpdate()
             }
         }
-        if (!old.isNullOrEmpty() && old != name) File("${Config.avatarsDir}/$old").delete()
+        if (!old.isNullOrEmpty() && old != name) { try { Config.resolveAvatar(old).delete() } catch (_: Exception) {} }
         HttpUtil.writeJson(ctx, 200, mapOf("ok" to true, "avatar" to "/a/$name"))
     }
 

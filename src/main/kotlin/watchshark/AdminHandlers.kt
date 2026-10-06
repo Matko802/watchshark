@@ -86,9 +86,9 @@ object AdminHandlers {
         for (i in fns.indices) {
             Config.resolveVideo(fns[i]).delete()
             Media.unlinkRenditions(fns[i])
-            if (ths[i].isNotEmpty()) File("${Config.thumbsDir}/${ths[i]}").delete()
+            if (ths[i].isNotEmpty()) { try { Config.resolveThumb(ths[i]).delete() } catch (_: Exception) {} }
         }
-        if (!uav.isNullOrEmpty()) File("${Config.avatarsDir}/$uav").delete()
+        if (!uav.isNullOrEmpty()) { try { Config.resolveAvatar(uav).delete() } catch (_: Exception) {} }
         return true
     }
 
@@ -244,7 +244,7 @@ object AdminHandlers {
         for (i in fns.indices) {
             Config.resolveVideo(fns[i]).delete()
             Media.unlinkRenditions(fns[i])
-            if (ths[i].isNotEmpty()) File("${Config.thumbsDir}/${ths[i]}").delete()
+            if (ths[i].isNotEmpty()) { try { Config.resolveThumb(ths[i]).delete() } catch (_: Exception) {} }
         }
         HttpUtil.writeJson(ctx, 200, mapOf("ok" to true))
     }

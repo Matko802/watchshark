@@ -16,7 +16,6 @@ object Auth {
     private val b64urlEnc = Base64.getUrlEncoder().withoutPadding()
     private val b64urlDec = Base64.getUrlDecoder()
 
-    fun b64urlEncBytes(b: ByteArray): String = b64urlEnc.encodeToString(b)
     fun b64urlDecStr(s: String): ByteArray = b64urlDec.decode(s)
 
     data class Claims(val sub: Long, val username: String, val iat: Long, val exp: Long)
