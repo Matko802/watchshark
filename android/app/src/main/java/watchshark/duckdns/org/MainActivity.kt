@@ -204,8 +204,10 @@ class MainActivity : AppCompatActivity() {
     fun syncBars() {
         val frag = supportFragmentManager.findFragmentById(R.id.container)
         val onAuth = frag is AuthFragment && supportFragmentManager.backStackEntryCount == 0
+        // DM threads go full-screen: no bottom bar while chatting.
+        val inChat = frag is ChatFragment
         findViewById<View>(R.id.topbar).visibility = if (onAuth) View.GONE else View.VISIBLE
-        findViewById<View>(R.id.bottomnav).visibility = if (onAuth) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.bottomnav).visibility = if (onAuth || inChat) View.GONE else View.VISIBLE
         if (!onAuth) refreshTopbar()
     }
     fun refreshTopbar() {

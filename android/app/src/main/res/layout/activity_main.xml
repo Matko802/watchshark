@@ -140,9 +140,12 @@
             android:textColorHint="?attr/colorOnSurfaceVariant"
             android:textSize="15sp" />
     </LinearLayout>
+    </LinearLayout>
+
 
     <LinearLayout
         android:id="@+id/bottomnav"
+        android:layout_gravity="bottom"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
@@ -295,7 +298,6 @@
                 android:textSize="11sp" />
         </LinearLayout>
         </LinearLayout>
-    </LinearLayout>
     </LinearLayout>
     <TextView
         android:id="@+id/app_toast"
