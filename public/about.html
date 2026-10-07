@@ -6,7 +6,7 @@
 <title>About — WatchShark</title>
 <link rel="icon" type="image/png" href="/favicon.png?v=1">
 <script>try{var t=localStorage.getItem('ws_theme');if(t!=='dark'&&t!=='light'){t=(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark'}document.documentElement.dataset.theme=t}catch(e){}</script>
-<link rel="stylesheet" href="/styles.css?v=42">
+<link rel="stylesheet" href="/styles.css?v=43">
 <link rel="preload" href="/vendor/fonts/f1.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/vendor/fonts/f0.woff2" as="font" type="font/woff2" crossorigin>
 <link href="/vendor/fonts.css" rel="stylesheet">
@@ -52,7 +52,7 @@
   <div class="about-grid">
     <md-elevated-card class="about-card">
       <h3><md-icon>movie</md-icon>What is it</h3>
-      <p>WatchShark is a self-hosted place to watch and share video: full-length <b>videos</b>, vertical <b>wheels</b> you swipe through, and a <b>music</b> corner.</p>
+      <p>WatchShark is a self-hosted place to watch and share video: full-length <b>videos</b> and vertical <b>wheels</b> you swipe through.</p>
       <p>Follow creators, get upload alerts, and chat over <b>messages</b> — DMs only ever open between mutual friends.</p>
       <p class="muted">Everything runs on this server. Your account, uploads and messages stay here.</p>
     </md-elevated-card>
@@ -78,7 +78,6 @@
   <a href="/" data-tab="home"><md-icon>home</md-icon><span>Home</span></a>
   <a href="/wheels" data-tab="wheels"><md-icon>movie</md-icon><span>Wheels</span></a>
   <a href="/upload" class="createbtn" aria-label="Create"><md-icon>add</md-icon></a>
-  <a href="/music" data-tab="music"><md-icon>music_note</md-icon><span>Music</span></a>
   <a href="/settings" data-tab="account" id="navAccount"><span id="navAvatar"><md-icon>person</md-icon></span><span>You</span></a>
 </nav>
 <script>
@@ -91,7 +90,6 @@
   const path = location.pathname;
   if (path === '/') mark('home');
   else if (path === '/wheels') mark('wheels');
-  else if (path === '/music') mark('music');
   else if (path === '/settings' || path === '/admin') mark('account');
   const acc = document.getElementById('navAccount');
   const navAv = document.getElementById('navAvatar');
@@ -111,7 +109,7 @@
   });
 })();
 </script>
-<script src="/app.js?v=27"></script>
+<script src="/app.js?v=29"></script>
 <script>
 (function() {
   const btn = document.getElementById('apkBtn');

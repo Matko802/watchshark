@@ -6,7 +6,7 @@
 <title>Wheels — WatchShark</title>
 <link rel="icon" type="image/png" href="/favicon.png?v=1">
 <script>try{var t=localStorage.getItem('ws_theme');if(t!=='dark'&&t!=='light'){t=(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark'}document.documentElement.dataset.theme=t}catch(e){}</script>
-<link rel="stylesheet" href="/styles.css?v=42">
+<link rel="stylesheet" href="/styles.css?v=43">
 <link rel="preload" href="/vendor/fonts/f1.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/vendor/fonts/f0.woff2" as="font" type="font/woff2" crossorigin>
 <link href="/vendor/fonts.css" rel="stylesheet">
@@ -19,7 +19,7 @@
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
 <meta property="og:title" content="WatchShark">
-<meta property="og:description" content="WatchShark — watch and share videos, wheels and music.">
+<meta property="og:description" content="WatchShark — watch and share videos and wheels.">
 <meta property="og:image" content="https://watchshark.duckdns.org/watchshark.webp">
 </head>
 <body class="reelbody" data-pjax="1"><div id="bootloader"><div class="boots"></div></div>
@@ -65,7 +65,6 @@
   <a href="/" data-tab="home"><md-icon>home</md-icon><span>Home</span></a>
   <a href="/wheels" data-tab="wheels"><md-icon>movie</md-icon><span>Wheels</span></a>
   <a href="/upload" class="createbtn" aria-label="Create"><md-icon>add</md-icon></a>
-  <a href="/music" data-tab="music"><md-icon>music_note</md-icon><span>Music</span></a>
   <a href="/settings" data-tab="account" id="navAccount"><span id="navAvatar"><md-icon>person</md-icon></span><span>You</span></a>
 </nav>
 <script>
@@ -78,7 +77,6 @@
   const path = location.pathname;
   if (path === '/') mark('home');
   else if (path === '/wheels') mark('wheels');
-  else if (path === '/music') mark('music');
   else if (path === '/settings' || path === '/admin') mark('account');
   const acc = document.getElementById('navAccount');
   const navAv = document.getElementById('navAvatar');
@@ -102,7 +100,7 @@
 </script>
 
 
-<script src="/app.js?v=27"></script>
+<script src="/app.js?v=29"></script>
 <script>
 {
 window.__boot = function() {

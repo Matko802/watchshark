@@ -111,7 +111,7 @@ object HandlersCommon {
                     val thumb: Any? = if (!th.isNullOrEmpty()) "/t/$th" else null
                     val st = if (!status.isNullOrEmpty()) status else "ready"
                     val oriStr = if (ori == "v") "v" else "h"
-                    val kindStr = if (kk == "wheel" || kk == "music") kk else "video"
+                    val kindStr = if (kk == "wheel") kk else "video"
                     val av: Any? = if (!uav.isNullOrEmpty()) "/a/$uav" else null
                     var renditions: Any? = null
                     if (!rend.isNullOrEmpty()) {

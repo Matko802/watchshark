@@ -355,7 +355,6 @@ function ensureSidebar() {
   aside.innerHTML = `<nav>
     <a href="/" data-side="home"><md-icon>home</md-icon><span>Home</span></a>
     <a href="/wheels" data-side="wheels"><md-icon>movie</md-icon><span>Wheels</span></a>
-    <a href="/music" data-side="music"><md-icon>music_note</md-icon><span>Music</span></a>
     <a href="/messages" data-side="messages"><md-icon>chat</md-icon><span>Messages</span></a>
   </nav>`;
   document.body.appendChild(aside);
@@ -367,8 +366,6 @@ function markSidebar() {
   const path = location.pathname;
   const tab = path === '/' ? 'home'
     : path === '/wheels' ? 'wheels'
-    : path === '/music' ? 'music'
-    : path === '/messages' ? 'messages'
     : (path === '/settings' || path === '/admin') ? 'account' : '';
   document.querySelectorAll('#sidebar [data-side]').forEach((a) => {
     a.classList.toggle('active', a.dataset.side === tab);
@@ -415,6 +412,35 @@ window.addEventListener('popstate', async (e) => {
     updateDynamicBlur();
   }
 });
+/** Segmented slider tabs (pill container + sliding indicator). Returns {pick, move}. */
+function segTabs(el, onPick) {
+  if (!el) return null;
+  const btns = [...el.querySelectorAll('.segbtn')];
+  const ind = el.querySelector('.segind');
+  const visible = () => btns.filter((b) => b.style.display !== 'none');
+  function move() {
+    if (!ind) return;
+    const vis = visible();
+    const cur = vis.find((b) => b.classList.contains('on')) || vis[0];
+    if (!cur) return;
+    ind.style.left = cur.offsetLeft + 'px';
+    ind.style.width = cur.offsetWidth + 'px';
+  }
+  function pick(btn, silent) {
+    if (!btn || btn.style.display === 'none') return;
+    btns.forEach((b) => b.classList.toggle('on', b === btn));
+    move();
+    if (!silent && onPick) onPick(btn);
+  }
+  btns.forEach((b) => b.addEventListener('click', () => pick(b)));
+  window.addEventListener('resize', move);
+  requestAnimationFrame(move);
+  setTimeout(move, 350);
+  try {
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(move).catch(() => {});
+  } catch {}
+  return { pick, move, btns };
+}
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',

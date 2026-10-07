@@ -6,7 +6,7 @@
 <title>Watch — WatchShark</title>
 <link rel="icon" type="image/png" href="/favicon.png?v=1">
 <script>try{var t=localStorage.getItem('ws_theme');if(t!=='dark'&&t!=='light'){t=(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark'}document.documentElement.dataset.theme=t}catch(e){}</script>
-<link rel="stylesheet" href="/styles.css?v=42">
+<link rel="stylesheet" href="/styles.css?v=43">
 <link rel="preload" href="/vendor/fonts/f1.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/vendor/fonts/f0.woff2" as="font" type="font/woff2" crossorigin>
 <link href="/vendor/fonts.css" rel="stylesheet">
@@ -40,10 +40,11 @@
     <md-list id="comments" style="display:none"></md-list>
   </div>
   <aside class="watchrail" id="rail" style="display:none">
-    <md-tabs id="upnextTabs" aria-label="More videos">
-      <md-primary-tab>Latest</md-primary-tab>
-      <md-primary-tab>Trending</md-primary-tab>
-    </md-tabs>
+    <div class="segtabs" id="upnextTabs" role="tablist" aria-label="More videos">
+      <span class="segind"></span>
+      <button class="segbtn on" data-tab="new">Latest</button>
+      <button class="segbtn" data-tab="pop">Trending</button>
+    </div>
     <div id="upnext"></div>
   </aside>
 </main>
@@ -120,7 +121,7 @@
     <md-filled-button onclick="saveEdit()">Save</md-filled-button>
   </div>
 </md-dialog>
-<script src="/app.js?v=27"></script>
+<script src="/app.js?v=29"></script>
 <script>
 {
 window.__boot = function() {
@@ -741,10 +742,10 @@ async function sendComment() {
 document.getElementById('cbody').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendComment(); });
 document.getElementById('cpreview').onclick = expandComments;
 document.getElementById('ctoggle').onclick = collapseComments;
-document.getElementById('upnextTabs').onchange = (e) => {
-  upnextTab = e.target.activeTabIndex === 1 ? 'pop' : 'new';
+segTabs(document.getElementById('upnextTabs'), (btn) => {
+  upnextTab = btn.dataset.tab || 'new';
   loadUpnext();
-};
+});
 init();
 window.__destroy = function() {
   destroyPlayer();

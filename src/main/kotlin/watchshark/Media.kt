@@ -384,54 +384,6 @@ object Media {
         notifyFollowers(id, author)
     }
 
-    fun processMusic(id: Long, author: Long, tmp: String, stem: String, customThumb: String) {
-        val out = java.io.File(File(tmp).parent, "$stem.ogg").absolutePath
-        val th = java.io.File(Config.thumbsForVideoDir(java.io.File(tmp).parentFile ?: java.io.File(Config.videosDir)), "$stem.webp").absolutePath
-        val thname = "$stem.webp"
-        val tmpF = File(tmp)
-        if (!tmpF.exists() || tmpF.length() == 0L) {
-            tmpF.delete()
-            markFailed(id)
-            return
-        }
-        if (!probeHasAudio(tmp)) {
-            tmpF.delete()
-            markFailed(id)
-            return
-        }
-        val ok = runFFmpeg(listOf("-y", "-i", tmp, "-map", "0:a", "-c:a", "libopus", "-b:a", "128k", out), java.time.Duration.ofMinutes(30))
-        tmpF.delete()
-        val size = fileSize(out)
-        if (!ok || size <= 0 || size > 100L * 1024 * 1024) {
-            File(out).delete()
-            markFailed(id)
-            return
-        }
-        var thumb: String? = null
-        if (customThumb.isNotEmpty()) {
-            val (name, good) = convertThumb(customThumb, stem, Config.thumbsForVideoDir(java.io.File(tmp).parentFile ?: java.io.File(Config.videosDir)))
-            if (good) thumb = name
-            File(customThumb).delete()
-        }
-        if (thumb == null && runFFmpeg(
-                listOf("-y", "-i", out, "-filter_complex", "showwavespic=s=640x360", "-frames:v", "1", "-c:v", "libwebp", "-q:v", "80", th),
-                java.time.Duration.ofSeconds(120)
-            ) && fileSize(th) > 0
-        ) thumb = thname
-        synchronized(Db.lock) {
-            Db.conn.prepareStatement("UPDATE videos SET filename=?, size=?, thumbnail=?, mimetype=?, orientation=?, status='ready' WHERE id=?").use { ps ->
-                ps.setString(1, "$stem.ogg")
-                ps.setLong(2, size)
-                if (thumb == null) ps.setNull(3, java.sql.Types.VARCHAR) else ps.setString(3, thumb)
-                ps.setString(4, "audio/ogg")
-                ps.setString(5, "h")
-                ps.setLong(6, id)
-                ps.executeUpdate()
-            }
-        }
-        notifyFollowers(id, author)
-    }
-
     fun backupOnce() {
         val dir = File("${Config.dataDir}/backups")
         dir.mkdirs()
@@ -503,8 +455,7 @@ object Media {
                 continue
             }
             val stem = r.fn.removeSuffix(".part")
-            if (r.kind == "music") bg.submit { processMusic(r.id, r.author, tmp.absolutePath, stem, "") }
-            else bg.submit { processUpload(r.id, r.author, tmp.absolutePath, stem, "") }
+            bg.submit { processUpload(r.id, r.author, tmp.absolutePath, stem, "") }
         }
         val entries = File(Config.videosDir).walkTopDown().filter { it.isFile && it.name.endsWith(".part") }.toList()
         for (e in entries) {

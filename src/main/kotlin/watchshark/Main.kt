@@ -18,7 +18,6 @@ val cleanPages = mapOf(
     "/watch" to "watch.html",
     "/channel" to "channel.html",
     "/wheels" to "wheels.html",
-    "/music" to "music.html",
     "/upload" to "upload.html",
     "/settings" to "settings.html",
     "/forgot" to "forgot.html",
@@ -35,7 +34,6 @@ fun main() {
     File(Config.videosDir).mkdirs()
     File("${Config.videosDir}/videos").mkdirs()
     File("${Config.videosDir}/wheels").mkdirs()
-    File("${Config.videosDir}/music").mkdirs()
     File(Config.thumbsDir).mkdirs()
     File(Config.avatarsDir).mkdirs()
     try {
@@ -117,19 +115,6 @@ fun main() {
         if (!ok) HttpUtil.writeErr(it, 401, "Login required") else VideoHandlers.upload(it, uid)
     }
     app.get("/api/wheels") { VideoHandlers.wheels(it) }
-    // ---- music API (public, custom-client friendly) ----
-    app.get("/api/music") { MusicHandlers.list(it) }
-    app.get("/api/music/*") { ctx ->
-        val u = ctx.path()
-        val prefix = "/api/music/"
-        val rest = if (u.startsWith(prefix)) u.substring(prefix.length) else ""
-        val (id, leftover, ok) = HttpUtil.parseId(rest)
-        if (!ok || leftover != "") {
-            HttpUtil.writeErr(ctx, 404, "Not found")
-            return@get
-        }
-        MusicHandlers.get(ctx, id)
-    }
     app.post("/api/pfp") {
         val (uid, _, ok) = HandlersCommon.authUser(it)
         if (!ok) HttpUtil.writeErr(it, 401, "Login required") else VideoHandlers.pfp(it, uid)

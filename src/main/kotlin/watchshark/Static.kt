@@ -199,7 +199,6 @@ object Static {
             desc = "$by • $viewsStr".trim().trim('•', ' ')
             if (desc.isEmpty()) desc = title
         }
-        val kind = str("kind")
         val src = str("src")
         val thumb = v["thumbnail"] as? String ?: ""
         val sb = StringBuilder()
@@ -208,15 +207,6 @@ object Static {
         sb.append(metaTag("og:url", "${Config.siteBase()}/watch?id=$id"))
         sb.append(metaTag("og:title", title))
         sb.append(metaTag("og:description", desc))
-        if (kind == "music") {
-            sb.append(metaTag("og:type", "music.song"))
-            if (src.isNotEmpty()) {
-                sb.append(metaTag("og:audio", Config.siteBase() + src))
-                sb.append(metaTag("og:audio:type", "audio/ogg"))
-            }
-            sb.append(metaTag("og:image", if (thumb.isNotEmpty()) Config.siteBase() + thumb else Config.siteBase() + "/watchshark.webp"))
-            return sb.toString()
-        }
         sb.append(metaTag("og:type", "video.other"))
         sb.append(metaTag("og:image", if (thumb.isNotEmpty()) Config.siteBase() + thumb else Config.siteBase() + "/watchshark.webp"))
         if (src.isNotEmpty()) {

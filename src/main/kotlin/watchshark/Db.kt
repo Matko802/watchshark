@@ -63,6 +63,7 @@ DROP TABLE IF EXISTS dm_keys;
             }
             conn.createStatement().use { it.execute("UPDATE videos SET kind='wheel' WHERE kind IS NULL AND COALESCE(orientation,'h')='v'") }
             conn.createStatement().use { it.execute("UPDATE videos SET kind='video' WHERE kind IS NULL") }
+            conn.createStatement().use { it.execute("UPDATE videos SET kind='video' WHERE kind='music'") }
 
             var hasNText = false
             conn.createStatement().use { st ->

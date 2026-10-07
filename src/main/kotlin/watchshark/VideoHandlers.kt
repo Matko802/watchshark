@@ -22,8 +22,7 @@ object VideoHandlers {
         if (limit > 24) limit = 24
         val off = (page - 1) * limit
         val mine = ctx.queryParam("mine") == "1"
-        var kind = ctx.queryParam("kind") ?: ""
-        if (kind != "music") kind = "video"
+        val kind = "video"
         if (mine && viewer < 0) {
             HttpUtil.writeErr(ctx, 401, "Login required")
             return
@@ -514,7 +513,7 @@ object VideoHandlers {
         var title = HttpUtil.truncateRunes(ctx.formParam("title") ?: "", 120)
         var desc = HttpUtil.truncateRunes(ctx.formParam("description") ?: "", 2000)
         var kind = HttpUtil.truncateRunes(ctx.formParam("kind") ?: "", 16)
-        if (kind != "video" && kind != "wheel" && kind != "music") kind = "video"
+        if (kind != "video" && kind != "wheel") kind = "video"
 
         val fileParts = try { ctx.uploadedFiles("file") } catch (_: Exception) {
             HttpUtil.writeErr(ctx, 400, "Bad multipart")
@@ -587,14 +586,7 @@ object VideoHandlers {
             HttpUtil.writeErr(ctx, 507, "Server storage full (50GB limit reached)")
             return
         }
-        if (kind == "music") {
-            if (!Media.probeHasAudio(partPath.absolutePath)) {
-                partPath.delete()
-                if (thumbSaved) thumbTmp.delete()
-                HttpUtil.writeErr(ctx, 400, "Not an audio file")
-                return
-            }
-        } else if (!Media.probeHasVideo(partPath.absolutePath)) {
+        if (!Media.probeHasVideo(partPath.absolutePath)) {
             partPath.delete()
             if (thumbSaved) thumbTmp.delete()
             HttpUtil.writeErr(ctx, 400, "Not a video file")
@@ -626,8 +618,7 @@ object VideoHandlers {
         val customThumb = if (thumbSaved) thumbTmp.absolutePath else ""
         val fid = id
         val fkind = kind
-        if (fkind == "music") Media.bg.submit { Media.processMusic(fid, uid, partPath.absolutePath, stem, customThumb) }
-        else Media.bg.submit { Media.processUpload(fid, uid, partPath.absolutePath, stem, customThumb) }
+        Media.bg.submit { Media.processUpload(fid, uid, partPath.absolutePath, stem, customThumb) }
         HttpUtil.writeJson(ctx, 200, mapOf("ok" to true, "id" to fid, "kind" to fkind))
     }
 
@@ -831,7 +822,6 @@ object VideoHandlers {
         var views = 0L
         var nV = 0L
         var nW = 0L
-        var nM = 0L
         var following = false
         var chanOnline = false
         val ids = mutableListOf<Long>()
@@ -867,10 +857,6 @@ object VideoHandlers {
                 ps.setLong(1, uid)
                 ps.executeQuery().use { rs -> if (rs.next()) nW = rs.getLong(1) }
             }
-            Db.conn.prepareStatement("SELECT COUNT(*) FROM videos WHERE user_id=? AND COALESCE(kind,'video')='music'").use { ps ->
-                ps.setLong(1, uid)
-                ps.executeQuery().use { rs -> if (rs.next()) nM = rs.getLong(1) }
-            }
             if (viewer >= 0 && viewer != uid) {
                 Db.conn.prepareStatement("SELECT 1 FROM follows WHERE follower_id=? AND followed_id=?").use { ps ->
                     ps.setLong(1, viewer); ps.setLong(2, uid)
@@ -887,7 +873,7 @@ object VideoHandlers {
             "id" to uid, "username" to un, "avatar" to avatar, "created_at" to ca,
             "followers" to followers, "videos" to nvideos, "views" to views, "following" to following,
             "online" to chanOnline,
-            "counts" to mapOf("video" to nV, "wheel" to nW, "music" to nM)
+            "counts" to mapOf("video" to nV, "wheel" to nW)
         )
         val videos = mutableListOf<Any?>()
         for (id in ids) videos.add(HandlersCommon.videoJson(id, viewer))

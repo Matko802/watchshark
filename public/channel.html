@@ -6,7 +6,7 @@
 <title>Channel — WatchShark</title>
 <link rel="icon" type="image/png" href="/favicon.png?v=1">
 <script>try{var t=localStorage.getItem('ws_theme');if(t!=='dark'&&t!=='light'){t=(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark'}document.documentElement.dataset.theme=t}catch(e){}</script>
-<link rel="stylesheet" href="/styles.css?v=42">
+<link rel="stylesheet" href="/styles.css?v=43">
 <link rel="preload" href="/vendor/fonts/f1.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/vendor/fonts/f0.woff2" as="font" type="font/woff2" crossorigin>
 <link href="/vendor/fonts.css" rel="stylesheet">
@@ -42,11 +42,11 @@
       <md-outlined-button id="cmessage" onclick="messageChannel()" style="display:none"><md-icon slot="icon">chat</md-icon>Message</md-outlined-button>
       <md-filled-tonal-button id="cfollow" onclick="toggleChanFollow()" style="display:none"></md-filled-tonal-button>
     </div>
-    <md-tabs id="chanTabs" aria-label="Channel sections">
-      <md-primary-tab id="tabVideos"><md-icon slot="icon">play_circle</md-icon>Videos</md-primary-tab>
-      <md-primary-tab id="tabWheels"><md-icon slot="icon">movie</md-icon>Wheels</md-primary-tab>
-      <md-primary-tab id="tabMusic"><md-icon slot="icon">music_note</md-icon>Music</md-primary-tab>
-    </md-tabs>
+    <div class="segtabs" id="chanTabs" role="tablist" aria-label="Channel sections">
+      <span class="segind"></span>
+      <button class="segbtn on" data-kind="video"><md-icon>play_circle</md-icon>Videos</button>
+      <button class="segbtn" data-kind="wheel"><md-icon>movie</md-icon>Wheels</button>
+    </div>
     <div id="grid" class="grid"></div>
   </div>
 </main>
@@ -92,7 +92,6 @@
   <a href="/" data-tab="home"><md-icon>home</md-icon><span>Home</span></a>
   <a href="/wheels" data-tab="wheels"><md-icon>movie</md-icon><span>Wheels</span></a>
   <a href="/upload" class="createbtn" aria-label="Create"><md-icon>add</md-icon></a>
-  <a href="/music" data-tab="music"><md-icon>music_note</md-icon><span>Music</span></a>
   <a href="/settings" data-tab="account" id="navAccount"><span id="navAvatar"><md-icon>person</md-icon></span><span>You</span></a>
 </nav>
 <script>
@@ -105,7 +104,6 @@
   const path = location.pathname;
   if (path === '/') mark('home');
   else if (path === '/wheels') mark('wheels');
-  else if (path === '/music') mark('music');
   else if (path === '/settings' || path === '/admin') mark('account');
   const acc = document.getElementById('navAccount');
   const navAv = document.getElementById('navAvatar');
@@ -129,13 +127,17 @@
 </script>
 
 
-<script src="/app.js?v=27"></script>
+<script src="/app.js?v=29"></script>
 <script>
 {
 window.__boot = function() {
 let CHAN = null;
 let CHANVIDS = [];
 let chanTab = 'video';
+const chanSeg = segTabs(document.getElementById('chanTabs'), (btn) => {
+  chanTab = btn.dataset.kind || 'video';
+  renderChanGrid();
+});
 function chanCard(v) {
   const media = v.thumbnail
     ? `<img class="media" src="${v.thumbnail}" loading="lazy" alt="">`
@@ -156,16 +158,6 @@ function wheelCard(v) {
     + `<small>${fmtNum(v.views)} views</small></div></article>`;
   return a;
 }
-function musicCard(v) {
-  const art = v.thumbnail
-    ? `<img class="media" src="${v.thumbnail}" loading="lazy" alt="">`
-    : `<span class="media mnoart"><md-icon>music_note</md-icon></span>`;
-  const a = document.createElement('a');
-  a.className = 'cardlink'; a.href = '/music';
-  a.innerHTML = `<article class="m3card">${art}<div class="meta"><div class="metatext"><h3>${esc(v.title)}</h3>`
-    + `<small>${fmtNum(v.views)} views</small></div></div></article>`;
-  return a;
-}
 function chanKind(v) {
   return v.kind || 'video';
 }
@@ -175,10 +167,10 @@ function renderChanGrid() {
   g.className = chanTab === 'wheel' ? 'grid wgrid' : 'grid';
   const list = CHANVIDS.filter((v) => chanKind(v) === chanTab);
   if (!list.length) {
-    g.innerHTML = chanTab === 'wheel' ? '<p class="muted">No wheels yet.</p>' : chanTab === 'music' ? '<p class="muted">No music yet.</p>' : '<p class="muted">No videos yet.</p>';
+    g.innerHTML = chanTab === 'wheel' ? '<p class="muted">No wheels yet.</p>' : '<p class="muted">No videos yet.</p>';
     return;
   }
-  for (const v of list) g.appendChild(chanTab === 'wheel' ? wheelCard(v) : chanTab === 'music' ? musicCard(v) : chanCard(v));
+  for (const v of list) g.appendChild(chanTab === 'wheel' ? wheelCard(v) : chanCard(v));
 }
 async function initChannel() {
   const name = new URLSearchParams(location.search).get('user') || '';
@@ -203,18 +195,13 @@ async function initChannel() {
   document.getElementById('cmore').textContent = fmtFull(CHAN.views) + ' total views • joined ' + CHAN.created_at;
   renderChanFollow();
   CHANVIDS = j.videos || [];
-  const counts = CHAN.counts || { video: 1, wheel: 1, music: 1 };
-  document.getElementById('tabWheels').style.display = counts.wheel ? '' : 'none';
-  document.getElementById('tabMusic').style.display = counts.music ? '' : 'none';
-  const tabs = document.querySelectorAll('#chanTabs md-primary-tab');
-  if (!counts.video && counts.wheel && tabs[1]) { chanTab = 'wheel'; tabs[1].click(); }
-  else if (!counts.video && !counts.wheel && counts.music && tabs[2]) { chanTab = 'music'; tabs[2].click(); }
-  else renderChanGrid();
+  const counts = CHAN.counts || { video: 1, wheel: 1 };
+  const wheelBtn = document.querySelector('#chanTabs [data-kind="wheel"]');
+  const videoBtn = document.querySelector('#chanTabs [data-kind="video"]');
+  if (wheelBtn) wheelBtn.style.display = counts.wheel ? '' : 'none';
+  if (!counts.video && counts.wheel && wheelBtn) { chanTab = 'wheel'; if (chanSeg) chanSeg.pick(wheelBtn); }
+  else { chanTab = 'video'; if (chanSeg && videoBtn) chanSeg.pick(videoBtn, true); renderChanGrid(); }
 }
-document.getElementById('chanTabs').addEventListener('change', (e) => {
-  chanTab = ['video', 'wheel', 'music'][e.target.activeTabIndex] || 'video';
-  renderChanGrid();
-});
 function messageChannel() {
   if (typeof CHAN !== "undefined" && CHAN) location.href = '/messages?user=' + encodeURIComponent(CHAN.username);
 }
