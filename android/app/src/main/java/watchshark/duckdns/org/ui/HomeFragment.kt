@@ -36,7 +36,7 @@ class HomeFragment : Fragment() {
         adapter = VideoAdapter(mutableListOf())
         val grid: RecyclerView = view.findViewById(R.id.grid)
         grid.layoutManager = GridLayoutManager(requireContext(), gridSpan(requireContext()))
-        grid.clearBottomBar()
+        grid.clearBottomBar(clip = false)
         grid.adapter = adapter
         if (cached.isNotEmpty()) {
             adapter.setItems(cached)

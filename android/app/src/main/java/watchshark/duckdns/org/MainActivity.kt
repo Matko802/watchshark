@@ -210,6 +210,12 @@ class MainActivity : AppCompatActivity() {
         // DM screens go full-screen: no bottom bar in the conversation
         // list either (brand logo / system back still gets you home).
         val inChat = frag is ChatFragment || frag is MessagesFragment
+        // Home gets the translucent gliding bar; everywhere else the bar is
+        // opaque black and content ends above it.
+        val homeRoot = frag is HomeFragment && supportFragmentManager.backStackEntryCount == 0
+        findViewById<View>(R.id.nav_row)?.setBackgroundResource(
+            if (homeRoot) R.drawable.nav_pill_translucent else R.drawable.nav_pill
+        )
         findViewById<View>(R.id.topbar).visibility = if (onAuth) View.GONE else View.VISIBLE
         findViewById<View>(R.id.bottomnav).visibility = if (onAuth || inChat) View.GONE else View.VISIBLE
         if (!onAuth) refreshTopbar()

@@ -27,13 +27,12 @@ fun Context.isLightTheme(): Boolean {
  * Clears space above the overlaid blur bar so scroll content never hides
  * behind it (content still slides underneath for the frosted effect).
  */
-fun View.clearBottomBar() {
-    // Invisible spacer above the opaque bottom bar: feeds end above it
-    // instead of sliding underneath. Clipping stays on so padding never
-    // shows scrolling content.
+fun View.clearBottomBar(clip: Boolean = true) {
+    // Invisible spacer above the bottom bar so nothing rests hidden under
+    // it. clip=false lets feed content glide underneath a translucent bar.
     val px = (170 * resources.displayMetrics.density).toInt()
     setPadding(paddingLeft, paddingTop, paddingRight, paddingBottom + px)
-    (this as? android.view.ViewGroup)?.clipToPadding = true
+    (this as? android.view.ViewGroup)?.clipToPadding = clip
 }
 /** YouTube-style feed: single stripe on phones, grid on wide screens. */
 fun gridSpan(ctx: Context): Int {

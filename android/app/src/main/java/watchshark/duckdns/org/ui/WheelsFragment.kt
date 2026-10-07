@@ -104,6 +104,13 @@ class WheelsFragment : Fragment() {
         val want = nav.height + (12 * resources.displayMetrics.density).toInt()
         if (want == overlayBottomMargin) return
         overlayBottomMargin = want
+        // The reel video itself ends above the opaque bar (never slides under).
+        view?.findViewById<ViewPager2>(R.id.pager)?.let { pager ->
+            if (pager.paddingBottom != want) {
+                pager.setPadding(0, 0, 0, want)
+                pager.clipToPadding = true
+            }
+        }
         for (h in holders.values) {
             setBottomMargin(h.textWrap, want)
             setBottomMargin(h.actionsWrap, want)
