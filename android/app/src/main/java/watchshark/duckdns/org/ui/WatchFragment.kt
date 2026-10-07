@@ -49,7 +49,11 @@ class WatchFragment : Fragment() {
         return inflater.inflate(R.layout.fragment_watch, container, false)
     }
     override fun onViewCreated(view: View, saved: Bundle?) {
-        view.clearBottomBar()
+        // Full-bleed page: content scrolls under the floating nav pill
+        // (transparent here, gradient behind it) instead of stopping above.
+        view.findViewById<android.widget.ScrollView>(R.id.watch_scroll)?.let {
+            it.clipToPadding = false
+        }
         commentsAdapter = CommentsAdapter { c -> askReply(c) }
         view.findViewById<RecyclerView>(R.id.comments).apply {
             layoutManager = LinearLayoutManager(requireContext())

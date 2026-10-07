@@ -12,11 +12,13 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.doOnLayout
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.launch
 import watchshark.duckdns.org.data.ApiClient
+import watchshark.duckdns.org.ui.applyBarClearance
 import watchshark.duckdns.org.ui.AdminFragment
 import watchshark.duckdns.org.ui.AuthFragment
 import watchshark.duckdns.org.ui.ChannelFragment
@@ -39,6 +41,14 @@ class MainActivity : AppCompatActivity() {
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = android.graphics.Color.TRANSPARENT
         window.navigationBarColor = android.graphics.Color.TRANSPARENT
+        // Draw into the display cutout instead of letterboxing: without this
+        // landscape gets a black bar next to the camera cutout.
+        if (android.os.Build.VERSION.SDK_INT >= 28) {
+            window.attributes = window.attributes.apply {
+                layoutInDisplayCutoutMode =
+                    android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+        }
         androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).apply {
             // Follow the system theme: dark icons on light backgrounds and vice versa.
             val night = resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK ==
@@ -52,6 +62,7 @@ class MainActivity : AppCompatActivity() {
         watchshark.duckdns.org.data.Updater.init(this)
         setContentView(R.layout.activity_main)
         applyEdgeToEdge()
+        layoutNavForOrientation()
         supportFragmentManager.addOnBackStackChangedListener {
             if (supportFragmentManager.backStackEntryCount == 0 && currentTab == "you") {
                 val tag = supportFragmentManager.findFragmentById(R.id.container)?.tag
@@ -151,6 +162,7 @@ class MainActivity : AppCompatActivity() {
     }
     override fun onResume() {
         super.onResume()
+        layoutNavForOrientation()
         syncBars()
         if (!ApiClient.sessionToken().isNullOrEmpty()) {
             watchshark.duckdns.org.data.UploadAlerts.ensureScheduled(this)
@@ -164,9 +176,10 @@ class MainActivity : AppCompatActivity() {
     private var updateChecked = false
     /**
      * Pushes the system-bar insets INTO the top/bottom bars (as extra
-     * padding) instead of padding the root. That way the #111111 bars
-     * themselves extend behind the status + gesture bars — no black
-     * strips above the topbar or below the bottom nav.
+     * padding) instead of padding the root. That way the bars themselves
+     * extend behind the status + gesture bars — no black strips above the
+     * topbar or below the bottom nav. Cutout insets are folded in so the
+     * camera hole never gets a letterbox bar in landscape.
      */
     private fun applyEdgeToEdge() {
         val density = resources.displayMetrics.density
@@ -175,21 +188,51 @@ class MainActivity : AppCompatActivity() {
             val bars = insets.getInsets(
                 androidx.core.view.WindowInsetsCompat.Type.systemBars()
             )
+            val cut = insets.getInsets(
+                androidx.core.view.WindowInsetsCompat.Type.displayCutout()
+            )
             val ime = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.ime())
+            val left = maxOf(bars.left, cut.left)
+            val right = maxOf(bars.right, cut.right)
             findViewById<View>(R.id.topbar)?.setPadding(
-                (8 * density).toInt(),
-                (8 * density).toInt() + bars.top,
-                (8 * density).toInt(),
+                (8 * density).toInt() + left,
+                (8 * density).toInt() + maxOf(bars.top, cut.top),
+                (8 * density).toInt() + right,
                 (8 * density).toInt()
             )
             // Floating pill nav: inset padding goes on the outer container so
-            // the pill itself keeps its shape on every screen size.
-            findViewById<View>(R.id.bottomnav)?.setPadding(
-                (16 * density).toInt(),
-                0,
-                (16 * density).toInt(),
-                (12 * density).toInt() + bars.bottom
-            )
+            // the pill itself keeps its shape on every screen size. In
+            // landscape the pill is a right-side rail, so the inset goes
+            // on the end instead of the bottom.
+            if (isLandscape()) {
+                findViewById<View>(R.id.bottomnav)?.setPadding(
+                    0,
+                    (12 * density).toInt(),
+                    0,
+                    (12 * density).toInt()
+                )
+                findViewById<View>(R.id.nav_row)?.setPadding(
+                    (8 * density).toInt(),
+                    (9 * density).toInt(),
+                    (8 * density).toInt() + right,
+                    (7 * density).toInt()
+                )
+            } else {
+                findViewById<View>(R.id.bottomnav)?.setPadding(
+                    (16 * density).toInt() + left,
+                    0,
+                    (16 * density).toInt() + right,
+                    (12 * density).toInt() + maxOf(bars.bottom, cut.bottom)
+                )
+                // Restore the pill's own padding (landscape adds the
+                // cutout inset to its end).
+                findViewById<View>(R.id.nav_row)?.setPadding(
+                    (8 * density).toInt(),
+                    (9 * density).toInt(),
+                    (8 * density).toInt(),
+                    (7 * density).toInt()
+                )
+            }
             val navH = findViewById<View>(R.id.bottomnav)?.height ?: 0
             val imePx = (ime.bottom - navH).coerceAtLeast(0)
             imeBottomPx = imePx
@@ -198,6 +241,107 @@ class MainActivity : AppCompatActivity() {
             }
             insets
         }
+    }
+    private fun isLandscape(): Boolean {
+        return resources.configuration.orientation ==
+            android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    }
+    /**
+     * Landscape turns the bottom pill into a right-side rail (YouTube
+     * style): the container docks to the end, the pill stacks vertically
+     * with icon-only buttons, and content clears it via container padding.
+     * Called on resume + rotation; guarded so steady state costs nothing.
+     */
+    private var navLandscape: Boolean? = null
+    fun layoutNavForOrientation() {
+        val landscape = isLandscape()
+        if (navLandscape != landscape) {
+            navLandscape = landscape
+            val density = resources.displayMetrics.density
+            val bottomnav = findViewById<View>(R.id.bottomnav)
+            val row = findViewById<android.widget.LinearLayout>(R.id.nav_row)
+            if (landscape) {
+                (bottomnav?.layoutParams as? android.widget.FrameLayout.LayoutParams)?.let {
+                    it.gravity = android.view.Gravity.END or android.view.Gravity.CENTER_VERTICAL
+                    it.width = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                    it.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                    bottomnav.layoutParams = it
+                }
+                row?.orientation = android.widget.LinearLayout.VERTICAL
+                findViewById<View>(R.id.nav_create)?.let { cb ->
+                    (cb.layoutParams as? android.widget.LinearLayout.LayoutParams)?.let { lp ->
+                        val m = (6 * density).toInt()
+                        lp.setMargins(0, m, 0, m)
+                        cb.layoutParams = lp
+                    }
+                }
+                // Compact icon-only rail: short landscape screens fit it.
+                listOf(
+                    R.id.nav_home_label, R.id.nav_wheels_label,
+                    R.id.nav_messages_label, R.id.nav_you_label
+                ).forEach { findViewById<View>(it)?.visibility = View.GONE }
+            } else {
+                (bottomnav?.layoutParams as? android.widget.FrameLayout.LayoutParams)?.let {
+                    it.gravity = android.view.Gravity.BOTTOM or android.view.Gravity.CENTER_HORIZONTAL
+                    it.width = android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                    it.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                    bottomnav.layoutParams = it
+                }
+                row?.orientation = android.widget.LinearLayout.HORIZONTAL
+                findViewById<View>(R.id.nav_create)?.let { cb ->
+                    (cb.layoutParams as? android.widget.LinearLayout.LayoutParams)?.let { lp ->
+                        val m = (6 * density).toInt()
+                        lp.setMargins(m, 0, m, 0)
+                        cb.layoutParams = lp
+                    }
+                }
+                listOf(
+                    R.id.nav_home_label, R.id.nav_wheels_label,
+                    R.id.nav_messages_label, R.id.nav_you_label
+                ).forEach { findViewById<View>(it)?.visibility = View.VISIBLE }
+            }
+            // Padding depends on orientation: re-dispatch insets so the
+            // listener above re-runs with fresh geometry.
+            findViewById<View>(R.id.root)?.let {
+                androidx.core.view.ViewCompat.requestApplyInsets(it)
+            }
+        }
+        updateContainerForRail()
+        reapplyBarClearance()
+        (supportFragmentManager.findFragmentById(R.id.container) as? WheelsFragment)
+            ?.refreshClearance()
+    }
+    /** In landscape the content ends left of the rail; in portrait full width. */
+    private fun updateContainerForRail() {
+        val container = findViewById<View>(R.id.container) ?: return
+        if (!isLandscape()) {
+            if (container.paddingRight != 0) container.setPadding(0, 0, 0, 0)
+            return
+        }
+        val rail = findViewById<View>(R.id.nav_row) ?: return
+        if (rail.width <= 0) {
+            rail.doOnLayout { updateContainerForRail() }
+            return
+        }
+        val want = rail.width + (8 * resources.displayMetrics.density).toInt()
+        if (container.paddingRight != want) container.setPadding(0, 0, want, 0)
+    }
+    /** Re-runs bar clearance on every tagged scroll view (see Ui.kt) so a
+     *  rotation swaps bottom spacer for none without recreating views. */
+    private fun reapplyBarClearance() {
+        val container = findViewById<android.view.ViewGroup>(R.id.container) ?: return
+        fun walk(group: android.view.ViewGroup) {
+            for (i in 0 until group.childCount) {
+                val v = group.getChildAt(i)
+                if (v.getTag(R.id.tag_bar_clear) != null) v.applyBarClearance()
+                if (v is android.view.ViewGroup) walk(v)
+            }
+        }
+        walk(container)
+    }
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        layoutNavForOrientation()
     }
     /**
      * Single source of truth for top/bottom bar visibility. Bars are hidden
@@ -211,10 +355,10 @@ class MainActivity : AppCompatActivity() {
         // Open DM threads go full-screen: no bottom bar while chatting.
         // The conversation list keeps it so you can still navigate.
         val inChat = frag is ChatFragment
-        // Wheels is full-bleed video, so the bar goes transparent there and
-        // crossfades back to opaque black everywhere else.
+        // Wheels and watch are full-bleed pages, so the bar goes
+        // transparent there and crossfades back to opaque black elsewhere.
         val onWheels = frag is WheelsFragment && supportFragmentManager.backStackEntryCount == 0
-        setNavTransparent(onWheels)
+        setNavTransparent(onWheels || frag is WatchFragment)
         findViewById<View>(R.id.topbar).visibility = if (onAuth) View.GONE else View.VISIBLE
         findViewById<View>(R.id.bottomnav).visibility = if (onAuth || inChat) View.GONE else View.VISIBLE
         // Hide the gear synchronously while in Settings so it never flashes

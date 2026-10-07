@@ -26,13 +26,25 @@ fun Context.isLightTheme(): Boolean {
 /**
  * Clears space above the overlaid blur bar so scroll content never hides
  * behind it (content still slides underneath for the frosted effect).
+ * In landscape the bar lives on the right (handled by container padding),
+ * so no bottom spacer is added. Idempotent across rotations.
  */
 fun View.clearBottomBar(clip: Boolean = true) {
+    setTag(R.id.tag_bar_clip, clip)
+    applyBarClearance()
+}
+/** Re-applies bar clearance for the current orientation (idempotent). */
+fun View.applyBarClearance() {
+    val clip = (getTag(R.id.tag_bar_clip) as? Boolean) ?: true
+    val landscape = resources.configuration.orientation ==
+        android.content.res.Configuration.ORIENTATION_LANDSCAPE
     // Invisible spacer above the bottom bar so nothing rests hidden under
     // it. clip=false lets feed content glide underneath a translucent bar.
-    val px = (170 * resources.displayMetrics.density).toInt()
-    setPadding(paddingLeft, paddingTop, paddingRight, paddingBottom + px)
-    (this as? android.view.ViewGroup)?.clipToPadding = clip
+    val want = if (landscape) 0 else (170 * resources.displayMetrics.density).toInt()
+    val have = (getTag(R.id.tag_bar_clear) as? Int) ?: 0
+    setPadding(paddingLeft, paddingTop, paddingRight, paddingBottom - have + want)
+    setTag(R.id.tag_bar_clear, want)
+    (this as? android.view.ViewGroup)?.clipToPadding = if (landscape) false else clip
 }
 /** YouTube-style feed: single stripe on phones, grid on wide screens. */
 fun gridSpan(ctx: Context): Int {

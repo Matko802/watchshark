@@ -44,9 +44,16 @@ class WheelsFragment : Fragment() {
      *  only used to lift captions/buttons above the pill. */
     private var overlayBottomMargin = 0
     /** Caption/button margin: just above the nav pill, over the dark part
-     *  of the bottom gradient. */
+     *  of the bottom gradient (tight to the page bottom in landscape,
+     *  where the bar is a side rail). */
     private fun captionMarginPx() =
-        overlayBottomMargin + (8 * resources.displayMetrics.density).toInt()
+        (if (isLandscape()) 0 else overlayBottomMargin) +
+            (8 * resources.displayMetrics.density).toInt()
+    private fun isLandscape() =
+        resources.configuration.orientation ==
+            android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    /** Re-run after rotation (called by MainActivity). */
+    fun refreshClearance() = applyClearance()
     private val holders = mutableMapOf<Int, ReelAdapter.Holder>()
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, saved: Bundle?): View {
         return inflater.inflate(R.layout.fragment_wheels, container, false)
@@ -104,8 +111,23 @@ class WheelsFragment : Fragment() {
     }
     /** Reels are full-bleed: the pager has no bottom padding so the wheel
      *  shows behind the nav bar through the gradient scrim. Captions sit
-     *  just above the pill. */
+     *  just above the pill. In landscape the bar is a right-side rail, so
+     *  captions just hug the page bottom. */
     private fun applyClearance() {
+        if (isLandscape()) {
+            overlayBottomMargin = 0
+            view?.findViewById<ViewPager2>(R.id.pager)?.let { pager ->
+                if (pager.paddingBottom != 0) {
+                    pager.setPadding(0, 0, 0, 0)
+                    pager.clipToPadding = false
+                }
+            }
+            for (h in holders.values) {
+                setBottomMargin(h.textWrap, captionMarginPx())
+                setBottomMargin(h.actionsWrap, captionMarginPx())
+            }
+            return
+        }
         val nav = activity?.findViewById<View>(R.id.bottomnav) ?: return
         if (nav.height <= 0) return
         val want = nav.height
