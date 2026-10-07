@@ -1,4 +1,5 @@
 package watchshark.duckdns.org
+import android.graphics.drawable.TransitionDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -210,15 +211,31 @@ class MainActivity : AppCompatActivity() {
         // Open DM threads go full-screen: no bottom bar while chatting.
         // The conversation list keeps it so you can still navigate.
         val inChat = frag is ChatFragment
-        // The bottom bar is always opaque black and content ends above
-        // it — no translucent state on any screen.
-        findViewById<View>(R.id.nav_row)?.setBackgroundResource(R.drawable.nav_pill)
+        // Wheels is full-bleed video, so the bar goes transparent there and
+        // crossfades back to opaque black everywhere else.
+        val onWheels = frag is WheelsFragment && supportFragmentManager.backStackEntryCount == 0
+        setNavTransparent(onWheels)
         findViewById<View>(R.id.topbar).visibility = if (onAuth) View.GONE else View.VISIBLE
         findViewById<View>(R.id.bottomnav).visibility = if (onAuth || inChat) View.GONE else View.VISIBLE
         // Hide the gear synchronously while in Settings so it never flashes
         // before the (async) topbar refresh below confirms it.
         if (frag is SettingsFragment) findViewById<View>(R.id.top_settings).visibility = View.GONE
         if (!onAuth) refreshTopbar()
+    }
+    /** Current nav pill state; null until first applied. */
+    private var navTransparent: Boolean? = null
+    /** Crossfades the bottom nav pill between opaque black and transparent
+     *  so switching to/from wheels glides instead of popping. */
+    fun setNavTransparent(transparent: Boolean) {
+        if (navTransparent == transparent) return
+        navTransparent = transparent
+        val row = findViewById<View>(R.id.nav_row) ?: return
+        val from = if (transparent) R.drawable.nav_pill else R.drawable.nav_pill_clear
+        val to = if (transparent) R.drawable.nav_pill_clear else R.drawable.nav_pill
+        val cross = TransitionDrawable(arrayOf(getDrawable(from), getDrawable(to)))
+        cross.isCrossFadeEnabled = true
+        row.background = cross
+        cross.startTransition(350)
     }
     fun refreshTopbar() {
         lifecycleScope.launch {
