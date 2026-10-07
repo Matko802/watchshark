@@ -28,12 +28,12 @@ fun Context.isLightTheme(): Boolean {
  * behind it (content still slides underneath for the frosted effect).
  */
 fun View.clearBottomBar() {
-    // Invisible spacer above the floating pill nav (pill height + margins +
-    // system gesture bar): keeps the last items reachable on every device
-    // while content still glides underneath while scrolling.
-    val px = (160 * resources.displayMetrics.density).toInt()
+    // Invisible spacer above the opaque bottom bar: feeds end above it
+    // instead of sliding underneath. Clipping stays on so padding never
+    // shows scrolling content.
+    val px = (170 * resources.displayMetrics.density).toInt()
     setPadding(paddingLeft, paddingTop, paddingRight, paddingBottom + px)
-    (this as? android.view.ViewGroup)?.clipToPadding = false
+    (this as? android.view.ViewGroup)?.clipToPadding = true
 }
 /** YouTube-style feed: single stripe on phones, grid on wide screens. */
 fun gridSpan(ctx: Context): Int {

@@ -231,7 +231,6 @@
                 android:layout_height="48dp"
                 android:background="@drawable/circle_white"
                 android:contentDescription="Create"
-                android:tint="?attr/colorOnPrimary"
                 android:padding="12dp"
                 android:src="@drawable/ic_add" />
         </LinearLayout>

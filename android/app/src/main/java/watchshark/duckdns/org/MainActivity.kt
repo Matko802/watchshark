@@ -28,7 +28,6 @@ import watchshark.duckdns.org.ui.UploadFragment
 import watchshark.duckdns.org.ui.WatchFragment
 import watchshark.duckdns.org.ui.WheelsFragment
 import watchshark.duckdns.org.ui.loadMedia
-import watchshark.duckdns.org.ui.themeColor
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // Always follow the system light/dark theme.
@@ -506,8 +505,9 @@ class MainActivity : AppCompatActivity() {
             "wheels" to R.drawable.ic_movie,
             "messages" to R.drawable.ic_chat,
         )
-        val active = themeColor(com.google.android.material.R.attr.colorOnSurface)
-        val idle = themeColor(com.google.android.material.R.attr.colorOnSurfaceVariant)
+        // Bottom bar is always opaque black: fixed icon colors stay readable.
+        val active = android.graphics.Color.WHITE
+        val idle = android.graphics.Color.parseColor("#A8A8A8")
         tabs.forEach { tab ->
             val selected = tab.tag == currentTab
             (findViewById<View>(tab.iconId) as? ImageView)?.apply {
