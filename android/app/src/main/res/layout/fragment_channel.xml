@@ -61,8 +61,11 @@
 
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/ch_tabs"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/seg_container"
         app:tabIndicator="@drawable/tab_indicator_pill"
         app:tabIndicatorAnimationMode="elastic"
         app:tabIndicatorFullWidth="false"
