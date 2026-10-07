@@ -38,6 +38,9 @@ class WheelsFragment : Fragment() {
     /** True once the current item rendered a frame (initial buffering never downgrades). */
     private var wheelReady = false
     private val readyPositions = mutableSetOf<Int>()
+    /** Bottom clearance for overlay UI, measured from the real pill nav
+     *  height so reels never slide under the buttons on any screen. */
+    private var overlayBottomMargin = 0
     private val holders = mutableMapOf<Int, ReelAdapter.Holder>()
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, saved: Bundle?): View {
         return inflater.inflate(R.layout.fragment_wheels, container, false)
@@ -66,6 +69,10 @@ class WheelsFragment : Fragment() {
             })
         }
         adapter = ReelAdapter()
+        overlayBottomMargin = (120 * resources.displayMetrics.density).toInt()
+        activity?.findViewById<View>(R.id.bottomnav)?.let { nav ->
+            androidx.core.view.doOnLayout(nav) { applyClearance() }
+        }
         val pager: ViewPager2 = view.findViewById(R.id.pager)
         pager.orientation = ViewPager2.ORIENTATION_VERTICAL
         pager.adapter = adapter
@@ -88,6 +95,25 @@ class WheelsFragment : Fragment() {
             }
         })
         loadMore()
+    }
+    /** Lifts reel text + buttons above the floating pill, wherever it is. */
+    private fun applyClearance() {
+        val nav = activity?.findViewById<View>(R.id.bottomnav) ?: return
+        if (nav.height <= 0) return
+        val want = nav.height + (12 * resources.displayMetrics.density).toInt()
+        if (want == overlayBottomMargin) return
+        overlayBottomMargin = want
+        for (h in holders.values) {
+            setBottomMargin(h.textWrap, want)
+            setBottomMargin(h.actionsWrap, want)
+        }
+    }
+    private fun setBottomMargin(v: View, px: Int) {
+        val lp = v.layoutParams as? ViewGroup.MarginLayoutParams ?: return
+        if (lp.bottomMargin != px) {
+            lp.bottomMargin = px
+            v.layoutParams = lp
+        }
     }
     /** Cache-backed source so reels replay instantly and swipes stay smooth. */
     private fun cachedSource(url: String): androidx.media3.exoplayer.source.MediaSource {
@@ -253,6 +279,7 @@ class WheelsFragment : Fragment() {
     }
     override fun onResume() {
         super.onResume()
+        applyClearance()
         player?.playWhenReady = true
     }
     override fun onDestroyView() {
@@ -264,6 +291,8 @@ class WheelsFragment : Fragment() {
         inner class Holder(v: View) : RecyclerView.ViewHolder(v) {
             val playerView: PlayerView = v.findViewById(R.id.reel_player)
             val thumb: ImageView = v.findViewById(R.id.reel_thumb)
+            val textWrap: View = v.findViewById(R.id.reel_text)
+            val actionsWrap: View = v.findViewById(R.id.reel_actions)
             val title: TextView = v.findViewById(R.id.reel_title)
             val meta: TextView = v.findViewById(R.id.reel_meta)
             val like: MaterialButton = v.findViewById(R.id.reel_like)
@@ -292,6 +321,8 @@ class WheelsFragment : Fragment() {
             }
             h as Holder
             val vid = videos[position]
+            setBottomMargin(h.textWrap, overlayBottomMargin)
+            setBottomMargin(h.actionsWrap, overlayBottomMargin)
             if (h.playerView.player !== player || position != selectedPos) {
                 h.playerView.player = if (position == selectedPos) player else null
             }

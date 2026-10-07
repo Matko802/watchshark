@@ -20,6 +20,7 @@
         app:use_controller="false" />
 
     <LinearLayout
+        android:id="@+id/reel_text"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
@@ -48,6 +49,7 @@
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/reel_actions"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="end|bottom"
