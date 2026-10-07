@@ -31,6 +31,10 @@ import watchshark.duckdns.org.ui.loadMedia
 import watchshark.duckdns.org.ui.themeColor
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Always follow the system light/dark theme.
+        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(
+            androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+        )
         watchshark.duckdns.org.data.CrashLog.install(this)
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = android.graphics.Color.TRANSPARENT
@@ -204,8 +208,9 @@ class MainActivity : AppCompatActivity() {
     fun syncBars() {
         val frag = supportFragmentManager.findFragmentById(R.id.container)
         val onAuth = frag is AuthFragment && supportFragmentManager.backStackEntryCount == 0
-        // DM threads go full-screen: no bottom bar while chatting.
-        val inChat = frag is ChatFragment
+        // DM screens go full-screen: no bottom bar in the conversation
+        // list either (brand logo / system back still gets you home).
+        val inChat = frag is ChatFragment || frag is MessagesFragment
         findViewById<View>(R.id.topbar).visibility = if (onAuth) View.GONE else View.VISIBLE
         findViewById<View>(R.id.bottomnav).visibility = if (onAuth || inChat) View.GONE else View.VISIBLE
         if (!onAuth) refreshTopbar()
@@ -460,7 +465,6 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.topbar).visibility = View.VISIBLE
         findViewById<View>(R.id.bottomnav).visibility = View.VISIBLE
         markNav()
-        refreshTopbar()
         supportFragmentManager.popBackStackImmediate(null, 1)
         val tx = supportFragmentManager.beginTransaction()
             .setReorderingAllowed(true)
@@ -480,6 +484,10 @@ class MainActivity : AppCompatActivity() {
         tx.replace(R.id.container, fragment, tag)
             .commit()
         supportFragmentManager.executePendingTransactions()
+        // Reconcile bars with the fragment now actually showing (e.g. the
+        // Messages tab hides the bottom bar; the early VISIBLE above is
+        // only so the transition doesn't flash).
+        syncBars()
         if (!updateChecked && ApiClient.sessionToken() != null) {
             updateChecked = true
             supportFragmentManager.findFragmentByTag(tag)?.let {
