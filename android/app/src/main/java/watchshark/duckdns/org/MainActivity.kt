@@ -207,9 +207,9 @@ class MainActivity : AppCompatActivity() {
     fun syncBars() {
         val frag = supportFragmentManager.findFragmentById(R.id.container)
         val onAuth = frag is AuthFragment && supportFragmentManager.backStackEntryCount == 0
-        // DM screens go full-screen: no bottom bar in the conversation
-        // list either (brand logo / system back still gets you home).
-        val inChat = frag is ChatFragment || frag is MessagesFragment
+        // Open DM threads go full-screen: no bottom bar while chatting.
+        // The conversation list keeps it so you can still navigate.
+        val inChat = frag is ChatFragment
         // Home gets the translucent gliding bar; everywhere else the bar is
         // opaque black and content ends above it.
         val homeRoot = frag is HomeFragment && supportFragmentManager.backStackEntryCount == 0
