@@ -41,7 +41,6 @@ class ChannelFragment : Fragment() {
         val grid: RecyclerView = view.findViewById(R.id.ch_grid)
         grid.layoutManager = GridLayoutManager(requireContext(), gridSpan(requireContext()))
         grid.clearBottomBar()
-        view.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.ch_grid).clearBottomBar()
         grid.adapter = adapter
         if (allVideos.isNotEmpty()) {
             bindHeader(view)
