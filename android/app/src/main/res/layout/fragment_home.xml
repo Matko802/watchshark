@@ -15,7 +15,6 @@
         android:background="@drawable/seg_container"
         app:tabIconTint="?attr/colorOnSurfaceVariant"
         app:tabInlineLabel="true"
-        app:tabIconSize="20dp"
         app:tabIndicator="@drawable/tab_indicator_pill"
         app:tabIndicatorAnimationMode="elastic"
         app:tabIndicatorFullWidth="false"
