@@ -4,4 +4,7 @@
          behind it, with a crisp outline so the bar keeps its shape. -->
     <color name="nav_pill_fill">#80FFFFFF</color>
     <color name="nav_pill_stroke">#D9D9D9</color>
+    <!-- Segmented tab bars: same floating-pill language as the bottom nav. -->
+    <color name="seg_pill_fill">#80FFFFFF</color>
+    <color name="seg_pill_stroke">#D9D9D9</color>
 </resources>
