@@ -219,8 +219,6 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 val me = ApiClient.api.me().user
-                findViewById<View>(R.id.topbar).visibility = View.VISIBLE
-                findViewById<View>(R.id.bottomnav).visibility = View.VISIBLE
                 if (me == null) {
                     currentUsername = null
                     findViewById<View>(R.id.bell_wrap).visibility = View.GONE
