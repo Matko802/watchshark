@@ -133,6 +133,7 @@
   <a href="/" data-tab="home"><md-icon>home</md-icon><span>Home</span></a>
   <a href="/wheels" data-tab="wheels"><md-icon>movie</md-icon><span>Wheels</span></a>
   <a href="/upload" class="createbtn" aria-label="Create"><md-icon>add</md-icon></a>
+  <a href="/messages" data-tab="messages"><md-icon>chat</md-icon><span>Messages</span></a>
   <a href="/settings" data-tab="account" id="navAccount"><span id="navAvatar"><md-icon>person</md-icon></span><span>You</span></a>
 </nav>
 <script>
@@ -142,6 +143,8 @@
       a.classList.toggle('active', a.dataset.tab === tab);
     });
   }
+  const path = location.pathname;
+  if (path === '/messages') mark('messages');
   const acc = document.getElementById('navAccount');
   const navAv = document.getElementById('navAvatar');
   fetch('/api/me', { credentials: 'include' }).then((r) => r.json()).then((j) => {

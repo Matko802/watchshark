@@ -53,7 +53,12 @@ class HomeFragment : Fragment() {
             }
         }
         grid.addOnScrollListener(scrollListener!!)
-        view.findViewById<TabLayout>(R.id.tabs).addOnTabSelectedListener(
+        val tabs = view.findViewById<TabLayout>(R.id.tabs)
+        // Same icons as the website: new_releases for Latest,
+        // local_fire_department for Trending.
+        tabs.getTabAt(0)?.setIcon(R.drawable.ic_new_releases)
+        tabs.getTabAt(1)?.setIcon(R.drawable.ic_local_fire_department)
+        tabs.addOnTabSelectedListener(
             object : TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(tab: TabLayout.Tab) {
                     sort = if (tab.position == 1) "popular" else "new"
