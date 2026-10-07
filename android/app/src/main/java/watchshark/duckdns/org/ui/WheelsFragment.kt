@@ -39,14 +39,14 @@ class WheelsFragment : Fragment() {
     /** True once the current item rendered a frame (initial buffering never downgrades). */
     private var wheelReady = false
     private val readyPositions = mutableSetOf<Int>()
-    /** Pager bottom padding, measured from the real pill nav height so
-     *  the reel video ends right above the opaque bar on any screen. */
+    /** Measured height of the bottom nav container. Reels draw full-bleed
+     *  behind it (the wheel shows through the gradient scrim), so this is
+     *  only used to lift captions/buttons above the pill. */
     private var overlayBottomMargin = 0
-    /** Gap between the page bottom (which already clears the bar) and the
-     *  caption/action overlays. Margins are page-relative, so they must NOT
-     *  repeat the full bar clearance or captions float halfway up the reel. */
-    private fun captionGapPx() =
-        (8 * resources.displayMetrics.density).toInt()
+    /** Caption/button margin: just above the nav pill, over the dark part
+     *  of the bottom gradient. */
+    private fun captionMarginPx() =
+        overlayBottomMargin + (8 * resources.displayMetrics.density).toInt()
     private val holders = mutableMapOf<Int, ReelAdapter.Holder>()
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, saved: Bundle?): View {
         return inflater.inflate(R.layout.fragment_wheels, container, false)
@@ -102,24 +102,26 @@ class WheelsFragment : Fragment() {
         })
         loadMore()
     }
-    /** The pager itself ends right above the opaque bar; captions sit a
-     *  small gap above the page bottom, close to the nav bar. */
+    /** Reels are full-bleed: the pager has no bottom padding so the wheel
+     *  shows behind the nav bar through the gradient scrim. Captions sit
+     *  just above the pill. */
     private fun applyClearance() {
         val nav = activity?.findViewById<View>(R.id.bottomnav) ?: return
         if (nav.height <= 0) return
         val want = nav.height
         if (want == overlayBottomMargin) return
         overlayBottomMargin = want
-        // The reel video itself ends above the opaque bar (never slides under).
+        // Full-bleed: the video (and the next wheel while scrolling) draws
+        // behind the bottom bar; the gradient scrim keeps it readable.
         view?.findViewById<ViewPager2>(R.id.pager)?.let { pager ->
-            if (pager.paddingBottom != want) {
-                pager.setPadding(0, 0, 0, want)
-                pager.clipToPadding = true
+            if (pager.paddingBottom != 0) {
+                pager.setPadding(0, 0, 0, 0)
+                pager.clipToPadding = false
             }
         }
         for (h in holders.values) {
-            setBottomMargin(h.textWrap, captionGapPx())
-            setBottomMargin(h.actionsWrap, captionGapPx())
+            setBottomMargin(h.textWrap, captionMarginPx())
+            setBottomMargin(h.actionsWrap, captionMarginPx())
         }
     }
     private fun setBottomMargin(v: View, px: Int) {
@@ -335,8 +337,8 @@ class WheelsFragment : Fragment() {
             }
             h as Holder
             val vid = videos[position]
-            setBottomMargin(h.textWrap, captionGapPx())
-            setBottomMargin(h.actionsWrap, captionGapPx())
+            setBottomMargin(h.textWrap, captionMarginPx())
+            setBottomMargin(h.actionsWrap, captionMarginPx())
             if (h.playerView.player !== player || position != selectedPos) {
                 h.playerView.player = if (position == selectedPos) player else null
             }

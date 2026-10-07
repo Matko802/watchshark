@@ -19,6 +19,14 @@
         app:show_buffering="when_playing"
         app:use_controller="false" />
 
+    <!-- Bottom scrim: dark behind the nav bar, fading to clear so the
+         wheel shows through behind it. Above video, below text/buttons. -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="220dp"
+        android:layout_gravity="bottom"
+        android:background="@drawable/gradient_bottom" />
+
     <LinearLayout
         android:id="@+id/reel_text"
         android:layout_width="match_parent"
