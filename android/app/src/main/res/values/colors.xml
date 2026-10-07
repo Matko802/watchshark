@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Segmented tab bars: floating-pill language. -->
+    <color name="seg_pill_fill">#80FFFFFF</color>
+    <color name="seg_pill_stroke">#D9D9D9</color>
+</resources>

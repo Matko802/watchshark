@@ -1,0 +1,4 @@
+<resources>
+    <string name="thumb_desc">Video thumbnail</string>
+    <string name="avatar_desc">Channel avatar</string>
+</resources>

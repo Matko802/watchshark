@@ -1,0 +1,37 @@
+<resources>
+    <style name="Theme.WatchShark" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <!-- Monochrome light: no Material purple anywhere. -->
+        <item name="colorPrimary">#0F0F0F</item>
+        <item name="colorOnPrimary">@android:color/white</item>
+        <item name="colorPrimaryContainer">#E7E7E7</item>
+        <item name="colorOnPrimaryContainer">#0F0F0F</item>
+        <item name="colorSecondary">#606060</item>
+        <item name="colorOnSecondary">@android:color/white</item>
+        <item name="colorSecondaryContainer">#E7E7E7</item>
+        <item name="colorOnSecondaryContainer">#0F0F0F</item>
+        <item name="colorTertiary">#404040</item>
+        <item name="colorSurface">@android:color/white</item>
+        <item name="colorOnSurface">#0F0F0F</item>
+        <item name="colorSurfaceVariant">#F0F0F0</item>
+        <item name="colorOnSurfaceVariant">#606060</item>
+        <item name="colorError">#B3261E</item>
+        <item name="android:colorError">#B3261E</item>
+    </style>
+
+    <style name="Theme.WatchShark.Splash" parent="Theme.WatchShark">
+        <item name="android:windowBackground">@drawable/splash</item>
+    </style>
+
+    <style name="ShapeAppearance.WatchShark.Rounded12" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">12dp</item>
+    </style>
+    <style name="ShapeAppearance.WatchShark.Square" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">0dp</item>
+    </style>
+</resources>

@@ -1,0 +1,147 @@
+package watchshark.duckdns.org.ui
+import android.content.Context
+import android.view.View
+import android.widget.ImageView
+import android.widget.Toast
+import coil.load
+import watchshark.duckdns.org.MainActivity
+import watchshark.duckdns.org.R
+import watchshark.duckdns.org.data.ApiClient
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
+fun fullUrl(path: String?): String? = ApiClient.fullUrl(path)
+/** Resolves a theme color attribute (follows light/dark + dynamic themes). */
+fun Context.themeColor(attr: Int): Int {
+    val a = obtainStyledAttributes(intArrayOf(attr))
+    val c = a.getColor(0, 0)
+    a.recycle()
+    return c
+}
+/** True when the system is in light (day) mode. */
+fun Context.isLightTheme(): Boolean {
+    return (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) !=
+        android.content.res.Configuration.UI_MODE_NIGHT_YES
+}
+/**
+ * Clears space above the overlaid blur bar so scroll content never hides
+ * behind it (content still slides underneath for the frosted effect).
+ */
+fun View.clearBottomBar(clip: Boolean = true) {
+    // Invisible spacer above the bottom bar so nothing rests hidden under
+    // it. clip=false lets feed content glide underneath a translucent bar.
+    val px = (170 * resources.displayMetrics.density).toInt()
+    setPadding(paddingLeft, paddingTop, paddingRight, paddingBottom + px)
+    (this as? android.view.ViewGroup)?.clipToPadding = clip
+}
+/** YouTube-style feed: single stripe on phones, grid on wide screens. */
+fun gridSpan(ctx: Context): Int {
+    val dp = ctx.resources.displayMetrics.widthPixels / ctx.resources.displayMetrics.density
+    return (dp / 400).toInt().coerceAtLeast(1)
+}
+@Volatile
+private var videoLoader: coil.ImageLoader? = null
+/** ImageLoader with video-frame decoding, so .webm thumbnails render too. */
+fun videoImageLoader(ctx: Context): coil.ImageLoader {
+    return videoLoader ?: synchronized(UiLock) {
+        videoLoader ?: coil.ImageLoader.Builder(ctx.applicationContext)
+            .components { add(coil.decode.VideoFrameDecoder.Factory()) }
+            .crossfade(true)
+            .build()
+            .also { videoLoader = it }
+    }
+}
+private object UiLock
+fun ImageView.loadMedia(path: String?, placeholder: Int = R.drawable.ic_movie) {
+    val url = fullUrl(path)
+    if (url == null) {
+        setImageResource(placeholder)
+    } else if (WebmAvatarView.isWebm(path)) {
+        load(url, videoImageLoader(context)) {
+            placeholder(placeholder)
+            error(placeholder)
+            crossfade(true)
+        }
+    } else {
+        load(url) {
+            placeholder(placeholder)
+            error(placeholder)
+            crossfade(true)
+        }
+    }
+}
+fun fmtNum(n: Long): String {
+    if (n < 1000) return n.toString()
+    val units = arrayOf(1_000_000_000L to "B", 1_000_000L to "M", 1_000L to "K")
+    for ((v, s) in units) {
+        if (n >= v) {
+            val x = n.toDouble() / v
+            return (if (x >= 100) x.toInt().toString() else "%.1f".format(x).trimEnd('0').trimEnd('.')) + s
+        }
+    }
+    return n.toString()
+}
+fun fmtAge(s: String?): String {
+    if (s.isNullOrEmpty()) return ""
+    return try {
+        val fmt = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        }
+        val t = fmt.parse(s.replace('T', ' ').substringBefore('.'))?.time ?: return s
+        val sec = ((System.currentTimeMillis() - t) / 1000).coerceAtLeast(0)
+        when {
+            sec < 60 -> "$sec seconds ago"
+            sec < 3600 -> "${sec / 60} minutes ago"
+            sec < 86400 -> "${sec / 3600} hours ago"
+            sec < 86400 * 30 -> "${sec / 86400} days ago"
+            else -> "${sec / (86400 * 30)} months ago"
+        }
+    } catch (e: Exception) {
+        s
+    }
+}
+fun fmtDur(sec: Long): String {
+    val m = sec / 60
+    val s = sec % 60
+    return "$m:${s.toString().padStart(2, '0')}"
+}
+/** Server timestamps are UTC — render absolute time in the device timezone. */
+fun fmtDateTime(s: String?): String {
+    if (s.isNullOrEmpty()) return ""
+    return try {
+        val utc = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        }
+        val t = utc.parse(s.replace('T', ' ').substringBefore('.')) ?: return s
+        SimpleDateFormat("d MMM yyyy, HH:mm", Locale.US).format(t)
+    } catch (e: Exception) {
+        s
+    }
+}
+fun Context.toast(msg: String) {
+    var c: Context? = this
+    while (c != null) {
+        if (c is MainActivity) {
+            val act = c
+            act.runOnUiThread { act.showToast(msg) }
+            return
+        }
+        c = (c as? android.content.ContextWrapper)?.baseContext
+    }
+    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+}
+fun android.view.View.snack(msg: String) = context.toast(msg)
+fun apiErrorMessage(e: Exception): String =
+    e.message?.takeIf { it.isNotBlank() } ?: "Network error"
+fun httpErrorMessage(e: Exception): String {
+    try {
+        val body = (e as? retrofit2.HttpException)?.response()?.errorBody()?.string()
+        if (!body.isNullOrEmpty()) {
+            val err = com.google.gson.JsonParser.parseString(body)
+                .asJsonObject?.get("error")?.asString
+            if (!err.isNullOrEmpty()) return err
+        }
+    } catch (_: Exception) {
+    }
+    return apiErrorMessage(e)
+}

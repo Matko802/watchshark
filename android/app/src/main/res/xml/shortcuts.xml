@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="home"
+        android:enabled="true"
+        android:icon="@drawable/ic_home"
+        android:shortcutShortLabel="@string/sh_home">
+        <intent
+            android:action="watchshark.duckdns.org.action.HOME"
+            android:targetPackage="watchshark.duckdns.org"
+            android:targetClass="watchshark.duckdns.org.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="wheels"
+        android:enabled="true"
+        android:icon="@drawable/ic_movie"
+        android:shortcutShortLabel="@string/sh_wheels">
+        <intent
+            android:action="watchshark.duckdns.org.action.WHEELS"
+            android:targetPackage="watchshark.duckdns.org"
+            android:targetClass="watchshark.duckdns.org.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="messages"
+        android:enabled="true"
+        android:icon="@drawable/ic_chat"
+        android:shortcutShortLabel="@string/sh_messages">
+        <intent
+            android:action="watchshark.duckdns.org.action.MESSAGES"
+            android:targetPackage="watchshark.duckdns.org"
+            android:targetClass="watchshark.duckdns.org.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="upload"
+        android:enabled="true"
+        android:icon="@drawable/ic_add"
+        android:shortcutShortLabel="@string/sh_upload">
+        <intent
+            android:action="watchshark.duckdns.org.action.UPLOAD"
+            android:targetPackage="watchshark.duckdns.org"
+            android:targetClass="watchshark.duckdns.org.MainActivity" />
+    </shortcut>
+</shortcuts>

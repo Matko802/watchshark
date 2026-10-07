@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- Web-like controls: seek slider on top, one row below.
+         (seek/play/mute/volume/time/speed/quality/fullscreen like watch.html) -->
+
+    <androidx.media3.ui.DefaultTimeBar
+        android:id="@id/exo_progress"
+        android:layout_width="match_parent"
+        android:layout_height="26dp"
+        android:layout_gravity="bottom"
+        android:layout_marginBottom="52dp"
+        app:buffered_color="#A8A8A8"
+        app:played_color="@android:color/white"
+        app:scrubber_color="@android:color/white"
+        app:unplayed_color="#555555" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp"
+        android:paddingBottom="4dp"
+        android:layoutDirection="ltr">
+
+        <ImageButton
+            android:id="@+id/web_play"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/pill_ctrl"
+            android:contentDescription="Play"
+            android:src="@drawable/ic_play_arrow"
+            android:tint="@android:color/white" />
+
+        <TextView
+            android:id="@+id/web_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:text="0:00 / 0:00"
+            android:textColor="@android:color/white"
+            android:textSize="12sp" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <Button
+            android:id="@+id/exo_speed"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="0dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:text="1x"
+            android:textSize="13sp"
+            android:textColor="@android:color/white" />
+
+        <Button
+            android:id="@+id/exo_qual"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="0dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:text="Auto"
+            android:textSize="13sp"
+            android:textColor="@android:color/white" />
+
+        <ImageButton
+            android:id="@id/exo_fullscreen"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/pill_ctrl"
+            android:contentDescription="Fullscreen"
+            android:src="@drawable/ic_fullscreen"
+            android:tint="@android:color/white" />
+
+    </LinearLayout>
+
+</merge>
