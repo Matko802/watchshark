@@ -272,7 +272,7 @@ class ChatFragment : Fragment() {
                     android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
                 )).apply { gravity = Gravity.END }
                 h.bubble.setBackgroundResource(R.drawable.circle_white)
-                h.bubble.setTextColor(android.graphics.Color.BLACK)
+                h.bubble.setTextColor(h.itemView.context.themeColor(com.google.android.material.R.attr.colorOnPrimary))
             } else {
                 h.bubble.layoutParams = (bubbleLp ?: android.widget.LinearLayout.LayoutParams(
                     android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -283,7 +283,7 @@ class ChatFragment : Fragment() {
                     android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
                 )).apply { gravity = Gravity.START }
                 h.bubble.setBackgroundResource(R.drawable.search_bg)
-                h.bubble.setTextColor(android.graphics.Color.WHITE)
+                h.bubble.setTextColor(h.itemView.context.themeColor(com.google.android.material.R.attr.colorOnSurface))
             }
             h.bubble.text = m.body
             h.time.text = fmtAge(m.createdAt.ifEmpty { null })

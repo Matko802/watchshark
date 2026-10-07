@@ -4,7 +4,7 @@
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/black"
+    android:background="?attr/colorSurface"
     android:fitsSystemWindows="false">
 
     <LinearLayout
@@ -16,7 +16,7 @@
         android:id="@+id/topbar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#000000"
+            android:background="?attr/colorSurface"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:padding="8dp"
@@ -34,7 +34,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="10dp"
                 android:text="WatchShark"
-                android:textColor="@android:color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
@@ -147,7 +147,7 @@
         android:id="@+id/bottom_search_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#000000"
+        android:background="?attr/colorSurface"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:padding="8dp"
@@ -165,8 +165,8 @@
             android:maxLines="1"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
-            android:textColor="@android:color/white"
-            android:textColorHint="#8A8A8A"
+            android:textColor="?attr/colorOnSurface"
+            android:textColorHint="?attr/colorOnSurfaceVariant"
             android:textSize="15sp" />
     </LinearLayout>
 
@@ -212,7 +212,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
                 android:text="Home"
-                android:textColor="#A8A8A8"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="11sp" />
         </LinearLayout>
 
@@ -237,7 +237,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
                 android:text="Wheels"
-                android:textColor="#A8A8A8"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="11sp" />
         </LinearLayout>
 
@@ -256,6 +256,7 @@
                 android:layout_height="48dp"
                 android:background="@drawable/circle_white"
                 android:contentDescription="Create"
+                android:tint="?attr/colorOnPrimary"
                 android:padding="12dp"
                 android:src="@drawable/ic_add" />
         </LinearLayout>
@@ -281,7 +282,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
                 android:text="Messages"
-                android:textColor="#A8A8A8"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="11sp" />
         </LinearLayout>
 
@@ -317,7 +318,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
                 android:text="You"
-                android:textColor="#A8A8A8"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="11sp" />
         </LinearLayout>
         </LinearLayout>

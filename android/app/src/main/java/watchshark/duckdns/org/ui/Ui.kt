@@ -11,6 +11,18 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
 fun fullUrl(path: String?): String? = ApiClient.fullUrl(path)
+/** Resolves a theme color attribute (follows light/dark + dynamic themes). */
+fun Context.themeColor(attr: Int): Int {
+    val a = obtainStyledAttributes(intArrayOf(attr))
+    val c = a.getColor(0, 0)
+    a.recycle()
+    return c
+}
+/** True when the system is in light (day) mode. */
+fun Context.isLightTheme(): Boolean {
+    return (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) !=
+        android.content.res.Configuration.UI_MODE_NIGHT_YES
+}
 /**
  * Clears space above the overlaid blur bar so scroll content never hides
  * behind it (content still slides underneath for the frosted effect).

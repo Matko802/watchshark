@@ -2,7 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/black"
+    android:background="?attr/colorSurface"
     android:orientation="vertical">
 
     <LinearLayout
@@ -36,7 +36,7 @@
                 android:id="@+id/chat_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@android:color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:textSize="17sp"
                 android:textStyle="bold" />
 
@@ -86,8 +86,8 @@
             android:maxLines="4"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
-            android:textColor="@android:color/white"
-            android:textColorHint="#8A8A8A"
+            android:textColor="?attr/colorOnSurface"
+            android:textColorHint="?attr/colorOnSurfaceVariant"
             android:textSize="15sp" />
 
         <ImageButton

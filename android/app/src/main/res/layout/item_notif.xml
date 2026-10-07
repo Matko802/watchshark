@@ -9,7 +9,7 @@
         android:id="@+id/n_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="@android:color/white"
+        android:textColor="?attr/colorOnSurface"
         android:textSize="14sp"
         android:textStyle="bold" />
 
@@ -17,6 +17,6 @@
         android:id="@+id/n_body"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="#AAAAAA"
+        android:textColor="?attr/colorOnSurfaceVariant"
         android:textSize="12sp" />
 </LinearLayout>

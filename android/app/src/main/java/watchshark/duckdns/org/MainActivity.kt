@@ -28,6 +28,7 @@ import watchshark.duckdns.org.ui.UploadFragment
 import watchshark.duckdns.org.ui.WatchFragment
 import watchshark.duckdns.org.ui.WheelsFragment
 import watchshark.duckdns.org.ui.loadMedia
+import watchshark.duckdns.org.ui.themeColor
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         watchshark.duckdns.org.data.CrashLog.install(this)
@@ -35,8 +36,11 @@ class MainActivity : AppCompatActivity() {
         window.statusBarColor = android.graphics.Color.TRANSPARENT
         window.navigationBarColor = android.graphics.Color.TRANSPARENT
         androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).apply {
-            isAppearanceLightStatusBars = false
-            isAppearanceLightNavigationBars = false
+            // Follow the system theme: dark icons on light backgrounds and vice versa.
+            val night = resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
+            isAppearanceLightStatusBars = !night
+            isAppearanceLightNavigationBars = !night
         }
         setTheme(R.style.Theme_WatchShark)
         super.onCreate(savedInstanceState)
@@ -508,8 +512,8 @@ class MainActivity : AppCompatActivity() {
             "wheels" to R.drawable.ic_movie,
             "messages" to R.drawable.ic_chat,
         )
-        val active = android.graphics.Color.WHITE
-        val idle = android.graphics.Color.parseColor("#A8A8A8")
+        val active = themeColor(com.google.android.material.R.attr.colorOnSurface)
+        val idle = themeColor(com.google.android.material.R.attr.colorOnSurfaceVariant)
         tabs.forEach { tab ->
             val selected = tab.tag == currentTab
             (findViewById<View>(tab.iconId) as? ImageView)?.apply {

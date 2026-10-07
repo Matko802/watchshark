@@ -18,7 +18,7 @@
         android:paddingEnd="14dp"
         android:paddingTop="10dp"
         android:paddingBottom="10dp"
-        android:textColor="@android:color/white"
+        android:textColor="?attr/colorOnSurface"
         android:textSize="15sp" />
 
     <TextView
@@ -27,6 +27,6 @@
         android:layout_height="wrap_content"
         android:layout_gravity="start"
         android:layout_marginStart="6dp"
-        android:textColor="#777777"
+        android:textColor="?attr/colorOnSurfaceVariant"
         android:textSize="11sp" />
 </LinearLayout>

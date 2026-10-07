@@ -2,7 +2,7 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/black">
+    android:background="?attr/colorSurface">
 
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/pager"
@@ -24,6 +24,6 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:text="No wheels yet"
-        android:textColor="#AAAAAA"
+        android:textColor="?attr/colorOnSurfaceVariant"
         android:visibility="gone" />
 </FrameLayout>
