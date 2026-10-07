@@ -97,11 +97,11 @@ class WheelsFragment : Fragment() {
         })
         loadMore()
     }
-    /** Lifts reel text + buttons above the floating pill, wherever it is. */
+    /** Lifts reel text + buttons just above the bottom bar, wherever it is. */
     private fun applyClearance() {
         val nav = activity?.findViewById<View>(R.id.bottomnav) ?: return
         if (nav.height <= 0) return
-        val want = nav.height + (12 * resources.displayMetrics.density).toInt()
+        val want = nav.height + (4 * resources.displayMetrics.density).toInt()
         if (want == overlayBottomMargin) return
         overlayBottomMargin = want
         // The reel video itself ends above the opaque bar (never slides under).
