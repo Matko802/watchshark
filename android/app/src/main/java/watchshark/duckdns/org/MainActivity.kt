@@ -268,6 +268,22 @@ class MainActivity : AppCompatActivity() {
                     bottomnav.layoutParams = it
                 }
                 row?.orientation = android.widget.LinearLayout.VERTICAL
+                // Row items are 0dp+weight (made for a horizontal row): in a
+                // vertical rail that collapses them to zero width, so pin
+                // them to full rail width instead.
+                listOf(
+                    R.id.nav_home, R.id.nav_wheels, R.id.nav_create,
+                    R.id.nav_messages, R.id.nav_you
+                ).forEach { id ->
+                    findViewById<View>(id)?.let { item ->
+                        (item.layoutParams as? android.widget.LinearLayout.LayoutParams)?.let { lp ->
+                            lp.width = android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                            lp.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                            lp.weight = 0f
+                            item.layoutParams = lp
+                        }
+                    }
+                }
                 findViewById<View>(R.id.nav_create)?.let { cb ->
                     (cb.layoutParams as? android.widget.LinearLayout.LayoutParams)?.let { lp ->
                         val m = (6 * density).toInt()
@@ -288,6 +304,28 @@ class MainActivity : AppCompatActivity() {
                     bottomnav.layoutParams = it
                 }
                 row?.orientation = android.widget.LinearLayout.HORIZONTAL
+                // Restore the horizontal-row item geometry (0dp + weight).
+                listOf(
+                    R.id.nav_home, R.id.nav_wheels,
+                    R.id.nav_messages, R.id.nav_you
+                ).forEach { id ->
+                    findViewById<View>(id)?.let { item ->
+                        (item.layoutParams as? android.widget.LinearLayout.LayoutParams)?.let { lp ->
+                            lp.width = 0
+                            lp.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                            lp.weight = 1f
+                            item.layoutParams = lp
+                        }
+                    }
+                }
+                findViewById<View>(R.id.nav_create)?.let { cb ->
+                    (cb.layoutParams as? android.widget.LinearLayout.LayoutParams)?.let { lp ->
+                        lp.width = (48 * density).toInt()
+                        lp.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                        lp.weight = 0f
+                        cb.layoutParams = lp
+                    }
+                }
                 findViewById<View>(R.id.nav_create)?.let { cb ->
                     (cb.layoutParams as? android.widget.LinearLayout.LayoutParams)?.let { lp ->
                         val m = (6 * density).toInt()
@@ -319,7 +357,10 @@ class MainActivity : AppCompatActivity() {
             return
         }
         val rail = findViewById<View>(R.id.nav_row) ?: return
-        if (rail.width <= 0) {
+        val displayW = resources.displayMetrics.widthPixels
+        if (rail.width <= 0 || rail.width >= displayW - (32 * resources.displayMetrics.density).toInt()) {
+            // Not laid out as a rail yet (zero or stale full-width measure):
+            // wait for the real layout pass instead of squeezing content.
             rail.doOnLayout { updateContainerForRail() }
             return
         }
