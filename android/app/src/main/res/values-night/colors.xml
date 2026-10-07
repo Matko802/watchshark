@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Floating nav pill: translucent so feed content visibly continues
+         behind it, with a crisp outline so the bar keeps its shape. -->
+    <color name="nav_pill_fill">#B3141414</color>
+    <color name="nav_pill_stroke">#3D3D3D</color>
+</resources>
