@@ -26,8 +26,7 @@
         android:layout_gravity="bottom"
         android:layout_marginBottom="120dp"
         android:orientation="vertical"
-        android:padding="12dp"
-        android:background="@drawable/gradient_bottom">
+        android:padding="12dp">
 
         <TextView
             android:id="@+id/reel_title"
