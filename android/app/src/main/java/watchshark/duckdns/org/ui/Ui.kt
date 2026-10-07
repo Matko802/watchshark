@@ -28,7 +28,10 @@ fun Context.isLightTheme(): Boolean {
  * behind it (content still slides underneath for the frosted effect).
  */
 fun View.clearBottomBar() {
-    val px = (110 * resources.displayMetrics.density).toInt()
+    // Invisible spacer above the floating pill nav (pill height + margins +
+    // system gesture bar): keeps the last items reachable on every device
+    // while content still glides underneath while scrolling.
+    val px = (160 * resources.displayMetrics.density).toInt()
     setPadding(paddingLeft, paddingTop, paddingRight, paddingBottom + px)
     (this as? android.view.ViewGroup)?.clipToPadding = false
 }
