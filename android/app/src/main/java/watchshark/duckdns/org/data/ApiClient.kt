@@ -75,8 +75,8 @@ object ApiClient {
     /**
      * ExoPlayer with the session cookie attached to media requests.
      * The server requires auth for /v/ /t/ streams, and plain
-     * MediaItem.fromUri sends no cookies — without this, shorts and
-     * music fail with 403 and nothing plays.
+     * MediaItem.fromUri sends no cookies — without this, shorts
+     * fail with 403 and nothing plays.
      */
     fun buildPlayer(ctx: Context): ExoPlayer {
         val props = mutableMapOf<String, String>()

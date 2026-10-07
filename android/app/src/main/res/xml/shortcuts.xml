@@ -21,12 +21,12 @@
             android:targetClass="watchshark.duckdns.org.MainActivity" />
     </shortcut>
     <shortcut
-        android:shortcutId="music"
+        android:shortcutId="messages"
         android:enabled="true"
-        android:icon="@drawable/ic_music_note"
-        android:shortcutShortLabel="@string/sh_music">
+        android:icon="@drawable/ic_chat"
+        android:shortcutShortLabel="@string/sh_messages">
         <intent
-            android:action="watchshark.duckdns.org.action.MUSIC"
+            android:action="watchshark.duckdns.org.action.MESSAGES"
             android:targetPackage="watchshark.duckdns.org"
             android:targetClass="watchshark.duckdns.org.MainActivity" />
     </shortcut>

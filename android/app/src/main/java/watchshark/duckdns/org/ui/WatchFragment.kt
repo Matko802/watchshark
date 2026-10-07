@@ -460,14 +460,13 @@ class WatchFragment : Fragment() {
         layout.addView(descIn)
         val curKind = when (vid.kind) {
             "wheel" -> "wheel"
-            "music" -> "music"
             else -> "video"
         }
         val kindGroup = com.google.android.material.button.MaterialButtonToggleGroup(ctx).apply {
             isSingleSelection = true
             isSelectionRequired = true
         }
-        for ((label, key) in listOf("Videos" to "video", "Shorts" to "wheel", "Music" to "music")) {
+        for ((label, key) in listOf("Videos" to "video", "Shorts" to "wheel")) {
             val b = com.google.android.material.button.MaterialButton(
                 ctx, null, com.google.android.material.R.attr.materialButtonOutlinedStyle
             ).apply {

@@ -22,7 +22,6 @@ import watchshark.duckdns.org.ui.ChannelFragment
 import watchshark.duckdns.org.ui.ChatFragment
 import watchshark.duckdns.org.ui.HomeFragment
 import watchshark.duckdns.org.ui.MessagesFragment
-import watchshark.duckdns.org.ui.MusicFragment
 import watchshark.duckdns.org.ui.NotificationsFragment
 import watchshark.duckdns.org.ui.SettingsFragment
 import watchshark.duckdns.org.ui.UploadFragment
@@ -48,7 +47,7 @@ class MainActivity : AppCompatActivity() {
         supportFragmentManager.addOnBackStackChangedListener {
             if (supportFragmentManager.backStackEntryCount == 0 && currentTab == "you") {
                 val tag = supportFragmentManager.findFragmentById(R.id.container)?.tag
-                if (tag == "home" || tag == "wheels" || tag == "music") {
+                if (tag == "home" || tag == "wheels" || tag == "messages") {
                     currentTab = tag
                     markNav()
                 }
@@ -57,6 +56,7 @@ class MainActivity : AppCompatActivity() {
             findViewById<View>(R.id.top_search_btn)?.visibility =
                 if (onDetail) View.GONE else View.VISIBLE
             if (onDetail && searchExpanded) collapseSearch(clear = false)
+            syncBars()
         }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -93,7 +93,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.nav_create).setOnClickListener {
             openDetail(UploadFragment.newInstance("video"))
         }
-        findViewById<View>(R.id.nav_music).setOnClickListener { showMusic() }
+        findViewById<View>(R.id.nav_messages).setOnClickListener { showMessages() }
         findViewById<View>(R.id.nav_you).setOnClickListener {
             val name = currentUsername
             if (name != null) openChannel(name) else showAuth()
@@ -118,7 +118,7 @@ class MainActivity : AppCompatActivity() {
         when (intent?.action) {
             "watchshark.duckdns.org.action.HOME" -> showHome()
             "watchshark.duckdns.org.action.WHEELS" -> showWheels()
-            "watchshark.duckdns.org.action.MUSIC" -> showMusic()
+            "watchshark.duckdns.org.action.MESSAGES" -> showMessages()
             "watchshark.duckdns.org.action.UPLOAD" ->
                 openDetail(UploadFragment.newInstance("video"))
             "watchshark.duckdns.org.action.DM" -> {
@@ -144,9 +144,7 @@ class MainActivity : AppCompatActivity() {
     }
     override fun onResume() {
         super.onResume()
-        if (findViewById<View>(R.id.topbar).visibility == View.VISIBLE) {
-            refreshTopbar()
-        }
+        syncBars()
         if (!ApiClient.sessionToken().isNullOrEmpty()) {
             watchshark.duckdns.org.data.UploadAlerts.ensureScheduled(this)
             supportFragmentManager.findFragmentById(R.id.container)?.let { frag ->
@@ -177,11 +175,13 @@ class MainActivity : AppCompatActivity() {
                 (8 * density).toInt(),
                 (8 * density).toInt()
             )
-            findViewById<View>(R.id.nav_row)?.setPadding(
+            // Floating pill nav: inset padding goes on the outer container so
+            // the pill itself keeps its shape on every screen size.
+            findViewById<View>(R.id.bottomnav)?.setPadding(
+                (16 * density).toInt(),
                 0,
-                (9 * density).toInt(),
-                0,
-                (7 * density).toInt() + bars.bottom
+                (16 * density).toInt(),
+                (12 * density).toInt() + bars.bottom
             )
             val navH = findViewById<View>(R.id.bottomnav)?.height ?: 0
             val imePx = (ime.bottom - navH).coerceAtLeast(0)
@@ -191,6 +191,19 @@ class MainActivity : AppCompatActivity() {
             }
             insets
         }
+    }
+    /**
+     * Single source of truth for top/bottom bar visibility. Bars are hidden
+     * only on the auth screen; every other screen shows them. Called on
+     * resume (covers process-death restore, back navigation, shortcut
+     * entries) so they can never get stuck hidden.
+     */
+    fun syncBars() {
+        val frag = supportFragmentManager.findFragmentById(R.id.container)
+        val onAuth = frag is AuthFragment && supportFragmentManager.backStackEntryCount == 0
+        findViewById<View>(R.id.topbar).visibility = if (onAuth) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.bottomnav).visibility = if (onAuth) View.GONE else View.VISIBLE
+        if (!onAuth) refreshTopbar()
     }
     fun refreshTopbar() {
         lifecycleScope.launch {
@@ -381,7 +394,13 @@ class MainActivity : AppCompatActivity() {
     fun showMain() = showHome()
     fun showHome() = showRoot(HomeFragment(), "home")
     fun showWheels() = showRoot(WheelsFragment(), "wheels")
-    fun showMusic() = showRoot(MusicFragment(), "music")
+    fun showMessages() {
+        if (ApiClient.sessionToken().isNullOrEmpty()) {
+            showAuth()
+        } else {
+            showRoot(MessagesFragment(), "messages")
+        }
+    }
     fun restartToAuth() {
         ApiClient.clearSession()
         watchshark.duckdns.org.data.UploadAlerts.cancel(this)
@@ -390,10 +409,10 @@ class MainActivity : AppCompatActivity() {
     private fun showRoot(fragment: Fragment, tag: String) = goRoot(fragment, tag, true)
     private fun rootFragment(tag: String): Fragment = when (tag) {
         "wheels" -> WheelsFragment()
-        "music" -> MusicFragment()
+        "messages" -> MessagesFragment()
         else -> HomeFragment()
     }
-    /** Root-tab history for back navigation (Music back to Home, etc.). */
+    /** Root-tab history for back navigation (Messages back to Home, etc.). */
     private val tabHistory = ArrayDeque<String>()
     /** Topbar expandable search (icon next to the bell, like the website). */
     private var searchExpanded = false
@@ -438,7 +457,7 @@ class MainActivity : AppCompatActivity() {
     private val searchHandler = Handler(Looper.getMainLooper())
     private var searchPending: Runnable? = null
     private fun goRoot(fragment: Fragment, tag: String, push: Boolean) {
-        val order = listOf("home", "wheels", "music")
+        val order = listOf("home", "wheels", "messages")
         val oldIdx = order.indexOf(currentTab)
         val newIdx = order.indexOf(tag)
         currentTab = tag
@@ -482,12 +501,12 @@ class MainActivity : AppCompatActivity() {
         val tabs = listOf(
             Tab(R.id.nav_home_icon, R.id.nav_home_label, "home"),
             Tab(R.id.nav_wheels_icon, R.id.nav_wheels_label, "wheels"),
-            Tab(R.id.nav_music_icon, R.id.nav_music_label, "music"),
+            Tab(R.id.nav_messages_icon, R.id.nav_messages_label, "messages"),
         )
         val icons = mapOf(
             "home" to R.drawable.ic_home,
             "wheels" to R.drawable.ic_movie,
-            "music" to R.drawable.ic_music_note,
+            "messages" to R.drawable.ic_chat,
         )
         val active = android.graphics.Color.WHITE
         val idle = android.graphics.Color.parseColor("#A8A8A8")

@@ -3,7 +3,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -19,7 +18,9 @@ class HomeFragment : Fragment() {
     private var sort = "new"
     private var query = ""
     private var pages = 1
+    private var loading = false
     private lateinit var adapter: VideoAdapter
+    private var scrollListener: RecyclerView.OnScrollListener? = null
     private val cached = mutableListOf<watchshark.duckdns.org.data.Video>()
     /** Driven by the topbar search input. */
     fun setQuery(q: String) {
@@ -40,9 +41,18 @@ class HomeFragment : Fragment() {
         if (cached.isNotEmpty()) {
             adapter.setItems(cached)
             page = 1
-            view.findViewById<Button>(R.id.more_btn).visibility =
-                if (page < pages) View.VISIBLE else View.GONE
         }
+        scrollListener = object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
+                if (dy <= 0) return
+                val lm = rv.layoutManager as? GridLayoutManager ?: return
+                val last = lm.findLastVisibleItemPosition()
+                if (last >= adapter.itemCount - 4 && !loading && page < pages) {
+                    load(page + 1)
+                }
+            }
+        }
+        grid.addOnScrollListener(scrollListener!!)
         view.findViewById<TabLayout>(R.id.tabs).addOnTabSelectedListener(
             object : TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(tab: TabLayout.Tab) {
@@ -53,11 +63,17 @@ class HomeFragment : Fragment() {
                 override fun onTabReselected(tab: TabLayout.Tab) {}
             },
         )
-        view.findViewById<Button>(R.id.more_btn).setOnClickListener { load(page + 1) }
         load(1)
+    }
+    override fun onDestroyView() {
+        scrollListener?.let { view?.findViewById<RecyclerView>(R.id.grid)?.removeOnScrollListener(it) }
+        scrollListener = null
+        super.onDestroyView()
     }
     private fun load(p: Int) {
         val v = view ?: return
+        if (loading) return
+        loading = true
         lifecycleScope.launch {
             try {
                 val res = ApiClient.api.videos(
@@ -76,10 +92,10 @@ class HomeFragment : Fragment() {
                     cached.addAll(ready)
                     adapter.setItems(ready)
                 } else adapter.append(ready)
-                v.findViewById<Button>(R.id.more_btn).visibility =
-                    if (p < pages) View.VISIBLE else View.GONE
             } catch (e: Exception) {
                 if (isAdded) v.snack(apiErrorMessage(e))
+            } finally {
+                loading = false
             }
         }
     }

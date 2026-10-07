@@ -22,6 +22,8 @@ class ChannelFragment : Fragment() {
     private var allVideos = listOf<Video>()
     private var kind = "video"
     private lateinit var adapter: VideoAdapter
+    /** Tabs currently shown (Wheels only appears when the user has wheels). */
+    private val tabKinds = mutableListOf("video")
     companion object {
         fun newInstance(username: String) = ChannelFragment().apply {
             arguments = Bundle().apply { putString("user", username) }
@@ -43,12 +45,12 @@ class ChannelFragment : Fragment() {
         grid.adapter = adapter
         if (allVideos.isNotEmpty()) {
             bindHeader(view)
-            renderGrid()
+            syncTabs()
         }
         view.findViewById<TabLayout>(R.id.ch_tabs).addOnTabSelectedListener(
             object : TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(tab: TabLayout.Tab) {
-                    kind = arrayOf("video", "wheel", "music")[tab.position]
+                    kind = tabKinds.getOrElse(tab.position) { "video" }
                     renderGrid()
                 }
                 override fun onTabUnselected(tab: TabLayout.Tab) {}
@@ -96,7 +98,7 @@ class ChannelFragment : Fragment() {
                     follow.text = if (user.following) "Following" else "Follow"
                     msg.visibility = View.VISIBLE
                 }
-                renderGrid()
+                syncTabs()
             } catch (e: Exception) {
                 if (isAdded) v.snack(httpErrorMessage(e))
             }
@@ -107,6 +109,26 @@ class ChannelFragment : Fragment() {
             val k = it.kind.ifEmpty { "video" }
             if (kind == "video") k == "video" else k == kind
         })
+    }
+    /** Rebuilds the tab bar from the server counts — empty kinds get no tab. */
+    private fun syncTabs() {
+        val v = view ?: return
+        val tabs: TabLayout = v.findViewById(R.id.ch_tabs)
+        val c = user.counts
+        val hasWheels = if (c.containsKey("wheel") || c.containsKey("video")) {
+            (c["wheel"] ?: 0L) > 0
+        } else {
+            allVideos.any { it.kind == "wheel" }
+        }
+        tabKinds.clear()
+        tabKinds.add("video")
+        if (hasWheels) tabKinds.add("wheel")
+        if (kind !in tabKinds) kind = "video"
+        tabs.removeAllTabs()
+        tabs.addTab(tabs.newTab().setText("Videos"))
+        if (hasWheels) tabs.addTab(tabs.newTab().setText("Wheels"))
+        tabs.getTabAt(tabKinds.indexOf(kind))?.select()
+        renderGrid()
     }
     private fun toggleFollow() {
         lifecycleScope.launch {

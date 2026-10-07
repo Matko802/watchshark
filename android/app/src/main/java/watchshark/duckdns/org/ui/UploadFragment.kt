@@ -45,6 +45,7 @@ class UploadFragment : Fragment() {
     override fun onCreate(saved: Bundle?) {
         super.onCreate(saved)
         kind = arguments?.getString("kind", "video") ?: "video"
+        if (kind != "video" && kind != "wheel") kind = "video"
     }
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, saved: Bundle?): View {
         return inflater.inflate(R.layout.fragment_upload, container, false)
@@ -52,7 +53,7 @@ class UploadFragment : Fragment() {
     override fun onViewCreated(view: View, saved: Bundle?) {
         view.clearBottomBar()
         val tabs: TabLayout = view.findViewById(R.id.kind_tabs)
-        val kinds = arrayOf("video", "wheel", "music")
+        val kinds = arrayOf("video", "wheel")
         tabs.getTabAt(kinds.indexOf(kind).coerceAtLeast(0))?.select()
         tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
@@ -62,7 +63,7 @@ class UploadFragment : Fragment() {
             override fun onTabReselected(tab: TabLayout.Tab) {}
         })
         view.findViewById<Button>(R.id.pick_file).setOnClickListener {
-            pickFile.launch(if (kind == "music") "audio/*" else "video/*")
+            pickFile.launch("video/*")
         }
         view.findViewById<Button>(R.id.pick_thumb).setOnClickListener {
             pickThumb.launch("image/*")
@@ -133,13 +134,8 @@ class UploadFragment : Fragment() {
                     return@launch
                 }
                 val id = res.get("id").asLong
-                val rkind = res.get("kind")?.asString ?: kind
                 msg.text = "Uploaded!"
-                if (rkind == "music") {
-                    (activity as? MainActivity)?.showMusic()
-                } else {
-                    (activity as? MainActivity)?.openDetail(WatchFragment.newInstance(id))
-                }
+                (activity as? MainActivity)?.openDetail(WatchFragment.newInstance(id))
             } catch (e: Exception) {
                 if (isAdded) msg.text = httpErrorMessage(e)
             } finally {

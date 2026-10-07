@@ -45,22 +45,17 @@ class WheelsFragment : Fragment() {
     override fun onViewCreated(view: View, saved: Bundle?) {
         loadSeen()
         player = ApiClient.buildPlayer(requireContext()).also { exo ->
+            // TikTok-style: the reel loops, the pager is the only thing that
+            // moves between items — no playlist auto-advance to fight with.
+            exo.repeatMode = Player.REPEAT_MODE_ONE
             exo.addListener(object : Player.Listener {
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                    // New page selected: show its thumb until the first frame lands.
                     wheelReady = false
-                    readyPositions.clear()
-                    if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
-                        val back = (exo.currentMediaItemIndex - 1).coerceAtLeast(0)
-                        exo.seekToDefaultPosition(back)
-                        exo.pause()
-                        exo.playWhenReady = false
-                        view.findViewById<ViewPager2>(R.id.pager).setCurrentItem(back, false)
-                    }
+                    readyPositions.remove(exo.currentMediaItemIndex)
                 }
                 override fun onPlaybackStateChanged(state: Int) {
-                    if (state == Player.STATE_ENDED) {
-                        exo.pause()
-                    } else if (state == Player.STATE_READY) {
+                    if (state == Player.STATE_READY) {
                         wheelReady = true
                         val idx = exo.currentMediaItemIndex
                         if (readyPositions.add(idx)) holders[idx]?.thumb?.visibility = View.GONE
@@ -94,6 +89,12 @@ class WheelsFragment : Fragment() {
         })
         loadMore()
     }
+    /** Cache-backed source so reels replay instantly and swipes stay smooth. */
+    private fun cachedSource(url: String): androidx.media3.exoplayer.source.MediaSource {
+        val ctx = context?.applicationContext ?: requireContext().applicationContext
+        val props = ApiClient.authCookie()?.let { mapOf("Cookie" to it) } ?: emptyMap()
+        return watchshark.duckdns.org.data.PlayerCache.mediaSource(ctx, url, props)
+    }
     /** Faster internet than the current reel's rung: swap it up in place. */
     private fun autoUpgradeCurrent(exo: ExoPlayer, position: Int) {
         val vid = videos.getOrNull(position) ?: return
@@ -108,7 +109,7 @@ class WheelsFragment : Fragment() {
         val time = exo.currentPosition.coerceAtLeast(0)
         val playing = exo.isPlaying
         exo.removeMediaItem(position)
-        exo.addMediaItem(position, MediaItem.fromUri(url))
+        exo.addMediaSource(position, cachedSource(url))
         if (wasIndex == position) {
             exo.seekTo(position, time)
             if (playing) exo.play()
@@ -127,7 +128,7 @@ class WheelsFragment : Fragment() {
         val time = exo.currentPosition.coerceAtLeast(0)
         val playing = exo.isPlaying
         exo.removeMediaItem(pos)
-        exo.addMediaItem(pos, MediaItem.fromUri(url))
+        exo.addMediaSource(pos, cachedSource(url))
         exo.seekTo(pos, time)
         if (playing) exo.play()
     }
@@ -201,7 +202,7 @@ class WheelsFragment : Fragment() {
                         seen.add(vid.id)
                         val url = srcFor(vid) ?: return@repeat
                         videos.add(vid)
-                        player?.addMediaItem(MediaItem.fromUri(url))
+                        player?.addMediaSource(cachedSource(url))
                         added++
                     } catch (_: Exception) {
                     }
@@ -216,7 +217,9 @@ class WheelsFragment : Fragment() {
                         adapter.notifyDataSetChanged()
                     }
                 } else {
-                    adapter.notifyDataSetChanged()
+                    // Append-only: range insert keeps current holders bound,
+                    // no full-refresh flash on the playing reel.
+                    adapter.notifyItemRangeInserted(videos.size - added, added)
                     if (!prepared) {
                         player?.prepare()
                         player?.seekTo(0, 0)
@@ -323,7 +326,13 @@ class WheelsFragment : Fragment() {
         }
         override fun onViewDetachedFromWindow(holder: RecyclerView.ViewHolder) {
             if (holder is Holder) {
-                if (holder.playerView.player != null) holder.playerView.player = null
+                // Never tear the surface out from under the playing reel —
+                // that black flash mid-swipe is the flicker. Off-screen
+                // holders get detached, the selected one keeps its surface.
+                val pos = holder.bindingAdapterPosition
+                if (pos != selectedPos && holder.playerView.player != null) {
+                    holder.playerView.player = null
+                }
                 holders.entries.removeAll { it.value === holder }
             }
             super.onViewDetachedFromWindow(holder)
@@ -376,7 +385,7 @@ class WheelsFragment : Fragment() {
                 val time = exo.currentPosition
                 val playing = exo.isPlaying
                 exo.removeMediaItem(pos)
-                exo.addMediaItem(pos, MediaItem.fromUri(url))
+                exo.addMediaSource(pos, cachedSource(url))
                 if (wasIndex == pos) {
                     exo.seekTo(pos, time)
                     if (playing) exo.play()

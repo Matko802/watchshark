@@ -42,7 +42,8 @@ data class ChannelUser(
     val videos: Long = 0,
     val views: Long = 0,
     var following: Boolean = false,
-    val online: Boolean = false
+    val online: Boolean = false,
+    @SerializedName("counts") val counts: Map<String, Long> = emptyMap()
 )
 data class AdminUser(
     val id: Long = 0,

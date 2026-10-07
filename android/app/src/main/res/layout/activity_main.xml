@@ -174,17 +174,22 @@
         android:id="@+id/bottomnav"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#000000"
         android:orientation="vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
         android:visibility="gone">
 
         <LinearLayout
             android:id="@+id/nav_row"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:background="@drawable/nav_pill"
+            android:elevation="6dp"
             android:gravity="center_vertical"
             android:minHeight="64dp"
             android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
             android:paddingTop="9dp"
             android:paddingBottom="7dp">
 
@@ -258,7 +263,7 @@
         </LinearLayout>
 
         <LinearLayout
-            android:id="@+id/nav_music"
+            android:id="@+id/nav_messages"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
@@ -267,17 +272,17 @@
             android:orientation="vertical">
 
             <ImageView
-                android:id="@+id/nav_music_icon"
+                android:id="@+id/nav_messages_icon"
                 android:layout_width="24dp"
                 android:layout_height="24dp"
-                android:src="@drawable/ic_music_note" />
+                android:src="@drawable/ic_chat" />
 
             <TextView
-                android:id="@+id/nav_music_label"
+                android:id="@+id/nav_messages_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
-                android:text="Music"
+                android:text="Messages"
                 android:textColor="#A8A8A8"
                 android:textSize="11sp" />
         </LinearLayout>
