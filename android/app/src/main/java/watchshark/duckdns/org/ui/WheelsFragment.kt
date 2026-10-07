@@ -8,6 +8,7 @@ import android.widget.ImageView
 import android.widget.PopupMenu
 import android.widget.TextView
 import com.google.android.material.button.MaterialButton
+import androidx.core.view.doOnLayout
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
@@ -71,7 +72,7 @@ class WheelsFragment : Fragment() {
         adapter = ReelAdapter()
         overlayBottomMargin = (120 * resources.displayMetrics.density).toInt()
         activity?.findViewById<View>(R.id.bottomnav)?.let { nav ->
-            androidx.core.view.doOnLayout(nav) { applyClearance() }
+            nav.doOnLayout { applyClearance() }
         }
         val pager: ViewPager2 = view.findViewById(R.id.pager)
         pager.orientation = ViewPager2.ORIENTATION_VERTICAL
