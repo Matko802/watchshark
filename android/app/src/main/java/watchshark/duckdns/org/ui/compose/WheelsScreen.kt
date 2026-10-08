@@ -32,7 +32,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -58,6 +57,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -599,10 +599,8 @@ private fun RailPillButton(
         animationSpec = AppMotion.pressSpring,
         label = "railPress",
     )
-    IconButton(
-        onClick = onClick,
-        interactionSource = interaction,
-        indication = null,
+    Box(
+        contentAlignment = Alignment.Center,
         modifier = Modifier
             .size(48.dp)
             .graphicsLayer {
@@ -610,7 +608,13 @@ private fun RailPillButton(
                 scaleY = scale
             }
             .clip(CircleShape)
-            .background(Color.Black.copy(alpha = bgAlpha)),
+            .background(Color.Black.copy(alpha = bgAlpha))
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                role = Role.Button,
+                onClick = onClick,
+            ),
     ) {
         CompositionLocalProvider(LocalContentColor provides Color.White) {
             icon()
