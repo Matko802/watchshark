@@ -2,7 +2,6 @@ package watchshark.duckdns.org.ui.compose
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,12 +9,10 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,12 +22,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
@@ -47,7 +44,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -81,6 +77,7 @@ fun WatchSharkApp(
 ) {
     val appCtx = LocalContext.current
     var themeMode by remember { mutableIntStateOf(ThemePrefs.getMode(appCtx)) }
+    val appIcon = remember { appCtx.applicationInfo.loadIcon(appCtx.packageManager) }
     fun applyThemeMode(mode: Int) {
         ThemePrefs.setMode(appCtx, mode)
         themeMode = mode
@@ -210,9 +207,6 @@ fun WatchSharkApp(
                                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                                             modifier = Modifier.clickable { goTab(ROUTE_HOME) },
                                         ) {
-                                            val appIcon = remember {
-                                                appCtx.applicationInfo.loadIcon(appCtx.packageManager)
-                                            }
                                             Image(
                                                 painter = rememberAsyncImagePainter(
                                                     model = appIcon,
@@ -268,12 +262,10 @@ fun WatchSharkApp(
                         }
                     },
                     bottomBar = {
-                        // Floating pill nav (the classic WatchShark look), built
-                        // from the standard M3 Expressive NavigationBar.
-                        if (!wide && !route.startsWith("auth") && !route.startsWith("chat")) {
-                            // Slim centered floating pill (classic WatchShark look):
-                            // narrow margins, 68dp bar, stroked surface so it
-                            // stays visible even on pure-black AMOLED.
+                        // Slim centered slider pill, same language as the
+                        // Latest / Trending switch: 5 equal segments, plain
+                        // icons (no check marks), logo as the Create segment.
+                        if (!wide && !route.startsWith("auth") && !route.startsWith("chat") && route != "update") {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -281,100 +273,82 @@ fun WatchSharkApp(
                                     .padding(bottom = 12.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Surface(
-                                    shape = RoundedCornerShape(28.dp),
-                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    tonalElevation = 3.dp,
-                                    shadowElevation = 6.dp,
-                                    border = BorderStroke(
-                                        1.dp,
-                                        MaterialTheme.colorScheme.outlineVariant,
-                                    ),
+                                SingleChoiceSegmentedButtonRow(
                                     modifier = Modifier.fillMaxWidth(),
                                 ) {
-                                    NavigationBar(
-                                        containerColor = Color.Transparent,
-                                        modifier = Modifier.height(68.dp),
+                                    SegTab(
+                                        index = 0,
+                                        selected = selectedTab == ROUTE_HOME,
+                                        onClick = { goTab(ROUTE_HOME) },
+                                        label = "Home",
                                     ) {
-                                NavigationBarItem(
-                                    selected = selectedTab == ROUTE_HOME,
-                                    onClick = { goTab(ROUTE_HOME) },
-                                    icon = {
                                         Icon(
                                             painterResource(R.drawable.ic_home),
-                                            contentDescription = "Home",
-                                            tint = if (selectedTab == ROUTE_HOME) {
-                                                MaterialTheme.colorScheme.onSurface
-                                            } else {
-                                                MaterialTheme.colorScheme.onSurfaceVariant
-                                            },
-                                            )
-                                    },
-                                    label = { Text("Home") },
-                                )
-                                NavigationBarItem(
-                                    selected = selectedTab == ROUTE_WHEELS,
-                                    onClick = { goTab(ROUTE_WHEELS) },
-                                    icon = {
+                                            contentDescription = null,
+                                        )
+                                    }
+                                    SegTab(
+                                        index = 1,
+                                        selected = selectedTab == ROUTE_WHEELS,
+                                        onClick = { goTab(ROUTE_WHEELS) },
+                                        label = "Wheels",
+                                    ) {
                                         Icon(
                                             painterResource(R.drawable.ic_movie),
-                                            contentDescription = "Wheels",
-                                            tint = if (selectedTab == ROUTE_WHEELS) {
-                                                MaterialTheme.colorScheme.onSurface
-                                            } else {
-                                                MaterialTheme.colorScheme.onSurfaceVariant
-                                            },
-                                            )
-                                    },
-                                    label = { Text("Wheels") },
-                                )
-                                NavigationBarItem(
-                                    selected = false,
-                                    onClick = { showCreateSheet = true },
-                                    icon = {
-                                        Icon(
-                                            painterResource(R.drawable.ic_add),
-                                            contentDescription = "Create",
+                                            contentDescription = null,
                                         )
-                                    },
-                                    label = { Text("Create") },
-                                )
-                                NavigationBarItem(
-                                    selected = selectedTab == ROUTE_MESSAGES,
-                                    onClick = { goTab(ROUTE_MESSAGES) },
-                                    icon = {
-                                        Icon(
-                                            painterResource(R.drawable.ic_chat),
-                                            contentDescription = "Messages",
-                                            tint = if (selectedTab == ROUTE_MESSAGES) {
-                                                MaterialTheme.colorScheme.onSurface
-                                            } else {
-                                                MaterialTheme.colorScheme.onSurfaceVariant
-                                            },
+                                    }
+                                    SegmentedButton(
+                                        selected = false,
+                                        onClick = { showCreateSheet = true },
+                                        shape = SegmentedButtonDefaults.itemShape(2, 5),
+                                        icon = {
+                                            Image(
+                                                painter = rememberAsyncImagePainter(
+                                                    model = appIcon,
+                                                ),
+                                                contentDescription = null,
+                                                modifier = Modifier
+                                                    .size(24.dp)
+                                                    .clip(CircleShape),
                                             )
-                                    },
-                                    label = { Text("Messages") },
-                                )
-                                NavigationBarItem(
-                                    selected = selectedTab == ROUTE_YOU,
-                                    onClick = {
-                                        val name = meName
-                                        if (name != null) nav.navigate("channel/$name")
-                                        else nav.navigate("auth")
-                                    },
-                                    icon = {
+                                        },
+                                        label = { Text("Create") },
+                                    )
+                                    SegTab(
+                                        index = 3,
+                                        selected = selectedTab == ROUTE_MESSAGES,
+                                        onClick = { goTab(ROUTE_MESSAGES) },
+                                        label = "Messages",
+                                    ) {
+                                        Box {
+                                            Icon(
+                                                painterResource(R.drawable.ic_chat),
+                                                contentDescription = null,
+                                            )
+                                            if (unread > 0) {
+                                                Badge(
+                                                    modifier = Modifier.align(Alignment.TopEnd),
+                                                ) {
+                                                    Text(if (unread > 9) "9+" else "$unread")
+                                                }
+                                            }
+                                        }
+                                    }
+                                    SegTab(
+                                        index = 4,
+                                        selected = selectedTab == ROUTE_YOU,
+                                        onClick = {
+                                            val name = meName
+                                            if (name != null) nav.navigate("channel/$name")
+                                            else nav.navigate("auth")
+                                        },
+                                        label = "You",
+                                    ) {
                                         Icon(
                                             painterResource(R.drawable.ic_person),
-                                            contentDescription = "You",
-                                            tint = if (selectedTab == ROUTE_YOU) {
-                                                MaterialTheme.colorScheme.onSurface
-                                            } else {
-                                                MaterialTheme.colorScheme.onSurfaceVariant
-                                            },
-                                            )
-                                    },
-                                    label = { Text("You") },
-                                )
+                                            contentDescription = null,
+                                        )
                                     }
                                 }
                             }
@@ -461,7 +435,11 @@ fun WatchSharkApp(
                                     }
                                 },
                                 onOpenAdmin = { nav.navigate("admin") },
+                                onUpdateAvailable = { nav.navigate("update") },
                             )
+                        }
+                        composable("update") {
+                            UpdateScreen(onDone = { nav.popBackStack() })
                         }
                         composable("admin") {
                             AdminScreen(
@@ -506,6 +484,23 @@ fun WatchSharkApp(
         val unusedDetail = onDetail
         }
     }
+}
+
+@Composable
+private fun SegTab(
+    index: Int,
+    selected: Boolean,
+    onClick: () -> Unit,
+    label: String,
+    icon: @Composable () -> Unit,
+) {
+    SegmentedButton(
+        selected = selected,
+        onClick = onClick,
+        shape = SegmentedButtonDefaults.itemShape(index, 5),
+        icon = icon,
+        label = { Text(label) },
+    )
 }
 
 @Composable

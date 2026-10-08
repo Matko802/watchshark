@@ -28,6 +28,8 @@ private val FallbackDark = darkColorScheme(
     surfaceVariant = Color(0xFF141414),
     onSurfaceVariant = Color(0xFFA8A8A8),
     surfaceContainerHighest = Color(0xFF1D1D1D),
+    outline = Color(0xFF8A8A8A),
+    outlineVariant = Color(0xFF3D3D3D),
     error = Color(0xFFF2B8B5),
 )
 
@@ -72,6 +74,8 @@ private val FallbackLight = lightColorScheme(
     surfaceVariant = Color(0xFFF0F0F0),
     onSurfaceVariant = Color(0xFF606060),
     surfaceContainerHighest = Color(0xFFE9E9E9),
+    outline = Color(0xFF737373),
+    outlineVariant = Color(0xFFD9D9D9),
     error = Color(0xFFB3261E),
 )
 

@@ -1,13 +1,8 @@
 package watchshark.duckdns.org.data
 import android.content.Context
 import android.content.Intent
-import android.view.LayoutInflater
-import android.widget.ProgressBar
-import android.widget.TextView
 import androidx.core.content.FileProvider
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -27,6 +22,9 @@ sealed interface UpdateCheck {
     data class Failed(val reason: String) : UpdateCheck
 }
 object Updater {
+    /** Update selected by the user, consumed by the fullscreen update screen. */
+    @Volatile
+    var pending: AppUpdate? = null
     private const val LATEST_URL =
         "https://github.com/Matko802/watchshark/releases/latest"
     private const val TAG_URL_PREFIX =
@@ -128,169 +126,6 @@ object Updater {
             UpdateCheck.Failed("Could not check for updates (${e.message ?: "network error"})")
         }
     }
-    /** Manual check with feedback (status message when up to date or on error).
-     *  Takes a plain Context + scope (pure Compose, no Fragments). */
-    fun checkManual(
-        ctx: Context,
-        scope: kotlinx.coroutines.CoroutineScope,
-        onStatus: (String) -> Unit,
-    ) {
-        if (!checking.compareAndSet(false, true)) {
-            onStatus("Already checking…")
-            return
-        }
-        scope.launch {
-            try {
-                when (val result = checkForUpdate()) {
-                    is UpdateCheck.Available -> promptUpdate(ctx, scope, result.update)
-                    UpdateCheck.UpToDate -> onStatus("Already on the latest version")
-                    is UpdateCheck.Failed -> onStatus(result.reason)
-                }
-            } finally {
-                checking.set(false)
-            }
-        }
-    }
-    private fun promptUpdate(ctx: Context, scope: kotlinx.coroutines.CoroutineScope, update: AppUpdate) {
-        MaterialAlertDialogBuilder(ctx)
-            .setTitle("Update available (${update.version})")
-            .setMessage("${update.notes}\n\nSize: ${fmtSize(update.size)}".trim())
-            .setNegativeButton("Later", null)
-            .setPositiveButton("Update") { _, _ -> downloadAndInstall(ctx, scope, update) }
-            .show()
-    }
-    private fun downloadAndInstall(
-        ctx: Context,
-        scope: kotlinx.coroutines.CoroutineScope,
-        update: AppUpdate,
-    ) {
-        val view = LayoutInflater.from(ctx).inflate(R.layout.dialog_download, null)
-        val bar: ProgressBar = view.findViewById(R.id.dl_bar)
-        val label: TextView = view.findViewById(R.id.dl_label)
-        label.text = "Starting…"
-        val dialog = MaterialAlertDialogBuilder(ctx)
-            .setTitle("Downloading update")
-            .setView(view)
-            .setCancelable(false)
-            .create()
-        var job: kotlinx.coroutines.Job? = null
-        dialog.setButton(
-            android.content.DialogInterface.BUTTON_NEGATIVE, "Cancel"
-        ) { _, _ ->
-            job?.cancel()
-            dialog.dismiss()
-        }
-        dialog.show()
-        job = scope.launch(Dispatchers.IO) {
-            try {
-                val req = Request.Builder().url(update.url).get().build()
-                client().newCall(req).execute().use { resp ->
-                    if (!resp.isSuccessful) throw IllegalStateException("HTTP ${resp.code}")
-                    val total = resp.body?.contentLength() ?: update.size
-                    val file = File(ctx.cacheDir, "watchshark-update.apk")
-                    if (file.exists()) file.delete()
-                    var received = 0L
-                    resp.body!!.byteStream().use { input ->
-                        file.outputStream().use { out ->
-                            val buf = ByteArray(64 * 1024)
-                            while (true) {
-                                val n = input.read(buf)
-                                if (n < 0) break
-                                out.write(buf, 0, n)
-                                received += n
-                                if (total > 0) {
-                                    val pct = (received * 100 / total).toInt()
-                                    withContext(Dispatchers.Main) {
-                                        bar.isIndeterminate = false
-                                        bar.progress = pct
-                                        label.text =
-                                            "$pct% • ${fmtSize(received)} / ${fmtSize(total)}"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    withContext(Dispatchers.Main) {
-                        dialog.dismiss()
-                        if (total > 0 && file.length() != total) {
-                            showError(ctx, "Download incomplete, try again")
-                            return@withContext
-                        }
-                        if (!signaturesMatch(ctx, file)) {
-                            showSignatureMismatch(ctx)
-                            return@withContext
-                        }
-                        installApk(ctx, file)
-                    }
-                }
-            } catch (e: Exception) {
-                if (e is kotlinx.coroutines.CancellationException) throw e
-                withContext(Dispatchers.Main) {
-                    bar.isIndeterminate = false
-                    label.text = "Download failed: ${e.message ?: "network error"}"
-                }
-            }
-        }
-    }
-    private fun showError(ctx: Context, message: String) {
-        MaterialAlertDialogBuilder(ctx)
-            .setTitle("Update failed")
-            .setMessage(message)
-            .setPositiveButton("Close", null)
-            .show()
-    }
-    private fun showSignatureMismatch(ctx: Context) {
-        MaterialAlertDialogBuilder(ctx)
-            .setTitle("Can't install over this version")
-            .setMessage(
-                "This update is signed with a different key than the installed app, " +
-                    "so Android refuses to install it. Uninstall WatchShark first, then install " +
-                    "the downloaded update — your account and videos stay on the server, just log in again."
-            )
-            .setNegativeButton("Close", null)
-            .setPositiveButton("Uninstall app") { _, _ ->
-                try {
-                    ctx.startActivity(
-                        Intent(
-                            Intent.ACTION_DELETE,
-                            android.net.Uri.parse("package:${ctx.packageName}"),
-                        ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
-                    )
-                } catch (_: Exception) {
-                }
-            }
-            .show()
-    }
-    /**
-     * Debug builds and release builds are signed with different keys, so a
-     * release APK can never install over a debug one (and vice versa).
-     * Detect it up front instead of dumping the user at a dead installer.
-     */
-    private fun signaturesMatch(ctx: Context, apkFile: File): Boolean {
-        return try {
-            val pm = ctx.packageManager
-            val installedSigs: Set<String> = if (android.os.Build.VERSION.SDK_INT >= 28) {
-                val info = pm.getPackageInfo(ctx.packageName, android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES)
-                info.signingInfo?.apkContentsSigners?.map { it.toCharsString() }?.toSet().orEmpty()
-            } else {
-                @Suppress("DEPRECATION")
-                pm.getPackageInfo(ctx.packageName, android.content.pm.PackageManager.GET_SIGNATURES)
-                    .signatures?.map { it.toCharsString() }?.toSet().orEmpty()
-            }
-            val archiveSigs: Set<String> = if (android.os.Build.VERSION.SDK_INT >= 28) {
-                val info = pm.getPackageArchiveInfo(apkFile.absolutePath, android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES)
-                info?.signingInfo?.apkContentsSigners?.map { it.toCharsString() }?.toSet().orEmpty()
-            } else {
-                @Suppress("DEPRECATION")
-                pm.getPackageArchiveInfo(apkFile.absolutePath, android.content.pm.PackageManager.GET_SIGNATURES)
-                    ?.signatures?.map { it.toCharsString() }?.toSet().orEmpty()
-            }
-            if (installedSigs.isEmpty() || archiveSigs.isEmpty()) return true
-            installedSigs.intersect(archiveSigs).isNotEmpty()
-        } catch (_: Exception) {
-            true
-        }
-    }
     private fun installApk(ctx: Context, file: File) {        val uri = FileProvider.getUriForFile(
             ctx, "${ctx.packageName}.fileprovider", file
         )
@@ -300,5 +135,54 @@ object Updater {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         ctx.startActivity(intent)
+    }
+
+    /**
+     * Downloads [update] on IO, reporting (receivedBytes, totalBytes).
+     * Throws on HTTP errors or incomplete downloads.
+     */
+    suspend fun downloadApk(
+        ctx: Context,
+        update: AppUpdate,
+        onProgress: (received: Long, total: Long) -> Unit,
+    ): File = withContext(Dispatchers.IO) {
+        val req = Request.Builder().url(update.url).get().build()
+        client().newCall(req).execute().use { resp ->
+            if (!resp.isSuccessful) throw IllegalStateException("HTTP ${resp.code}")
+            val total = resp.body?.contentLength() ?: update.size
+            val file = File(ctx.cacheDir, "watchshark-update.apk")
+            if (file.exists()) file.delete()
+            var received = 0L
+            resp.body!!.byteStream().use { input ->
+                file.outputStream().use { out ->
+                    val buf = ByteArray(64 * 1024)
+                    while (true) {
+                        val n = input.read(buf)
+                        if (n < 0) break
+                        out.write(buf, 0, n)
+                        received += n
+                        onProgress(received, total)
+                    }
+                }
+            }
+            if (total > 0 && file.length() != total) {
+                throw IllegalStateException("Download incomplete, try again")
+            }
+            file
+        }
+    }
+
+    /**
+     * Verifies + installs a downloaded APK. Returns an error message, or
+     * null when the installer was launched.
+     */
+    fun installDownloaded(ctx: Context, file: File, update: AppUpdate): String? {
+        if (!signaturesMatch(ctx, file)) {
+            return "This update is signed with a different key than the installed app, " +
+                "so Android refuses to install it. Uninstall WatchShark first, then install " +
+                "the downloaded update — your account and videos stay on the server, just log in again."
+        }
+        installApk(ctx, file)
+        return null
     }
 }

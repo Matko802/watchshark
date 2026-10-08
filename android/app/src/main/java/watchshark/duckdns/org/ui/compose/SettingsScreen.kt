@@ -37,6 +37,7 @@ import watchshark.duckdns.org.data.CrashLog
 import watchshark.duckdns.org.data.MeUser
 import watchshark.duckdns.org.data.ThemePrefs
 import watchshark.duckdns.org.data.Updater
+import watchshark.duckdns.org.data.UpdateCheck
 import watchshark.duckdns.org.data.UploadAlerts
 import watchshark.duckdns.org.ui.httpErrorMessage
 
@@ -46,6 +47,7 @@ fun SettingsScreen(
     onThemeMode: (Int) -> Unit,
     onSignedOut: () -> Unit,
     onOpenAdmin: () -> Unit,
+    onUpdateAvailable: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -219,7 +221,16 @@ fun SettingsScreen(
             OutlinedButton(
                 onClick = {
                     msg = "Checking…"
-                    Updater.checkManual(context, scope) { status -> msg = status }
+                    scope.launch {
+                        when (val result = Updater.checkForUpdate()) {
+                            is UpdateCheck.Available -> {
+                                Updater.pending = result.update
+                                onUpdateAvailable()
+                            }
+                            UpdateCheck.UpToDate -> msg = "Already on the latest version"
+                            is UpdateCheck.Failed -> msg = result.reason
+                        }
+                    }
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Check for updates") }

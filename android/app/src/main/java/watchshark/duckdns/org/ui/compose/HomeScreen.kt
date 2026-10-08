@@ -63,9 +63,7 @@ fun HomeScreen(
                     onClick = { viewModel.setSort("new") },
                     shape = SegmentedButtonDefaults.itemShape(0, 2),
                     icon = {
-                        SegmentedButtonDefaults.Icon(active = viewModel.sort == "new") {
-                            Icon(Icons.Filled.NewReleases, contentDescription = null)
-                        }
+                        Icon(Icons.Filled.NewReleases, contentDescription = null)
                     },
                     label = { Text("Latest") },
                 )
@@ -74,9 +72,7 @@ fun HomeScreen(
                     onClick = { viewModel.setSort("popular") },
                     shape = SegmentedButtonDefaults.itemShape(1, 2),
                     icon = {
-                        SegmentedButtonDefaults.Icon(active = viewModel.sort == "popular") {
-                            Icon(Icons.Filled.Whatshot, contentDescription = null)
-                        }
+                        Icon(Icons.Filled.Whatshot, contentDescription = null)
                     },
                     label = { Text("Trending") },
                 )
