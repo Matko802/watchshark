@@ -1,6 +1,5 @@
 package watchshark.duckdns.org.ui.compose
 
-import android.os.Bundle
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier

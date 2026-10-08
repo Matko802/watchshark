@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -28,7 +28,25 @@ jobs:
       - name: Build APKs
         run: |
           chmod +x gradlew
-          ./gradlew :app:assembleRelease :app:assembleDebug --no-daemon -x test
+          set -o pipefail
+          ./gradlew :app:assembleRelease :app:assembleDebug --no-daemon -x test 2>&1 | tee build.log
+          code=${PIPESTATUS[0]}
+          echo "Gradle exit: $code"
+          exit $code
+
+      - name: Surface Kotlin errors as annotations
+        if: failure()
+        run: |
+          grep -oP '^e: file://\K[^ ]+' build.log | head -n 20 > kerrors.txt || true
+          cat build.log | grep -E '^e: ' | head -n 30 || true
+          # Emit file annotations (public via Checks API) so errors are visible without log access.
+          grep -P '^e: file://' build.log | head -n 20 | while IFS= read -r line; do
+            f=$(echo "$line" | sed -E 's#^e: file://##; s#:[0-9:]+ .*##')
+            # Make path repo-relative for the annotation.
+            rel=$(echo "$f" | sed -E 's#^/home/runner/work/watchshark/watchshark/##')
+            msg=$(echo "$line" | cut -c1-500)
+            echo "::error file=$rel::$msg"
+          done || true
 
       - name: Show outputs
         run: ls -la app/build/outputs/apk/release/ app/build/outputs/apk/debug/

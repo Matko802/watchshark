@@ -1,6 +1,7 @@
 package watchshark.duckdns.org.ui.compose
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,6 +26,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
@@ -342,14 +344,15 @@ fun WatchSharkApp(
 
             if (showCreateSheet) {
                 ModalBottomSheet(onDismissRequest = { showCreateSheet = false }) {
-                    NavigationBarItem(
-                        selected = false,
-                        onClick = {
+                    ListItem(
+                        headlineContent = { Text("Upload video / wheel") },
+                        leadingContent = {
+                            Icon(Icons.Filled.Add, contentDescription = null)
+                        },
+                        modifier = Modifier.clickable {
                             showCreateSheet = false
                             nav.navigate("upload")
                         },
-                        icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                        label = { Text("Upload video / wheel") },
                     )
                 }
             }
@@ -366,7 +369,7 @@ fun WatchSharkApp(
 }
 
 @Composable
-private fun RailTab(
+private fun androidx.compose.foundation.layout.ColumnScope.RailTab(
     label: String,
     selected: Boolean,
     selectedIcon: androidx.compose.ui.graphics.vector.ImageVector,
