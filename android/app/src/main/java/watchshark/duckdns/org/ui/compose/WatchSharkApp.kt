@@ -1,13 +1,15 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-
 package watchshark.duckdns.org.ui.compose
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -24,12 +27,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
@@ -46,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -264,98 +267,106 @@ fun WatchSharkApp(
                         }
                     },
                     bottomBar = {
-                        // Slim centered slider pill, same language as the
-                        // Latest / Trending switch: 5 equal segments, plain
-                        // icons (no check marks), logo as the Create segment.
+                        // Floating pill nav (classic WatchShark look), built
+                        // to the M3 Expressive bar anatomy: 64dp tall,
+                        // 24dp icons + 11sp labels, one 56x32 pill indicator
+                        // on the active tab. Weight-distributed row, so the
+                        // five slots are symmetric by construction.
                         if (!wide && !route.startsWith("auth") && !route.startsWith("chat") && route != "update") {
+                            val pillContainer = if (isSystemInDarkTheme()) Color.Black
+                            else MaterialTheme.colorScheme.surface
+                            val pillStroke = if (isSystemInDarkTheme()) Color(0xFF3D3D3D)
+                            else MaterialTheme.colorScheme.outlineVariant
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 28.dp)
+                                    .padding(horizontal = 16.dp)
                                     .padding(bottom = 12.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                SingleChoiceSegmentedButtonRow(
-                                    modifier = Modifier.fillMaxWidth(),
+                                Surface(
+                                    shape = RoundedCornerShape(32.dp),
+                                    color = pillContainer,
+                                    tonalElevation = 3.dp,
+                                    shadowElevation = 6.dp,
+                                    border = BorderStroke(1.dp, pillStroke),
                                 ) {
-                                    SegmentedButton(
-                                        selected = selectedTab == ROUTE_HOME,
-                                        onClick = { goTab(ROUTE_HOME) },
-                                        shape = SegmentedButtonDefaults.itemShape(0, 5),
-                                        icon = {
-                                        Icon(
-                                            painterResource(R.drawable.ic_home),
-                                            contentDescription = null,
-                                        )
-                                        },
-                                        label = { Text("Home") },
-                                    )
-                                    SegmentedButton(
-                                        selected = selectedTab == ROUTE_WHEELS,
-                                        onClick = { goTab(ROUTE_WHEELS) },
-                                        shape = SegmentedButtonDefaults.itemShape(1, 5),
-                                        icon = {
-                                        Icon(
-                                            painterResource(R.drawable.ic_movie),
-                                            contentDescription = null,
-                                        )
-                                        },
-                                        label = { Text("Wheels") },
-                                    )
-                                    SegmentedButton(
-                                        selected = false,
-                                        onClick = { showCreateSheet = true },
-                                        shape = SegmentedButtonDefaults.itemShape(2, 5),
-                                        icon = {
-                                            Image(
-                                                painter = rememberAsyncImagePainter(
-                                                    model = appIcon,
-                                                ),
+                                    Row(
+                                        modifier = Modifier.padding(
+                                            horizontal = 8.dp,
+                                            vertical = 9.dp,
+                                        ),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        val selectedTabColor = MaterialTheme.colorScheme.onSurface
+                                        val idleTabColor =
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        PillTab(
+                                            selected = selectedTab == ROUTE_HOME,
+                                            onClick = { goTab(ROUTE_HOME) },
+                                            label = "Home",
+                                            selectedColor = selectedTabColor,
+                                            idleColor = idleTabColor,
+                                        ) {
+                                            Icon(
+                                                painterResource(R.drawable.ic_home),
                                                 contentDescription = null,
-                                                modifier = Modifier
-                                                    .size(24.dp)
-                                                    .clip(CircleShape),
                                             )
-                                        },
-                                        label = { Text("Create") },
-                                    )
-                                    SegmentedButton(
-                                        selected = selectedTab == ROUTE_MESSAGES,
-                                        onClick = { goTab(ROUTE_MESSAGES) },
-                                        shape = SegmentedButtonDefaults.itemShape(3, 5),
-                                        icon = {
-                                        Box {
+                                        }
+                                        PillTab(
+                                            selected = selectedTab == ROUTE_WHEELS,
+                                            onClick = { goTab(ROUTE_WHEELS) },
+                                            label = "Wheels",
+                                            selectedColor = selectedTabColor,
+                                            idleColor = idleTabColor,
+                                        ) {
+                                            Icon(
+                                                painterResource(R.drawable.ic_movie),
+                                                contentDescription = null,
+                                            )
+                                        }
+                                        // Original center button: white circle, black plus.
+                                        Image(
+                                            painter = painterResource(R.drawable.ic_add),
+                                            contentDescription = "Create",
+                                            modifier = Modifier
+                                                .size(48.dp)
+                                                .clip(CircleShape)
+                                                .background(Color.White)
+                                                .clickable { showCreateSheet = true }
+                                                .padding(12.dp),
+                                        )
+                                        PillTab(
+                                            selected = selectedTab == ROUTE_MESSAGES,
+                                            onClick = { goTab(ROUTE_MESSAGES) },
+                                            label = "Messages",
+                                            selectedColor = selectedTabColor,
+                                            idleColor = idleTabColor,
+                                            badge = unread > 0,
+                                            badgeText = if (unread > 9) "9+" else "$unread",
+                                        ) {
                                             Icon(
                                                 painterResource(R.drawable.ic_chat),
                                                 contentDescription = null,
                                             )
-                                            if (unread > 0) {
-                                                Badge(
-                                                    modifier = Modifier.align(Alignment.TopEnd),
-                                                ) {
-                                                    Text(if (unread > 9) "9+" else "$unread")
-                                                }
-                                            }
                                         }
-                                        },
-                                        label = { Text("Messages") },
-                                    )
-                                    SegmentedButton(
-                                        selected = selectedTab == ROUTE_YOU,
-                                        onClick = {
-                                            val name = meName
-                                            if (name != null) nav.navigate("channel/$name")
-                                            else nav.navigate("auth")
-                                        },
-                                        shape = SegmentedButtonDefaults.itemShape(4, 5),
-                                        icon = {
+                                        PillTab(
+                                            selected = selectedTab == ROUTE_YOU,
+                                            onClick = {
+                                                val name = meName
+                                                if (name != null) nav.navigate("channel/$name")
+                                                else nav.navigate("auth")
+                                            },
+                                            label = "You",
+                                            selectedColor = selectedTabColor,
+                                            idleColor = idleTabColor,
+                                        ) {
                                             Icon(
                                                 painterResource(R.drawable.ic_person),
                                                 contentDescription = null,
                                             )
-                                        },
-                                        label = { Text("You") },
-                                    )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -492,6 +503,64 @@ fun WatchSharkApp(
     }
 }
 
+
+/**
+ * One bottom-pill destination: 24dp icon over an 11sp label, with the
+ * M3 Expressive 56x32 pill indicator behind the icon when selected.
+ */
+@Composable
+private fun androidx.compose.foundation.layout.RowScope.PillTab(
+    selected: Boolean,
+    onClick: () -> Unit,
+    label: String,
+    selectedColor: Color,
+    idleColor: Color,
+    badge: Boolean = false,
+    badgeText: String = "",
+    icon: @Composable () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .weight(1f)
+            .clickable(onClick = onClick)
+            .padding(vertical = 2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            if (selected) {
+                Box(
+                    modifier = Modifier
+                        .size(width = 56.dp, height = 32.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.secondaryContainer),
+                )
+            }
+            Box {
+                CompositionLocalProvider(
+                    LocalContentColor provides if (selected) selectedColor else idleColor,
+                ) {
+                    icon()
+                }
+                if (badge) {
+                    Badge(
+                        modifier = Modifier.align(Alignment.TopEnd),
+                    ) {
+                        Text(
+                            badgeText,
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    }
+                }
+            }
+        }
+        Text(
+            text = label,
+            fontSize = 11.sp,
+            color = if (selected) selectedColor else idleColor,
+            modifier = Modifier.padding(top = 3.dp),
+        )
+    }
+}
 
 @Composable
 private fun androidx.compose.foundation.layout.ColumnScope.RailTab(
