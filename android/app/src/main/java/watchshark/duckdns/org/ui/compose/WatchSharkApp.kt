@@ -278,28 +278,30 @@ fun WatchSharkApp(
                                 SingleChoiceSegmentedButtonRow(
                                     modifier = Modifier.fillMaxWidth(),
                                 ) {
-                                    SegTab(
-                                        index = 0,
+                                    SegmentedButton(
                                         selected = selectedTab == ROUTE_HOME,
                                         onClick = { goTab(ROUTE_HOME) },
-                                        label = "Home",
-                                    ) {
+                                        shape = SegmentedButtonDefaults.itemShape(0, 5),
+                                        icon = {
                                         Icon(
                                             painterResource(R.drawable.ic_home),
                                             contentDescription = null,
                                         )
-                                    }
-                                    SegTab(
-                                        index = 1,
+                                        },
+                                        label = { Text("Home") },
+                                    )
+                                    SegmentedButton(
                                         selected = selectedTab == ROUTE_WHEELS,
                                         onClick = { goTab(ROUTE_WHEELS) },
-                                        label = "Wheels",
-                                    ) {
+                                        shape = SegmentedButtonDefaults.itemShape(1, 5),
+                                        icon = {
                                         Icon(
                                             painterResource(R.drawable.ic_movie),
                                             contentDescription = null,
                                         )
-                                    }
+                                        },
+                                        label = { Text("Wheels") },
+                                    )
                                     SegmentedButton(
                                         selected = false,
                                         onClick = { showCreateSheet = true },
@@ -317,12 +319,11 @@ fun WatchSharkApp(
                                         },
                                         label = { Text("Create") },
                                     )
-                                    SegTab(
-                                        index = 3,
+                                    SegmentedButton(
                                         selected = selectedTab == ROUTE_MESSAGES,
                                         onClick = { goTab(ROUTE_MESSAGES) },
-                                        label = "Messages",
-                                    ) {
+                                        shape = SegmentedButtonDefaults.itemShape(3, 5),
+                                        icon = {
                                         Box {
                                             Icon(
                                                 painterResource(R.drawable.ic_chat),
@@ -336,22 +337,25 @@ fun WatchSharkApp(
                                                 }
                                             }
                                         }
-                                    }
-                                    SegTab(
-                                        index = 4,
+                                        },
+                                        label = { Text("Messages") },
+                                    )
+                                    SegmentedButton(
                                         selected = selectedTab == ROUTE_YOU,
                                         onClick = {
                                             val name = meName
                                             if (name != null) nav.navigate("channel/$name")
                                             else nav.navigate("auth")
                                         },
-                                        label = "You",
-                                    ) {
-                                        Icon(
-                                            painterResource(R.drawable.ic_person),
-                                            contentDescription = null,
-                                        )
-                                    }
+                                        shape = SegmentedButtonDefaults.itemShape(4, 5),
+                                        icon = {
+                                            Icon(
+                                                painterResource(R.drawable.ic_person),
+                                                contentDescription = null,
+                                            )
+                                        },
+                                        label = { Text("You") },
+                                    )
                                 }
                             }
                         }
@@ -488,22 +492,6 @@ fun WatchSharkApp(
     }
 }
 
-@Composable
-private fun SegTab(
-    index: Int,
-    selected: Boolean,
-    onClick: () -> Unit,
-    label: String,
-    icon: @Composable () -> Unit,
-) {
-    SegmentedButton(
-        selected = selected,
-        onClick = onClick,
-        shape = SegmentedButtonDefaults.itemShape(index, 5),
-        icon = icon,
-        label = { Text(label) },
-    )
-}
 
 @Composable
 private fun androidx.compose.foundation.layout.ColumnScope.RailTab(
