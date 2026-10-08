@@ -1,7 +1,9 @@
 package watchshark.duckdns.org.ui.compose
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -11,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.Button
@@ -29,10 +33,11 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,6 +49,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -472,50 +478,51 @@ fun WheelsScreen(
                 modifier = Modifier
                     .padding(end = 8.dp, bottom = 96.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                val likeScale by animateFloatAsState(
-                    targetValue = if (vid.liked) 1.15f else 1f,
-                    animationSpec = AppMotion.fastSpatial,
-                    label = "likePop",
-                )
-                IconButton(onClick = { doLike() }) {
+                // Heart like, 1:1 with web (favorite outline/filled, always white).
+                RailPillButton(onClick = { doLike() }, description = "Like") {
                     Icon(
-                        painterResource(R.drawable.ic_thumb_up),
+                        painterResource(
+                            if (vid.liked) R.drawable.ic_favorite_fill
+                            else R.drawable.ic_favorite_outline,
+                        ),
                         contentDescription = "Like",
-                        tint = if (vid.liked) Color(0xFFFF5C5C) else Color.White,
-                        modifier = Modifier.graphicsLayer {
-                            scaleX = likeScale
-                            scaleY = likeScale
-                        },
                     )
                 }
                 Text(fmtNum(vid.likes), color = Color.White, style = MaterialTheme.typography.labelSmall)
-                IconButton(onClick = {
-                    muted = !muted
-                    player.volume = if (muted) 0f else 1f
-                }) {
+                RailPillButton(
+                    onClick = {
+                        muted = !muted
+                        player.volume = if (muted) 0f else 1f
+                    },
+                    description = "Mute",
+                ) {
                     Icon(
                         painterResource(
                             if (muted) R.drawable.ic_volume_off else R.drawable.ic_volume_up,
                         ),
                         contentDescription = "Mute",
-                        tint = Color.White,
                     )
                 }
-                IconButton(onClick = { onOpenVideo(vid.id) }) {
+                RailPillButton(onClick = { onOpenVideo(vid.id) }, description = "Comments") {
                     Icon(
                         painterResource(R.drawable.ic_chat),
                         contentDescription = "Comments",
-                        tint = Color.White,
                     )
                 }
-                TextButton(onClick = { qualityFor = vid }) {
-                    Text(
-                        qualityOverride[vid.id] ?: "Auto",
-                        color = Color.White,
-                        style = MaterialTheme.typography.labelSmall,
+                // Quality gear + label, like web's settings rail button.
+                RailPillButton(onClick = { qualityFor = vid }, description = "Quality") {
+                    Icon(
+                        painterResource(R.drawable.ic_settings),
+                        contentDescription = "Quality",
                     )
                 }
+                Text(
+                    qualityOverride[vid.id] ?: "Auto",
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelSmall,
+                )
             }
             }
         }
@@ -565,6 +572,48 @@ fun WheelsScreen(
     if (loading && videos.isNotEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             CircularProgressIndicator(modifier = Modifier.padding(top = 16.dp))
+        }
+    }
+}
+
+/**
+ * Over-video circular pill button, 1:1 with web
+ * (.reel-rail .railitem md-icon-button): translucent black circle,
+ * white icon, darker background + 0.92 squeeze on press.
+ */
+@Composable
+private fun RailPillButton(
+    onClick: () -> Unit,
+    description: String,
+    icon: @Composable () -> Unit,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val bgAlpha by animateFloatAsState(
+        targetValue = if (pressed) 0.78f else 0.55f,
+        animationSpec = tween(150, easing = FastOutSlowInEasing),
+        label = "railBg",
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.92f else 1f,
+        animationSpec = AppMotion.pressSpring,
+        label = "railPress",
+    )
+    IconButton(
+        onClick = onClick,
+        interactionSource = interaction,
+        indication = null,
+        modifier = Modifier
+            .size(48.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(CircleShape)
+            .background(Color.Black.copy(alpha = bgAlpha)),
+    ) {
+        CompositionLocalProvider(LocalContentColor provides Color.White) {
+            icon()
         }
     }
 }

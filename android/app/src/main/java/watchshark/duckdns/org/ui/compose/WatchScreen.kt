@@ -212,7 +212,10 @@ fun WatchScreen(
                         label = { Text("${fmtNum(v.likes)}") },
                         leadingIcon = {
                             Icon(
-                                painterResource(R.drawable.ic_thumb_up),
+                                painterResource(
+                                    if (v.liked) R.drawable.ic_favorite_fill
+                                    else R.drawable.ic_favorite_outline,
+                                ),
                                 contentDescription = null,
                             )
                         },
