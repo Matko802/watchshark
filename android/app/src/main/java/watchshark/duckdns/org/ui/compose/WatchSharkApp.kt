@@ -47,6 +47,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -58,6 +59,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -68,9 +70,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import coil.ImageLoader
+import coil.compose.LocalImageLoader
+import coil.decode.VideoFrameDecoder
 import kotlinx.coroutines.launch
 import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.ApiClient
+import watchshark.duckdns.org.data.ThemePrefs
 import watchshark.duckdns.org.ui.compose.theme.WatchSharkTheme
 
 private const val ROUTE_HOME = "home"
@@ -82,23 +88,35 @@ private const val ROUTE_YOU = "you"
 @Composable
 fun WatchSharkApp(
     startLoggedIn: Boolean,
-    currentUsername: () -> String?,
-    darkThemeOverride: Boolean? = null,
-    amoled: Boolean = false,
 ) {
+    val appCtx = LocalContext.current
+    var themeMode by remember { mutableIntStateOf(ThemePrefs.getMode(appCtx)) }
+    fun applyThemeMode(mode: Int) {
+        ThemePrefs.setMode(appCtx, mode)
+        themeMode = mode
+        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(ThemePrefs.toNightMode(mode))
+    }
+    // Coil loader with video-frame decoding so .webm thumbnails render.
+    val videoLoader = remember(appCtx) {
+        ImageLoader.Builder(appCtx)
+            .components { add(VideoFrameDecoder.Factory()) }
+            .crossfade(true)
+            .build()
+    }
     WatchSharkTheme(
-        darkTheme = darkThemeOverride ?: isSystemInDarkTheme(),
-        amoled = amoled,
+        darkTheme = ThemePrefs.toDarkOverride(themeMode) ?: isSystemInDarkTheme(),
+        amoled = themeMode == ThemePrefs.MODE_AMOLED,
     ) {
+        CompositionLocalProvider(LocalImageLoader provides videoLoader) {
         val nav = rememberNavController()
-        // Bridge for legacy fragments calling MainActivity.openDetail().
+        // Exposes navigation to MainActivity (launcher shortcuts).
         LaunchedEffect(nav) { AppNavigator.controller = nav }
         val scope = rememberCoroutineScope()
         var query by remember { mutableStateOf("") }
         var searchExpanded by remember { mutableStateOf(false) }
         var unread by remember { mutableIntStateOf(0) }
         var showCreateSheet by remember { mutableStateOf(false) }
-        var meAvatar by remember { mutableStateOf<String?>(null) }
+        var meName by remember { mutableStateOf<String?>(null) }
 
         suspend fun refreshBadges() {
             try {
@@ -106,7 +124,7 @@ fun WatchSharkApp(
             } catch (_: Exception) {
             }
             try {
-                meAvatar = ApiClient.api.me().user?.avatar
+                meName = ApiClient.api.me().user?.username
             } catch (_: Exception) {
             }
         }
@@ -173,7 +191,7 @@ fun WatchSharkApp(
                             selectedIcon = Icons.Filled.Person,
                             unselectedIcon = Icons.Outlined.Person,
                             onClick = {
-                                val name = currentUsername()
+                                val name = meName
                                 if (name != null) nav.navigate("channel/$name")
                                 else nav.navigate("auth")
                             },
@@ -309,7 +327,7 @@ fun WatchSharkApp(
                                 NavigationBarItem(
                                     selected = selectedTab == ROUTE_YOU,
                                     onClick = {
-                                        val name = currentUsername()
+                                        val name = meName
                                         if (name != null) nav.navigate("channel/$name")
                                         else nav.navigate("auth")
                                     },
@@ -341,7 +359,10 @@ fun WatchSharkApp(
                             )
                         }
                         composable(ROUTE_WHEELS) {
-                            WheelsInterop()
+                            WheelsScreen(
+                                onOpenVideo = { id -> nav.navigate("watch/$id") },
+                                onOpenChannel = { name -> nav.navigate("channel/$name") },
+                            )
                         }
                         composable(ROUTE_MESSAGES) {
                             MessagesScreen(onOpenThread = { name -> nav.navigate("chat/$name") })
@@ -354,14 +375,17 @@ fun WatchSharkApp(
                             ChatScreen(username = name)
                         }
                         composable(ROUTE_YOU) {
-                            val name = currentUsername()
+                            val name = meName
                             if (name != null) {
                                 ChannelScreen(
                                     username = name,
                                     onOpenVideo = { v -> nav.navigate("watch/${v.id}") },
                                 )
                             } else {
-                                AuthInterop()
+                                AuthScreen(onAuthComplete = {
+                                    scope.launch { refreshBadges() }
+                                    goTab(ROUTE_HOME)
+                                })
                             }
                         }
                         composable(
@@ -384,13 +408,37 @@ fun WatchSharkApp(
                                 onOpenVideo = { v -> nav.navigate("watch/${v.id}") },
                             )
                         }
-                        composable("upload") { UploadInterop() }
+                        composable("upload") {
+                            UploadScreen(onDone = { id -> nav.navigate("watch/$id") })
+                        }
                         composable("notifications") {
                             NotificationsScreen(onOpenVideo = { id -> nav.navigate("watch/$id") })
                         }
-                        composable("settings") { SettingsInterop() }
-                        composable("admin") { AdminInterop() }
-                        composable("auth") { AuthInterop() }
+                        composable("settings") {
+                            SettingsScreen(
+                                themeMode = themeMode,
+                                onThemeMode = { applyThemeMode(it) },
+                                onSignedOut = {
+                                    scope.launch { refreshBadges() }
+                                    meName = null
+                                    nav.navigate("auth") {
+                                        popUpTo(nav.graph.startDestinationId) { inclusive = true }
+                                    }
+                                },
+                                onOpenAdmin = { nav.navigate("admin") },
+                            )
+                        }
+                        composable("admin") {
+                            AdminScreen(
+                                onOpenChannel = { name -> nav.navigate("channel/$name") },
+                            )
+                        }
+                        composable("auth") {
+                            AuthScreen(onAuthComplete = {
+                                scope.launch { refreshBadges() }
+                                goTab(ROUTE_HOME)
+                            })
+                        }
                     }
                 }
             }

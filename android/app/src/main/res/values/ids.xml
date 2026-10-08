@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- View tags: applied bottom-bar clearance (px) + its portrait clip flag. -->
-    <item name="tag_bar_clear" type="id" />
-    <item name="tag_bar_clip" type="id" />
-</resources>

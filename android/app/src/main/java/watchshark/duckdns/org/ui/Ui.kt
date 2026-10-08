@@ -1,87 +1,13 @@
 package watchshark.duckdns.org.ui
+
 import android.content.Context
-import android.view.View
-import android.widget.ImageView
 import android.widget.Toast
-import coil.load
-import watchshark.duckdns.org.MainActivity
-import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.ApiClient
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
+
 fun fullUrl(path: String?): String? = ApiClient.fullUrl(path)
-/** Resolves a theme color attribute (follows light/dark + dynamic themes). */
-fun Context.themeColor(attr: Int): Int {
-    val a = obtainStyledAttributes(intArrayOf(attr))
-    val c = a.getColor(0, 0)
-    a.recycle()
-    return c
-}
-/** True when the system is in light (day) mode. */
-fun Context.isLightTheme(): Boolean {
-    return (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) !=
-        android.content.res.Configuration.UI_MODE_NIGHT_YES
-}
-/**
- * Clears space above the overlaid blur bar so scroll content never hides
- * behind it (content still slides underneath for the frosted effect).
- * In landscape the bar lives on the right (handled by container padding),
- * so no bottom spacer is added. Idempotent across rotations.
- */
-fun View.clearBottomBar(clip: Boolean = true) {
-    setTag(R.id.tag_bar_clip, clip)
-    applyBarClearance()
-}
-/** Re-applies bar clearance for the current orientation (idempotent). */
-fun View.applyBarClearance() {
-    val clip = (getTag(R.id.tag_bar_clip) as? Boolean) ?: true
-    val landscape = resources.configuration.orientation ==
-        android.content.res.Configuration.ORIENTATION_LANDSCAPE
-    // Invisible spacer above the bottom bar so nothing rests hidden under
-    // it. clip=false lets feed content glide underneath a translucent bar.
-    val want = if (landscape) 0 else (170 * resources.displayMetrics.density).toInt()
-    val have = (getTag(R.id.tag_bar_clear) as? Int) ?: 0
-    setPadding(paddingLeft, paddingTop, paddingRight, paddingBottom - have + want)
-    setTag(R.id.tag_bar_clear, want)
-    (this as? android.view.ViewGroup)?.clipToPadding = if (landscape) false else clip
-}
-/** YouTube-style feed: single stripe on phones, grid on wide screens. */
-fun gridSpan(ctx: Context): Int {
-    val dp = ctx.resources.displayMetrics.widthPixels / ctx.resources.displayMetrics.density
-    return (dp / 400).toInt().coerceAtLeast(1)
-}
-@Volatile
-private var videoLoader: coil.ImageLoader? = null
-/** ImageLoader with video-frame decoding, so .webm thumbnails render too. */
-fun videoImageLoader(ctx: Context): coil.ImageLoader {
-    return videoLoader ?: synchronized(UiLock) {
-        videoLoader ?: coil.ImageLoader.Builder(ctx.applicationContext)
-            .components { add(coil.decode.VideoFrameDecoder.Factory()) }
-            .crossfade(true)
-            .build()
-            .also { videoLoader = it }
-    }
-}
-private object UiLock
-fun ImageView.loadMedia(path: String?, placeholder: Int = R.drawable.ic_movie) {
-    val url = fullUrl(path)
-    if (url == null) {
-        setImageResource(placeholder)
-    } else if (WebmAvatarView.isWebm(path)) {
-        load(url, videoImageLoader(context)) {
-            placeholder(placeholder)
-            error(placeholder)
-            crossfade(true)
-        }
-    } else {
-        load(url) {
-            placeholder(placeholder)
-            error(placeholder)
-            crossfade(true)
-        }
-    }
-}
 fun fmtNum(n: Long): String {
     if (n < 1000) return n.toString()
     val units = arrayOf(1_000_000_000L to "B", 1_000_000L to "M", 1_000L to "K")
@@ -131,18 +57,8 @@ fun fmtDateTime(s: String?): String {
     }
 }
 fun Context.toast(msg: String) {
-    var c: Context? = this
-    while (c != null) {
-        if (c is MainActivity) {
-            val act = c
-            act.runOnUiThread { act.showToast(msg) }
-            return
-        }
-        c = (c as? android.content.ContextWrapper)?.baseContext
-    }
     Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
 }
-fun android.view.View.snack(msg: String) = context.toast(msg)
 fun apiErrorMessage(e: Exception): String =
     e.message?.takeIf { it.isNotBlank() } ?: "Network error"
 fun httpErrorMessage(e: Exception): String {

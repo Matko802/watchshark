@@ -58,7 +58,7 @@ fun VideoCard(
                 contentDescription = video.username,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(36.dp)
                     .clip(CircleShape),
             )
             Column(modifier = Modifier.weight(1f)) {

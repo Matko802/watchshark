@@ -5,8 +5,6 @@ import android.view.LayoutInflater
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.core.content.FileProvider
-import androidx.fragment.app.Fragment
-import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -130,55 +128,42 @@ object Updater {
             UpdateCheck.Failed("Could not check for updates (${e.message ?: "network error"})")
         }
     }
-    /** Silent check (e.g. on launch): only shows a dialog when an update exists. */
-    fun checkSilent(host: Fragment) {
-        if (!checking.compareAndSet(false, true)) return
-        host.lifecycleScope.launch {
-            try {
-                val result = checkForUpdate()
-                if (result is UpdateCheck.Available && host.isAdded) {
-                    promptUpdate(host, result.update)
-                }
-            } finally {
-                checking.set(false)
-            }
-        }
-    }
-    /** Manual check with feedback (status message when up to date or on error). */
-    fun checkManual(host: Fragment, onStatus: (String) -> Unit) {
+    /** Manual check with feedback (status message when up to date or on error).
+     *  Takes a plain Context + scope (pure Compose, no Fragments). */
+    fun checkManual(
+        ctx: Context,
+        scope: kotlinx.coroutines.CoroutineScope,
+        onStatus: (String) -> Unit,
+    ) {
         if (!checking.compareAndSet(false, true)) {
             onStatus("Already checking…")
             return
         }
-        host.lifecycleScope.launch {
+        scope.launch {
             try {
                 when (val result = checkForUpdate()) {
-                    is UpdateCheck.Available -> {
-                        if (host.isAdded) promptUpdate(host, result.update)
-                    }
-                    UpdateCheck.UpToDate -> {
-                        if (host.isAdded) onStatus("Already on the latest version")
-                    }
-                    is UpdateCheck.Failed -> {
-                        if (host.isAdded) onStatus(result.reason)
-                    }
+                    is UpdateCheck.Available -> promptUpdate(ctx, scope, result.update)
+                    UpdateCheck.UpToDate -> onStatus("Already on the latest version")
+                    is UpdateCheck.Failed -> onStatus(result.reason)
                 }
             } finally {
                 checking.set(false)
             }
         }
     }
-    private fun promptUpdate(host: Fragment, update: AppUpdate) {
-        val ctx = host.requireContext()
+    private fun promptUpdate(ctx: Context, scope: kotlinx.coroutines.CoroutineScope, update: AppUpdate) {
         MaterialAlertDialogBuilder(ctx)
             .setTitle("Update available (${update.version})")
             .setMessage("${update.notes}\n\nSize: ${fmtSize(update.size)}".trim())
             .setNegativeButton("Later", null)
-            .setPositiveButton("Update") { _, _ -> downloadAndInstall(host, update) }
+            .setPositiveButton("Update") { _, _ -> downloadAndInstall(ctx, scope, update) }
             .show()
     }
-    private fun downloadAndInstall(host: Fragment, update: AppUpdate) {
-        val ctx = host.requireContext()
+    private fun downloadAndInstall(
+        ctx: Context,
+        scope: kotlinx.coroutines.CoroutineScope,
+        update: AppUpdate,
+    ) {
         val view = LayoutInflater.from(ctx).inflate(R.layout.dialog_download, null)
         val bar: ProgressBar = view.findViewById(R.id.dl_bar)
         val label: TextView = view.findViewById(R.id.dl_label)
@@ -196,7 +181,7 @@ object Updater {
             dialog.dismiss()
         }
         dialog.show()
-        job = host.lifecycleScope.launch(Dispatchers.IO) {
+        job = scope.launch(Dispatchers.IO) {
             try {
                 val req = Request.Builder().url(update.url).get().build()
                 client().newCall(req).execute().use { resp ->
@@ -228,11 +213,11 @@ object Updater {
                     withContext(Dispatchers.Main) {
                         dialog.dismiss()
                         if (total > 0 && file.length() != total) {
-                            showError(host, "Download incomplete, try again")
+                            showError(ctx, "Download incomplete, try again")
                             return@withContext
                         }
                         if (!signaturesMatch(ctx, file)) {
-                            showSignatureMismatch(host)
+                            showSignatureMismatch(ctx)
                             return@withContext
                         }
                         installApk(ctx, file)
@@ -247,12 +232,33 @@ object Updater {
             }
         }
     }
-    private fun showError(host: Fragment, message: String) {
-        if (!host.isAdded) return
-        MaterialAlertDialogBuilder(host.requireContext())
+    private fun showError(ctx: Context, message: String) {
+        MaterialAlertDialogBuilder(ctx)
             .setTitle("Update failed")
             .setMessage(message)
             .setPositiveButton("Close", null)
+            .show()
+    }
+    private fun showSignatureMismatch(ctx: Context) {
+        MaterialAlertDialogBuilder(ctx)
+            .setTitle("Can't install over this version")
+            .setMessage(
+                "This update is signed with a different key than the installed app, " +
+                    "so Android refuses to install it. Uninstall WatchShark first, then install " +
+                    "the downloaded update — your account and videos stay on the server, just log in again."
+            )
+            .setNegativeButton("Close", null)
+            .setPositiveButton("Uninstall app") { _, _ ->
+                try {
+                    ctx.startActivity(
+                        Intent(
+                            Intent.ACTION_DELETE,
+                            android.net.Uri.parse("package:${ctx.packageName}"),
+                        ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                    )
+                } catch (_: Exception) {
+                }
+            }
             .show()
     }
     /**
@@ -284,30 +290,6 @@ object Updater {
         } catch (_: Exception) {
             true
         }
-    }
-    private fun showSignatureMismatch(host: Fragment) {
-        if (!host.isAdded) return
-        val ctx = host.requireContext()
-        MaterialAlertDialogBuilder(ctx)
-            .setTitle("Can't install over this version")
-            .setMessage(
-                "This update is signed with a different key than the installed app, " +
-                    "so Android refuses to install it. Uninstall WatchShark first, then install " +
-                    "the downloaded update — your account and videos stay on the server, just log in again."
-            )
-            .setNegativeButton("Close", null)
-            .setPositiveButton("Uninstall app") { _, _ ->
-                try {
-                    ctx.startActivity(
-                        Intent(
-                            Intent.ACTION_DELETE,
-                            android.net.Uri.parse("package:${ctx.packageName}")
-                        ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
-                    )
-                } catch (_: Exception) {
-                }
-            }
-            .show()
     }
     private fun installApk(ctx: Context, file: File) {        val uri = FileProvider.getUriForFile(
             ctx, "${ctx.packageName}.fileprovider", file
