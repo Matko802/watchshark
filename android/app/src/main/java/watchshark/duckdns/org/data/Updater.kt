@@ -7,7 +7,6 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import watchshark.duckdns.org.BuildConfig
-import watchshark.duckdns.org.R
 import java.io.File
 import java.util.concurrent.TimeUnit
 data class AppUpdate(
@@ -124,6 +123,36 @@ object Updater {
             UpdateCheck.Available(AppUpdate(version, "", apkUrl, size))
         } catch (e: Exception) {
             UpdateCheck.Failed("Could not check for updates (${e.message ?: "network error"})")
+        }
+    }
+    /**
+     * Debug builds and release builds are signed with different keys, so a
+     * release APK can never install over a debug one (and vice versa).
+     * Detect it up front instead of dumping the user at a dead installer.
+     */
+    private fun signaturesMatch(ctx: Context, apkFile: File): Boolean {
+        return try {
+            val pm = ctx.packageManager
+            val installedSigs: Set<String> = if (android.os.Build.VERSION.SDK_INT >= 28) {
+                val info = pm.getPackageInfo(ctx.packageName, android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES)
+                info.signingInfo?.apkContentsSigners?.map { it.toCharsString() }?.toSet().orEmpty()
+            } else {
+                @Suppress("DEPRECATION")
+                pm.getPackageInfo(ctx.packageName, android.content.pm.PackageManager.GET_SIGNATURES)
+                    .signatures?.map { it.toCharsString() }?.toSet().orEmpty()
+            }
+            val archiveSigs: Set<String> = if (android.os.Build.VERSION.SDK_INT >= 28) {
+                val info = pm.getPackageArchiveInfo(apkFile.absolutePath, android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES)
+                info?.signingInfo?.apkContentsSigners?.map { it.toCharsString() }?.toSet().orEmpty()
+            } else {
+                @Suppress("DEPRECATION")
+                pm.getPackageArchiveInfo(apkFile.absolutePath, android.content.pm.PackageManager.GET_SIGNATURES)
+                    ?.signatures?.map { it.toCharsString() }?.toSet().orEmpty()
+            }
+            if (installedSigs.isEmpty() || archiveSigs.isEmpty()) return true
+            installedSigs.intersect(archiveSigs).isNotEmpty()
+        } catch (_: Exception) {
+            true
         }
     }
     private fun installApk(ctx: Context, file: File) {        val uri = FileProvider.getUriForFile(
