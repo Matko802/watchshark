@@ -279,9 +279,6 @@ fun WheelsScreen(
 
     LaunchedEffect(Unit) { loadMore() }
 
-    val pageCount = videos.size + if (exhausted && videos.isNotEmpty()) 1 else 0
-    val pagerState = rememberPagerState(initialPage = 0) { pageCount }
-    val currentPage = pagerState.currentPage
 
     LaunchedEffect(currentPage) {
         if (currentPage < videos.size && currentPage < player.mediaItemCount) {
@@ -301,6 +298,10 @@ fun WheelsScreen(
         }
         return
     }
+
+    val pageCount = videos.size + if (exhausted && videos.isNotEmpty()) 1 else 0
+    val pagerState = rememberPagerState(initialPage = 0) { pageCount }
+    val currentPage = pagerState.currentPage
 
     VerticalPager(
         state = pagerState,

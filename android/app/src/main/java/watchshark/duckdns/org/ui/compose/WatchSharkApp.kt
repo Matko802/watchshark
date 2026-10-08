@@ -60,7 +60,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -74,7 +73,6 @@ import coil.ImageLoader
 import coil.compose.LocalImageLoader
 import coil.decode.VideoFrameDecoder
 import kotlinx.coroutines.launch
-import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.ApiClient
 import watchshark.duckdns.org.data.ThemePrefs
 import watchshark.duckdns.org.ui.compose.theme.WatchSharkTheme
@@ -222,7 +220,11 @@ fun WatchSharkApp(
                                             modifier = Modifier.clickable { goTab(ROUTE_HOME) },
                                         ) {
                                             Image(
-                                                painter = painterResource(id = R.mipmap.ic_launcher),
+                                                painter = coil.compose.rememberDrawablePainter(
+                                                    remember {
+                                                        appCtx.applicationInfo.loadIcon(appCtx.packageManager)
+                                                    },
+                                                ),
                                                 contentDescription = "WatchShark",
                                                 modifier = Modifier
                                                     .size(32.dp)
