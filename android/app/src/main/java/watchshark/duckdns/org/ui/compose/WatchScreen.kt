@@ -1,6 +1,8 @@
 package watchshark.duckdns.org.ui.compose
 
 import android.view.ViewGroup
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -217,13 +219,17 @@ fun WatchScreen(
                     )
                 }
                 if (!v.description.isNullOrEmpty()) {
+                    var descExpanded by remember(v.id) { mutableStateOf(false) }
                     Text(
                         v.description!!,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = if (descExpanded) Int.MAX_VALUE else 2,
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
+                            .clickable { descExpanded = !descExpanded }
+                            .animateContentSize()
                             .padding(top = 4.dp),
                     )
                 }
@@ -236,7 +242,10 @@ fun WatchScreen(
         }
         items(comments, key = { it.id }) { c ->
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .animateItem(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 if (c.avatar != null) {

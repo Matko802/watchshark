@@ -1,5 +1,6 @@
 package watchshark.duckdns.org.ui.compose
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,9 +10,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Person
@@ -66,8 +69,7 @@ fun MessagesScreen(
         items(conversations, key = { it.userId }) { c ->
             ListItem(
                 headlineContent = { Text("@${c.username}") },
-                supportingContent = { Text(c.lastMessage, maxLines = 1) },
-                trailingContent = {
+                supportingContent = { Text(c.lastMessage, maxLines = 1) },                trailingContent = {
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
                             fmtAge(c.lastAt),
@@ -97,7 +99,9 @@ fun MessagesScreen(
                         Icon(Icons.Filled.Person, contentDescription = null)
                     }
                 },
-                modifier = Modifier.clickable { onOpenThread(c.username) },
+                modifier = Modifier
+                    .clickable { onOpenThread(c.username) }
+                    .animateItem(),
             )
         }
     }
@@ -149,15 +153,25 @@ fun ChatScreen(
                 items(messages.reversed(), key = { it.id }) { m ->
                     val mine = m.senderId == meId
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                            .animateItem(),
                         horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start,
                     ) {
                         Text(
                             m.body,
                             style = MaterialTheme.typography.bodyMedium,
                             color = if (mine) MaterialTheme.colorScheme.onPrimary
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(8.dp),
+                            else MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier
+                                .widthIn(max = 280.dp)
+                                .background(
+                                    color = if (mine) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.surfaceContainerHighest,
+                                    shape = RoundedCornerShape(16.dp),
+                                )
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
                         )
                     }
                 }
@@ -220,7 +234,9 @@ fun NotificationsScreen(
             ListItem(
                 headlineContent = { Text(n.title) },
                 supportingContent = { Text("@${n.username} • ${fmtAge(n.created_at)}") },
-                modifier = Modifier.clickable {
+                modifier = Modifier
+                    .animateItem()
+                    .clickable {
                     scope.launch {
                         try {
                             ApiClient.api.notifRead(mapOf("id" to n.id))

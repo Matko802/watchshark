@@ -2,6 +2,17 @@
 package watchshark.duckdns.org.ui.compose
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -54,6 +65,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -68,6 +80,7 @@ import kotlinx.coroutines.launch
 import watchshark.duckdns.org.data.ApiClient
 import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.ThemePrefs
+import watchshark.duckdns.org.ui.compose.theme.AppMotion
 import watchshark.duckdns.org.ui.compose.theme.WatchSharkTheme
 
 private const val ROUTE_HOME = "home"
@@ -195,7 +208,11 @@ fun WatchSharkApp(
                         if (!route.startsWith("auth")) {
                             TopAppBar(
                                 title = {
-                                    if (searchExpanded) {
+                                    AnimatedContent(
+                                        targetState = searchExpanded,
+                                        label = "searchToggle",
+                                    ) { expanded ->
+                                    if (expanded) {
                                         TextField(
                                             value = query,
                                             onValueChange = {
@@ -227,6 +244,7 @@ fun WatchSharkApp(
                                                 fontSize = 18.sp,
                                             )
                                         }
+                                    }
                                     }
                                 },
                                 navigationIcon = {
@@ -272,7 +290,14 @@ fun WatchSharkApp(
                         // 24dp icons + 11sp labels, one 56x32 pill indicator
                         // on the active tab. Weight-distributed row, so the
                         // five slots are symmetric by construction.
-                        if (!wide && !route.startsWith("auth") && !route.startsWith("chat") && route != "update") {
+                        val showPill = !wide && !route.startsWith("auth") &&
+                            !route.startsWith("chat") && route != "update"
+                        AnimatedVisibility(
+                            visible = showPill,
+                            enter = slideInVertically { it } + fadeIn(),
+                            exit = slideOutVertically { it } + fadeOut(),
+                            label = "pillBar",
+                        ) {
                             val pillContainer = if (isSystemInDarkTheme()) Color.Black
                             else MaterialTheme.colorScheme.surface
                             val pillStroke = if (isSystemInDarkTheme()) Color(0xFF3D3D3D)
@@ -376,6 +401,10 @@ fun WatchSharkApp(
                         navController = nav,
                         startDestination = if (startLoggedIn) ROUTE_HOME else "auth",
                         modifier = Modifier.padding(padding),
+                        enterTransition = { AppMotion.screenEnter },
+                        exitTransition = { AppMotion.screenExit },
+                        popEnterTransition = { AppMotion.screenPopEnter },
+                        popExitTransition = { AppMotion.screenPopExit },
                     ) {
                         composable(ROUTE_HOME) {
                             HomeScreen(
@@ -527,14 +556,27 @@ private fun androidx.compose.foundation.layout.RowScope.PillTab(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(contentAlignment = Alignment.Center) {
-            if (selected) {
-                Box(
-                    modifier = Modifier
-                        .size(width = 56.dp, height = 32.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(MaterialTheme.colorScheme.secondaryContainer),
-                )
-            }
+            val indicatorAlpha by animateFloatAsState(
+                targetValue = if (selected) 1f else 0f,
+                animationSpec = AppMotion.fastSpatial,
+                label = "pillAlpha",
+            )
+            val indicatorScale by animateFloatAsState(
+                targetValue = if (selected) 1f else 0.6f,
+                animationSpec = AppMotion.fastSpatial,
+                label = "pillScale",
+            )
+            Box(
+                modifier = Modifier
+                    .size(width = 56.dp, height = 32.dp)
+                    .graphicsLayer {
+                        alpha = indicatorAlpha
+                        scaleX = indicatorScale
+                        scaleY = indicatorScale
+                    }
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.secondaryContainer),
+            )
             Box {
                 CompositionLocalProvider(
                     LocalContentColor provides if (selected) selectedColor else idleColor,

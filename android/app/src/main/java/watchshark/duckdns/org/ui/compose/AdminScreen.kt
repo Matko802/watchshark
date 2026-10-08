@@ -79,6 +79,7 @@ fun AdminScreen(
                     onOpenChannel = onOpenChannel,
                     onChanged = { reload() },
                     onError = { error = it },
+                    modifier = Modifier.animateItem(),
                 )
             }
         }
@@ -91,6 +92,7 @@ private fun AdminRow(
     onOpenChannel: (String) -> Unit,
     onChanged: () -> Unit,
     onError: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
     var days by remember { mutableStateOf("") }
@@ -120,7 +122,7 @@ private fun AdminRow(
         }
     }
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,

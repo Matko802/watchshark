@@ -4,6 +4,11 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -177,7 +182,12 @@ fun UploadScreen(
         Button(onClick = { upload() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
             Text("Upload")
         }
-        if (msg.isNotEmpty()) {
+        AnimatedVisibility(
+            visible = msg.isNotEmpty(),
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut(),
+            label = "uploadMsg",
+        ) {
             Text(msg, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }

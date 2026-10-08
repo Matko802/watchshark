@@ -1,5 +1,11 @@
 package watchshark.duckdns.org.ui.compose
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -89,6 +95,7 @@ fun SettingsScreen(
                 )
             }
         }
+        AnimatedContent(targetState = pane, label = "settingsPane") { _ ->
         when (pane) {
             0 -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
@@ -243,7 +250,13 @@ fun SettingsScreen(
             }
 
         }
-        if (msg.isNotEmpty()) {
+        }
+        AnimatedVisibility(
+            visible = msg.isNotEmpty(),
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut(),
+            label = "settingsMsg",
+        ) {
             Text(msg, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }

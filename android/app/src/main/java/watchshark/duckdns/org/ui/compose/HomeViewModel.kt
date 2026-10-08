@@ -2,6 +2,8 @@ package watchshark.duckdns.org.ui.compose
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -24,6 +26,7 @@ class HomeViewModel : ViewModel() {
         private set
     var query: String = ""
         private set
+    private var queryJob: Job? = null
 
     init {
         refresh()
@@ -38,7 +41,12 @@ class HomeViewModel : ViewModel() {
     fun setQuery(q: String) {
         if (query == q) return
         query = q
-        refresh()
+        // Debounce typing: avoids a request per keystroke, keeps search smooth.
+        queryJob?.cancel()
+        queryJob = viewModelScope.launch {
+            delay(350)
+            refresh()
+        }
     }
 
     fun refresh() {

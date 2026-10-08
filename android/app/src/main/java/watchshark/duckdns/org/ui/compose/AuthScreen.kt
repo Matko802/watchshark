@@ -1,6 +1,12 @@
 package watchshark.duckdns.org.ui.compose
 
 import android.content.Intent
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -123,7 +129,9 @@ fun AuthScreen(
             if (modeLogin) "Log in" else "Create account",
             style = MaterialTheme.typography.headlineMedium,
         )
-        if (!modeLogin) {
+        AnimatedContent(targetState = modeLogin, label = "authMode") { loginMode ->
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (!loginMode) {
             OutlinedTextField(
                 value = username,
                 onValueChange = { username = it },
@@ -140,18 +148,18 @@ fun AuthScreen(
             )
         }
         OutlinedTextField(
-            value = if (modeLogin) login else password,
-            onValueChange = { if (modeLogin) login = it else password = it },
-            label = { Text(if (modeLogin) "Handle or email" else "Password (6+ chars)") },
+            value = if (loginMode) login else password,
+            onValueChange = { if (loginMode) login = it else password = it },
+            label = { Text(if (loginMode) "Handle or email" else "Password (6+ chars)") },
             singleLine = true,
-            visualTransformation = if (modeLogin) {
+            visualTransformation = if (loginMode) {
                 androidx.compose.ui.text.input.VisualTransformation.None
             } else {
                 PasswordVisualTransformation()
             },
             modifier = Modifier.fillMaxWidth(),
         )
-        if (modeLogin) {
+        if (loginMode) {
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
@@ -161,19 +169,24 @@ fun AuthScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-        if (err.isNotEmpty()) {
+        AnimatedVisibility(
+            visible = err.isNotEmpty(),
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut(),
+            label = "authError",
+        ) {
             Text(err, color = MaterialTheme.colorScheme.error)
         }
         Button(
-            onClick = { if (modeLogin) doLogin() else doSignup() },
+            onClick = { if (loginMode) doLogin() else doSignup() },
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(if (modeLogin) "Log in" else "Create account")
+            Text(if (loginMode) "Log in" else "Create account")
         }
         TextButton(onClick = { modeLogin = !modeLogin; err = "" }) {
-            Text(if (modeLogin) "Create account" else "Log in")
+            Text(if (loginMode) "Create account" else "Log in")
         }
-        if (modeLogin) {
+        if (loginMode) {
             TextButton(onClick = {
                 try {
                     context.startActivity(
@@ -191,6 +204,8 @@ fun AuthScreen(
         }
         TextButton(onClick = onAuthComplete) {
             Text("Continue as guest")
+        }
+        }
         }
     }
 }

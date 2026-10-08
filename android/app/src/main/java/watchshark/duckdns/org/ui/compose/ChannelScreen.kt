@@ -1,5 +1,6 @@
 package watchshark.duckdns.org.ui.compose
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -140,14 +141,16 @@ fun ChannelScreen(
             Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Wheels") })
         }
         val shown = if (tab == 0) videos.filter { it.kind != "wheel" } else videos.filter { it.kind == "wheel" }
+        AnimatedContent(targetState = tab, label = "channelTab") { _ ->
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = 320.dp),
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(4.dp),
         ) {
             items(shown, key = { it.id }) { v ->
-                VideoCard(video = v, onOpen = onOpenVideo)
+                VideoCard(video = v, onOpen = onOpenVideo, modifier = Modifier.animateItem())
             }
+        }
         }
     }
 }

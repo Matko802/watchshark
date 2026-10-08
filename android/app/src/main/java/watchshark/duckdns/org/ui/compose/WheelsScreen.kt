@@ -1,8 +1,15 @@
 package watchshark.duckdns.org.ui.compose
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,8 +18,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -36,6 +46,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -50,12 +62,14 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.google.gson.JsonObject
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import watchshark.duckdns.org.data.ApiClient
 import watchshark.duckdns.org.data.AutoQuality
 import watchshark.duckdns.org.data.PlayerCache
 import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.Video
+import watchshark.duckdns.org.ui.compose.theme.AppMotion
 import watchshark.duckdns.org.ui.fmtNum
 import watchshark.duckdns.org.ui.httpErrorMessage
 
@@ -323,15 +337,50 @@ fun WheelsScreen(
         }
         val vid = videos[page]
         val isCurrent = page == currentPage
+        // Pager depth transformer: neighbors shrink + fade for a TikTok-like feel.
+        val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+        val offsetAbs = pageOffset.coerceIn(-1f, 1f).let { kotlin.math.abs(it) }
+        var heartBurst by remember(vid.id) { mutableStateOf(false) }
+        fun doLike() {
+            scope.launch {
+                try {
+                    val res = ApiClient.api.like(vid.id)
+                    val idx = videos.indexOfFirst { it.id == vid.id }
+                    if (idx >= 0) {
+                        videos[idx] = vid.copy(
+                            liked = res.get("liked")?.asBoolean == true,
+                            likes = res.get("likes")?.asLong ?: vid.likes,
+                        )
+                    }
+                } catch (e: Exception) {
+                    error = httpErrorMessage(e)
+                }
+            }
+        }
+        LaunchedEffect(heartBurst) {
+            if (heartBurst) {
+                delay(800)
+                heartBurst = false
+            }
+        }
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .graphicsLayer {
+                    val scale = (1f - 0.12f * offsetAbs).coerceIn(0.88f, 1f)
+                    scaleX = scale
+                    scaleY = scale
+                    alpha = (1f - 0.35f * offsetAbs).coerceIn(0.65f, 1f)
+                }
                 .background(Color.Black)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                ) {
-                    if (player.isPlaying) player.pause() else player.play()
+                .pointerInput(vid.id) {
+                    detectTapGestures(
+                        onTap = { if (player.isPlaying) player.pause() else player.play() },
+                        onDoubleTap = {
+                            heartBurst = true
+                            if (!vid.liked) doLike()
+                        },
+                    )
                 },
         ) {
             AndroidView(
@@ -369,10 +418,31 @@ fun WheelsScreen(
                     )
                     .padding(top = 96.dp),
             )
+            // Double-tap heart burst.
+            AnimatedVisibility(
+                visible = heartBurst,
+                enter = scaleIn(AppMotion.fastSpatial, initialScale = 0.4f) + fadeIn(),
+                exit = scaleOut(targetScale = 1.4f) + fadeOut(),
+                modifier = Modifier.align(Alignment.Center),
+                label = "heartBurst",
+            ) {
+                Icon(
+                    Icons.Filled.Favorite,
+                    contentDescription = null,
+                    tint = Color(0xFFFF5C5C),
+                    modifier = Modifier.size(96.dp),
+                )
+            }
             // Captions above the floating pill.
+            AnimatedVisibility(
+                visible = isCurrent,
+                enter = fadeIn() + androidx.compose.animation.slideInVertically { it / 4 },
+                exit = fadeOut(),
+                modifier = Modifier.align(Alignment.BottomStart),
+                label = "captions",
+            ) {
             Column(
                 modifier = Modifier
-                    .align(Alignment.BottomStart)
                     .fillMaxWidth(0.78f)
                     .padding(start = 12.dp, bottom = 96.dp, end = 8.dp),
             ) {
@@ -389,33 +459,34 @@ fun WheelsScreen(
                     modifier = Modifier.clickable { onOpenChannel(vid.username) },
                 )
             }
+            }
             // Action rail.
+            AnimatedVisibility(
+                visible = isCurrent,
+                enter = fadeIn() + androidx.compose.animation.slideInVertically { it / 4 },
+                exit = fadeOut(),
+                modifier = Modifier.align(Alignment.BottomEnd),
+                label = "actions",
+            ) {
             Column(
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
                     .padding(end = 8.dp, bottom = 96.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                IconButton(onClick = {
-                    scope.launch {
-                        try {
-                            val res = ApiClient.api.like(vid.id)
-                            val idx = videos.indexOfFirst { it.id == vid.id }
-                            if (idx >= 0) {
-                                videos[idx] = vid.copy(
-                                    liked = res.get("liked")?.asBoolean == true,
-                                    likes = res.get("likes")?.asLong ?: vid.likes,
-                                )
-                            }
-                        } catch (e: Exception) {
-                            error = httpErrorMessage(e)
-                        }
-                    }
-                }) {
+                val likeScale by animateFloatAsState(
+                    targetValue = if (vid.liked) 1.25f else 1f,
+                    animationSpec = AppMotion.fastSpatial,
+                    label = "likePop",
+                )
+                IconButton(onClick = { doLike() }) {
                     Icon(
                         painterResource(R.drawable.ic_thumb_up),
                         contentDescription = "Like",
                         tint = if (vid.liked) Color(0xFFFF5C5C) else Color.White,
+                        modifier = Modifier.graphicsLayer {
+                            scaleX = likeScale
+                            scaleY = likeScale
+                        },
                     )
                 }
                 Text(fmtNum(vid.likes), color = Color.White, style = MaterialTheme.typography.labelSmall)
@@ -445,6 +516,7 @@ fun WheelsScreen(
                         style = MaterialTheme.typography.labelSmall,
                     )
                 }
+            }
             }
         }
     }

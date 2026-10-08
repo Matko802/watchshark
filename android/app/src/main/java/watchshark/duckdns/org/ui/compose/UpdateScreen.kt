@@ -1,5 +1,10 @@
 package watchshark.duckdns.org.ui.compose
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -82,13 +87,25 @@ fun UpdateScreen(
             "Update available${update?.let { " (${it.version})" } ?: ""}",
             style = MaterialTheme.typography.headlineSmall,
         )
-        if (error != null) {
+        AnimatedVisibility(
+            visible = error != null,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut(),
+            label = "updateError",
+        ) {
             Text(
-                error!!,
+                error ?: "",
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(top = 12.dp),
             )
-        } else {
+        }
+        AnimatedVisibility(
+            visible = error == null,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            label = "updateProgress",
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
             LinearProgressIndicator(
                 progress = { progress },
                 modifier = Modifier
@@ -100,6 +117,7 @@ fun UpdateScreen(
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(top = 12.dp),
             )
+            }
         }
         OutlinedButton(
             onClick = {
