@@ -280,17 +280,6 @@ fun WheelsScreen(
     LaunchedEffect(Unit) { loadMore() }
 
 
-    LaunchedEffect(currentPage) {
-        if (currentPage < videos.size && currentPage < player.mediaItemCount) {
-            if (player.currentMediaItemIndex != currentPage) {
-                player.seekTo(currentPage, 0)
-            }
-            player.playWhenReady = true
-            autoUpgradeCurrent(currentPage)
-        }
-        if (currentPage >= videos.size - 3) loadMore()
-    }
-
     if (videos.isEmpty()) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             if (loading) CircularProgressIndicator()
@@ -302,6 +291,18 @@ fun WheelsScreen(
     val pageCount = videos.size + if (exhausted && videos.isNotEmpty()) 1 else 0
     val pagerState = rememberPagerState(initialPage = 0) { pageCount }
     val currentPage = pagerState.currentPage
+
+    LaunchedEffect(currentPage) {
+        if (currentPage < videos.size && currentPage < player.mediaItemCount) {
+            if (player.currentMediaItemIndex != currentPage) {
+                player.seekTo(currentPage, 0)
+            }
+            player.playWhenReady = true
+            autoUpgradeCurrent(currentPage)
+        }
+        if (currentPage >= videos.size - 3) loadMore()
+    }
+
 
     VerticalPager(
         state = pagerState,

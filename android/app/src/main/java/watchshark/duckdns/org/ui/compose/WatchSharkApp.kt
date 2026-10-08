@@ -71,6 +71,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import coil.ImageLoader
 import coil.compose.LocalImageLoader
+import coil.compose.rememberAsyncImagePainter
 import coil.decode.VideoFrameDecoder
 import kotlinx.coroutines.launch
 import watchshark.duckdns.org.data.ApiClient
@@ -219,11 +220,12 @@ fun WatchSharkApp(
                                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                                             modifier = Modifier.clickable { goTab(ROUTE_HOME) },
                                         ) {
+                                            val appIcon = remember {
+                                                appCtx.applicationInfo.loadIcon(appCtx.packageManager)
+                                            }
                                             Image(
-                                                painter = coil.compose.rememberDrawablePainter(
-                                                    remember {
-                                                        appCtx.applicationInfo.loadIcon(appCtx.packageManager)
-                                                    },
+                                                painter = rememberAsyncImagePainter(
+                                                    model = appIcon,
                                                 ),
                                                 contentDescription = "WatchShark",
                                                 modifier = Modifier
