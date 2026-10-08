@@ -218,7 +218,7 @@ fun WheelsScreen(
                     if (exhausted) return@repeat
                     try {
                         val q = if (seen.isEmpty()) null
-                        else seen.takeLast(128).joinToString(",")
+                        else seen.toList().takeLast(128).joinToString(",")
                         val res = ApiClient.api.wheels(q)
                         val vid = res.getAsJsonObject("video")?.let { parseWheelVideo(it) }
                         if (vid == null || seen.contains(vid.id)) return@repeat

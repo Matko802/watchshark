@@ -65,7 +65,9 @@ fun AuthScreen(
                         (me.ban_reason?.let { "\nReason: $it" } ?: "")
                     return@launch
                 }
-                UploadAlerts.ensureScheduled(context)
+                (context as? android.app.Activity)?.let {
+                    UploadAlerts.ensureScheduled(it)
+                }
                 onAuthComplete()
             } catch (e: Exception) {
                 err = httpErrorMessage(e)
