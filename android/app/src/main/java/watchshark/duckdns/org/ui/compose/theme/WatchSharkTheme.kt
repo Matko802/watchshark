@@ -33,8 +33,8 @@ private val FallbackDark = darkColorScheme(
     error = Color(0xFFF2B8B5),
 )
 
-// Pure-black AMOLED dark: the pre-rewrite look. All surfaces stay
-// black so feeds and bars melt into the display.
+// Pure-black AMOLED fallback when dynamic color is unavailable.
+// All surfaces stay black so feeds and bars melt into the display.
 private val AmoledDark = darkColorScheme(
     primary = Color.White,
     onPrimary = Color.Black,
@@ -55,6 +55,32 @@ private val AmoledDark = darkColorScheme(
     surfaceContainerHigh = Color(0xFF141414),
     surfaceContainerHighest = Color(0xFF1C1C1C),
     outline = Color(0xFF5A5A5A),
+    outlineVariant = Color(0xFF3D3D3D),
+    error = Color(0xFFF2B8B5),
+)
+
+// Neutral YouTube-like grey dark (the "Grey" mode): grey surfaces,
+// monochrome accents — distinct from AMOLED's true black.
+private val GreyDark = darkColorScheme(
+    primary = Color.White,
+    onPrimary = Color.Black,
+    primaryContainer = Color(0xFF3A3A3A),
+    onPrimaryContainer = Color.White,
+    secondary = Color(0xFFB0B0B0),
+    onSecondary = Color.Black,
+    secondaryContainer = Color(0xFF3A3A3A),
+    onSecondaryContainer = Color.White,
+    tertiary = Color(0xFFDDDDDD),
+    surface = Color(0xFF141414),
+    onSurface = Color.White,
+    surfaceVariant = Color(0xFF1F1F1F),
+    onSurfaceVariant = Color(0xFFA8A8A8),
+    surfaceContainerLowest = Color(0xFF0F0F0F),
+    surfaceContainerLow = Color(0xFF141414),
+    surfaceContainer = Color(0xFF1D1D1D),
+    surfaceContainerHigh = Color(0xFF242424),
+    surfaceContainerHighest = Color(0xFF2E2E2E),
+    outline = Color(0xFF8A8A8A),
     outlineVariant = Color(0xFF3D3D3D),
     error = Color(0xFFF2B8B5),
 )
@@ -83,7 +109,9 @@ private val FallbackLight = lightColorScheme(
  * M3 Expressive theme entry.
  * - Uses dynamic color on API 31+ (Material You / Expressive).
  * - Falls back to YouTube-like monochrome otherwise.
- * - amoled=true forces the old pure-black AMOLED look in dark mode.
+ * - amoled=true keeps the dynamic (Material You) accents but forces
+ *   true-black surfaces in dark mode — same theme, AMOLED blacks.
+ * - grey=true forces the neutral grey dark look in dark mode.
  * - Expressive shapes/motion come from material3 1.3+ defaults
  *   (64dp NavigationBar, pill indicators, spring motion).
  */
@@ -92,12 +120,31 @@ fun WatchSharkTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
     amoled: Boolean = false,
+    grey: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
+    val useDynamic = dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val colorScheme = when {
+        darkTheme && amoled && useDynamic -> {
+            // Same dynamic theme, AMOLED blacks: keep every Material You
+            // accent, only crush surfaces/backgrounds to true black.
+            val base = dynamicDarkColorScheme(context)
+            base.copy(
+                background = Color.Black,
+                surface = Color.Black,
+                surfaceDim = Color.Black,
+                surfaceVariant = Color.Black,
+                surfaceContainerLowest = Color.Black,
+                surfaceContainerLow = Color.Black,
+                surfaceContainer = Color(0xFF0D0D0D),
+                surfaceContainerHigh = Color(0xFF141414),
+                surfaceContainerHighest = Color(0xFF1C1C1C),
+            )
+        }
         darkTheme && amoled -> AmoledDark
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+        darkTheme && grey -> GreyDark
+        useDynamic -> {
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
         darkTheme -> FallbackDark

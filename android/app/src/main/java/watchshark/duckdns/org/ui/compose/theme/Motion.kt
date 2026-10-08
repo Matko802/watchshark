@@ -28,9 +28,11 @@ object AppMotion {
         dampingRatio = Spring.DampingRatioNoBouncy,
         stiffness = Spring.StiffnessMediumLow,
     )
+    // Gentle press feedback: no bounce/overshoot, so taps feel soft
+    // instead of snappy. Press targets use a subtle 0.98 scale.
     val pressSpring = spring<Float>(
-        dampingRatio = Spring.DampingRatioMediumBouncy,
-        stiffness = Spring.StiffnessHigh,
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = Spring.StiffnessMedium,
     )
 
     fun fadeFast() = fadeIn(tween(150, easing = FastOutSlowInEasing))

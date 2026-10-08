@@ -474,7 +474,7 @@ fun WheelsScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 val likeScale by animateFloatAsState(
-                    targetValue = if (vid.liked) 1.25f else 1f,
+                    targetValue = if (vid.liked) 1.15f else 1f,
                     animationSpec = AppMotion.fastSpatial,
                     label = "likePop",
                 )

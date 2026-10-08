@@ -3,6 +3,7 @@ package watchshark.duckdns.org.ui.compose
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -44,12 +45,11 @@ fun VideoCard(
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.97f else 1f,
+        targetValue = if (pressed) 0.98f else 1f,
         animationSpec = AppMotion.pressSpring,
         label = "cardPress",
     )
     Surface(
-        tonalElevation = if (pressed) 2.dp else 0.dp,
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
         modifier = modifier
@@ -62,7 +62,10 @@ fun VideoCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(interactionSource = interaction, indication = null) { onOpen(video) }
+            .clickable(
+                interactionSource = interaction,
+                indication = LocalIndication.current,
+            ) { onOpen(video) }
             .padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {

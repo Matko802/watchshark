@@ -198,8 +198,7 @@ fun SettingsScreen(
                 )
             val options = listOf(
                 ThemePrefs.MODE_SYSTEM to "System default",
-                ThemePrefs.MODE_LIGHT to "Light",
-                ThemePrefs.MODE_DARK to "Dark",
+                ThemePrefs.MODE_GREY to "Grey",
                 ThemePrefs.MODE_AMOLED to "AMOLED black",
             )
             options.forEach { (mode, label) ->

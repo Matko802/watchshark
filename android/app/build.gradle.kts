@@ -12,8 +12,8 @@ android {
         applicationId = "watchshark.duckdns.org"
         minSdk = 26
         targetSdk = 34
-        versionCode = 10798
-        versionName = "1.7.6"
+        versionCode = 10799
+        versionName = "1.7.7"
         buildConfigField("String", "APP_URL", "\"https://watchshark.duckdns.org\"")
     }
 

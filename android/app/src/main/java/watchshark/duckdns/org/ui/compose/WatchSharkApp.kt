@@ -15,13 +15,16 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -62,6 +65,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -111,6 +115,7 @@ fun WatchSharkApp(
     WatchSharkTheme(
         darkTheme = ThemePrefs.toDarkOverride(themeMode) ?: isSystemInDarkTheme(),
         amoled = themeMode == ThemePrefs.MODE_AMOLED,
+        grey = themeMode == ThemePrefs.MODE_GREY,
     ) {
         CompositionLocalProvider(LocalImageLoader provides videoLoader) {
         val nav = rememberNavController()
@@ -151,10 +156,19 @@ fun WatchSharkApp(
         fun goTab(tab: String) {
             query = ""
             searchExpanded = false
-            nav.navigate(tab) {
-                popUpTo(nav.graph.startDestinationId) { saveState = true }
-                launchSingleTop = true
-                restoreState = true
+            try {
+                nav.navigate(tab) {
+                    popUpTo(nav.graph.startDestinationId) { saveState = true }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            } catch (_: Exception) {
+                // Navigation can throw for a tearing-down controller;
+                // never let a tab tap die silently.
+                try {
+                    nav.navigate(tab) { launchSingleTop = true }
+                } catch (_: Exception) {
+                }
             }
             scope.launch { refreshBadges() }
         }
@@ -351,16 +365,26 @@ fun WatchSharkApp(
                                             )
                                         }
                                         // Original center button: white circle, black plus.
-                                        Image(
-                                            painter = painterResource(R.drawable.ic_add),
-                                            contentDescription = "Create",
-                                            modifier = Modifier
-                                                .size(48.dp)
-                                                .clip(CircleShape)
-                                                .background(Color.White)
-                                                .clickable { showCreateSheet = true }
-                                                .padding(12.dp),
-                                        )
+                                        // Full 48dp tap target with ripple (Surface.onClick),
+                                        // so taps never fall through around the icon.
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = Color.White,
+                                            contentColor = Color.Black,
+                                            modifier = Modifier.size(48.dp),
+                                            onClick = { showCreateSheet = true },
+                                        ) {
+                                            Box(
+                                                contentAlignment = Alignment.Center,
+                                                modifier = Modifier.fillMaxSize(),
+                                            ) {
+                                                Icon(
+                                                    painterResource(R.drawable.ic_add),
+                                                    contentDescription = "Create",
+                                                    modifier = Modifier.size(24.dp),
+                                                )
+                                            }
+                                        }
                                         PillTab(
                                             selected = selectedTab == ROUTE_MESSAGES,
                                             onClick = { goTab(ROUTE_MESSAGES) },
@@ -548,10 +572,21 @@ private fun androidx.compose.foundation.layout.RowScope.PillTab(
     badgeText: String = "",
     icon: @Composable () -> Unit,
 ) {
+    // Every tab gets its own interaction source + ripple and a 48dp
+    // minimum touch target, so taps always register visible feedback
+    // and never get swallowed by a too-small hit area.
+    val tabInteraction = remember { MutableInteractionSource() }
     Column(
         modifier = Modifier
             .weight(1f)
-            .clickable(onClick = onClick)
+            .defaultMinSize(minHeight = 48.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(
+                interactionSource = tabInteraction,
+                indication = LocalIndication.current,
+                role = Role.Tab,
+                onClick = onClick,
+            )
             .padding(vertical = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
