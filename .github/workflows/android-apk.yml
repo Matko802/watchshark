@@ -2,7 +2,7 @@ name: Android APK
 
 on:
   push:
-    branches: [backup-main-1.6.70, main]
+    branches: [main]
     paths:
       - 'android/**'
       - '.github/workflows/android-apk.yml'
@@ -34,7 +34,9 @@ jobs:
         run: ls -la app/build/outputs/apk/release/ app/build/outputs/apk/debug/
 
       - name: Verify signature
-        run: $ANDROID_HOME/build-tools/34.0.0/apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk | head -n 8
+        run: |
+          BT=$(ls $ANDROID_HOME/build-tools | sort -V | tail -n 1)
+          $ANDROID_HOME/build-tools/$BT/apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk | head -n 8
 
       - name: Upload release APK
         uses: actions/upload-artifact@v4
@@ -55,7 +57,7 @@ jobs:
   # the signed APK (the exact asset the in-app updater looks for).
   release:
     needs: build
-    if: github.ref == 'refs/heads/backup-main-1.6.70' || github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -100,3 +102,7 @@ jobs:
           files: WatchShark-${{ steps.ver.outputs.version }}.apk
           draft: false
           prerelease: false
+          generate_release_notes: true
+          body: |
+            M3 Expressive Compose UI (dynamic color, NavigationBar + NavigationRail, SearchBar, YouTube-proper tabs).
+            Built from main. In-app updater looks for WatchShark-<version>.apk.
