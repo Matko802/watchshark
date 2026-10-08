@@ -34,18 +34,26 @@ jobs:
           echo "Gradle exit: $code"
           exit $code
 
-      - name: Surface Kotlin errors as annotations
+      - name: Surface build errors as annotations
         if: failure()
         run: |
-          grep -oP '^e: file://\K[^ ]+' build.log | head -n 20 > kerrors.txt || true
-          cat build.log | grep -E '^e: ' | head -n 30 || true
-          # Emit file annotations (public via Checks API) so errors are visible without log access.
+          ls -la
+          echo "--- build.log size ---"
+          wc -l build.log 2>/dev/null || echo "NO build.log"
+          echo "--- e: lines ---"
+          grep -E '^e: ' build.log | head -n 30 || echo "(no ^e: lines)"
+          # Emit Kotlin errors with repo-relative file paths.
           grep -P '^e: file://' build.log | head -n 20 | while IFS= read -r line; do
             f=$(echo "$line" | sed -E 's#^e: file://##; s#:[0-9:]+ .*##')
-            # Make path repo-relative for the annotation.
             rel=$(echo "$f" | sed -E 's#^/home/runner/work/watchshark/watchshark/##')
-            msg=$(echo "$line" | cut -c1-500)
+            msg=$(echo "$line" | cut -c1-800)
             echo "::error file=$rel::$msg"
+          done || true
+          echo "--- last 40 log lines as warnings ---"
+          tail -n 40 build.log | cut -c1-800 | while IFS= read -r line; do
+            # Escape % for workflow commands.
+            safe=$(echo "$line" | sed 's/%/%25/g')
+            echo "::warning::$safe"
           done || true
 
       - name: Show outputs
