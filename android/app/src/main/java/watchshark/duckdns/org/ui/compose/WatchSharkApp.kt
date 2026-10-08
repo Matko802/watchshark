@@ -15,7 +15,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -365,25 +364,26 @@ fun WatchSharkApp(
                                             )
                                         }
                                         // Original center button: white circle, black plus.
-                                        // Full 48dp tap target with ripple (Surface.onClick),
-                                        // so taps never fall through around the icon.
-                                        Surface(
-                                            shape = CircleShape,
-                                            color = Color.White,
-                                            contentColor = Color.Black,
-                                            modifier = Modifier.size(48.dp),
-                                            onClick = { showCreateSheet = true },
+                                        // Full 48dp tap target, no highlight ripple.
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier
+                                                .size(48.dp)
+                                                .clip(CircleShape)
+                                                .background(Color.White)
+                                                .clickable(
+                                                    interactionSource = remember { MutableInteractionSource() },
+                                                    indication = null,
+                                                    role = Role.Button,
+                                                    onClick = { showCreateSheet = true },
+                                                ),
                                         ) {
-                                            Box(
-                                                contentAlignment = Alignment.Center,
-                                                modifier = Modifier.fillMaxSize(),
-                                            ) {
-                                                Icon(
-                                                    painterResource(R.drawable.ic_add),
-                                                    contentDescription = "Create",
-                                                    modifier = Modifier.size(24.dp),
-                                                )
-                                            }
+                                            Icon(
+                                                painterResource(R.drawable.ic_add),
+                                                contentDescription = "Create",
+                                                tint = Color.Black,
+                                                modifier = Modifier.size(24.dp),
+                                            )
                                         }
                                         PillTab(
                                             selected = selectedTab == ROUTE_MESSAGES,
@@ -572,9 +572,8 @@ private fun androidx.compose.foundation.layout.RowScope.PillTab(
     badgeText: String = "",
     icon: @Composable () -> Unit,
 ) {
-    // Every tab gets its own interaction source + ripple and a 48dp
-    // minimum touch target, so taps always register visible feedback
-    // and never get swallowed by a too-small hit area.
+    // Every tab gets its own interaction source (no highlight ripple)
+    // and a full-bleed 48dp minimum touch target, so taps always land.
     val tabInteraction = remember { MutableInteractionSource() }
     Column(
         modifier = Modifier
@@ -583,13 +582,17 @@ private fun androidx.compose.foundation.layout.RowScope.PillTab(
             .clip(RoundedCornerShape(16.dp))
             .clickable(
                 interactionSource = tabInteraction,
-                indication = LocalIndication.current,
+                indication = null,
                 role = Role.Tab,
                 onClick = onClick,
-            )
-            .padding(vertical = 2.dp),
+            ),
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
+        Column(
+            modifier = Modifier.padding(vertical = 2.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
         Box(contentAlignment = Alignment.Center) {
             val indicatorAlpha by animateFloatAsState(
                 targetValue = if (selected) 1f else 0f,
@@ -630,12 +633,13 @@ private fun androidx.compose.foundation.layout.RowScope.PillTab(
                 }
             }
         }
-        Text(
-            text = label,
-            fontSize = 11.sp,
-            color = if (selected) selectedColor else idleColor,
-            modifier = Modifier.padding(top = 3.dp),
-        )
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                color = if (selected) selectedColor else idleColor,
+                modifier = Modifier.padding(top = 3.dp),
+            )
+        }
     }
 }
 

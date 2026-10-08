@@ -103,26 +103,30 @@ fun ChannelScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            // No following yourself (same as web).
+            // No following yourself (same as web). Flips instantly (optimistic).
             if (meId != null && meId != u.id) {
                 val following = u.following
                 if (following) {
                     OutlinedButton(onClick = {
+                        val cur = user ?: return@OutlinedButton
+                        user = cur.copy(following = false, followers = (cur.followers - 1).coerceAtLeast(0))
                         scope.launch {
                             try {
-                                ApiClient.api.follow(u.id)
-                                user = u.copy(following = false, followers = (u.followers - 1).coerceAtLeast(0))
+                                ApiClient.api.follow(cur.id)
                             } catch (_: Exception) {
+                                user = cur
                             }
                         }
                     }) { Text("Following") }
                 } else {
                     Button(onClick = {
+                        val cur = user ?: return@Button
+                        user = cur.copy(following = true, followers = cur.followers + 1)
                         scope.launch {
                             try {
-                                ApiClient.api.follow(u.id)
-                                user = u.copy(following = true, followers = u.followers + 1)
+                                ApiClient.api.follow(cur.id)
                             } catch (_: Exception) {
+                                user = cur
                             }
                         }
                     }) {

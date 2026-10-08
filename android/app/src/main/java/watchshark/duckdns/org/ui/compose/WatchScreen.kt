@@ -170,17 +170,20 @@ fun WatchScreen(
                         Text("@${v.username}")
                     }
                     // Follow (outlined w/ person_add like web) + Like chip. Never on own videos.
+                    // Both flip instantly (optimistic) so taps never feel dead.
                     if (meId != null && meId != v.userId) {
                         OutlinedButton(
                             onClick = {
+                                val cur = video ?: return@OutlinedButton
+                                video = cur.copy(
+                                    following = !cur.following,
+                                    followers = (cur.followers + if (cur.following) -1 else 1).coerceAtLeast(0),
+                                )
                                 scope.launch {
                                     try {
-                                        ApiClient.api.follow(v.userId)
-                                        video = v.copy(
-                                            following = !v.following,
-                                            followers = v.followers + if (v.following) -1 else 1,
-                                        )
+                                        ApiClient.api.follow(cur.userId)
                                     } catch (_: Exception) {
+                                        video = cur
                                     }
                                 }
                             },
@@ -198,14 +201,16 @@ fun WatchScreen(
                     FilterChip(
                         selected = v.liked,
                         onClick = {
+                            val cur = video ?: return@FilterChip
+                            video = cur.copy(
+                                liked = !cur.liked,
+                                likes = (cur.likes + if (cur.liked) -1 else 1).coerceAtLeast(0),
+                            )
                             scope.launch {
                                 try {
-                                    ApiClient.api.like(v.id)
-                                    video = v.copy(
-                                        liked = !v.liked,
-                                        likes = v.likes + if (v.liked) -1 else 1,
-                                    )
+                                    ApiClient.api.like(cur.id)
                                 } catch (_: Exception) {
+                                    video = cur
                                 }
                             }
                         },

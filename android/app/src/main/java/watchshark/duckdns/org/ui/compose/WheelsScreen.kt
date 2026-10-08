@@ -348,17 +348,21 @@ fun WheelsScreen(
         val offsetAbs = pageOffset.coerceIn(-1f, 1f).let { kotlin.math.abs(it) }
         var heartBurst by remember(vid.id) { mutableStateOf(false) }
         fun doLike() {
+            // Optimistic: flip the heart instantly so the tap never
+            // feels dead on slow networks; revert only on failure.
+            val idx = videos.indexOfFirst { it.id == vid.id }
+            if (idx < 0) return
+            val cur = videos[idx]
+            videos[idx] = cur.copy(
+                liked = !cur.liked,
+                likes = (cur.likes + if (cur.liked) -1 else 1).coerceAtLeast(0),
+            )
             scope.launch {
                 try {
-                    val res = ApiClient.api.like(vid.id)
-                    val idx = videos.indexOfFirst { it.id == vid.id }
-                    if (idx >= 0) {
-                        videos[idx] = vid.copy(
-                            liked = res.get("liked")?.asBoolean == true,
-                            likes = res.get("likes")?.asLong ?: vid.likes,
-                        )
-                    }
+                    ApiClient.api.like(vid.id)
                 } catch (e: Exception) {
+                    val i = videos.indexOfFirst { it.id == vid.id }
+                    if (i >= 0) videos[i] = cur
                     error = httpErrorMessage(e)
                 }
             }
