@@ -3,6 +3,7 @@ package watchshark.duckdns.org.ui.compose
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,8 +18,9 @@ import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Tab
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,25 +49,38 @@ fun HomeScreen(
         viewModel.setQuery(query)
     }
 
-    val selectedTab = if (viewModel.sort == "popular") 1 else 0
     Column(modifier = Modifier.fillMaxSize()) {
-        // YouTube-proper segmented tabs: Latest / Trending, centered pill.
-        PrimaryTabRow(
-            selectedTabIndex = selectedTab,
-            modifier = Modifier.fillMaxWidth(),
+        // Floating slider pill like on web: Latest / Trending segmented control.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.Center,
         ) {
-            Tab(
-                selected = selectedTab == 0,
-                onClick = { viewModel.setSort("new") },
-                text = { Text("Latest") },
-                icon = { Icon(Icons.Filled.NewReleases, contentDescription = null) },
-            )
-            Tab(
-                selected = selectedTab == 1,
-                onClick = { viewModel.setSort("popular") },
-                text = { Text("Trending") },
-                icon = { Icon(Icons.Filled.Whatshot, contentDescription = null) },
-            )
+            SingleChoiceSegmentedButtonRow {
+                SegmentedButton(
+                    selected = viewModel.sort == "new",
+                    onClick = { viewModel.setSort("new") },
+                    shape = SegmentedButtonDefaults.itemShape(0, 2),
+                    icon = {
+                        SegmentedButtonDefaults.Icon(active = viewModel.sort == "new") {
+                            Icon(Icons.Filled.NewReleases, contentDescription = null)
+                        }
+                    },
+                    label = { Text("Latest") },
+                )
+                SegmentedButton(
+                    selected = viewModel.sort == "popular",
+                    onClick = { viewModel.setSort("popular") },
+                    shape = SegmentedButtonDefaults.itemShape(1, 2),
+                    icon = {
+                        SegmentedButtonDefaults.Icon(active = viewModel.sort == "popular") {
+                            Icon(Icons.Filled.Whatshot, contentDescription = null)
+                        }
+                    },
+                    label = { Text("Trending") },
+                )
+            }
         }
 
         val gridState = rememberLazyGridState()

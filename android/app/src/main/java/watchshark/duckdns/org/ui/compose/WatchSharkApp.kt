@@ -2,6 +2,7 @@ package watchshark.duckdns.org.ui.compose
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -269,20 +271,31 @@ fun WatchSharkApp(
                         // Floating pill nav (the classic WatchShark look), built
                         // from the standard M3 Expressive NavigationBar.
                         if (!wide && !route.startsWith("auth") && !route.startsWith("chat")) {
+                            // Slim centered floating pill (classic WatchShark look):
+                            // narrow margins, 68dp bar, stroked surface so it
+                            // stays visible even on pure-black AMOLED.
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp)
+                                    .padding(horizontal = 28.dp)
                                     .padding(bottom = 12.dp),
+                                contentAlignment = Alignment.Center,
                             ) {
                                 Surface(
                                     shape = RoundedCornerShape(28.dp),
-                                    color = MaterialTheme.colorScheme.surfaceContainer,
+                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
                                     tonalElevation = 3.dp,
                                     shadowElevation = 6.dp,
+                                    border = BorderStroke(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.outlineVariant,
+                                    ),
                                     modifier = Modifier.fillMaxWidth(),
                                 ) {
-                                    NavigationBar(containerColor = Color.Transparent) {
+                                    NavigationBar(
+                                        containerColor = Color.Transparent,
+                                        modifier = Modifier.height(68.dp),
+                                    ) {
                                 NavigationBarItem(
                                     selected = selectedTab == ROUTE_HOME,
                                     onClick = { goTab(ROUTE_HOME) },

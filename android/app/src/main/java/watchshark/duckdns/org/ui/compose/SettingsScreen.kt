@@ -14,11 +14,14 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -38,17 +41,6 @@ import watchshark.duckdns.org.data.UploadAlerts
 import watchshark.duckdns.org.ui.httpErrorMessage
 
 @Composable
-private fun Section(title: String, content: @Composable () -> Unit) {
-    Text(
-        title,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(top = 16.dp),
-    )
-    content()
-}
-
-@Composable
 fun SettingsScreen(
     themeMode: Int,
     onThemeMode: (Int) -> Unit,
@@ -65,6 +57,8 @@ fun SettingsScreen(
     var notifOn by remember { mutableStateOf(false) }
     var msg by remember { mutableStateOf("") }
     var showCrash by remember { mutableStateOf(false) }
+    var pane by remember { mutableIntStateOf(0) }
+    val panes = listOf("Account", "Security", "Notifications", "App")
 
     LaunchedEffect(Unit) {
         try {
@@ -84,8 +78,17 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text("Settings", style = MaterialTheme.typography.headlineSmall)
-
-        Section("Account") {
+        TabRow(selectedTabIndex = pane) {
+            panes.forEachIndexed { i, label ->
+                Tab(
+                    selected = pane == i,
+                    onClick = { pane = i },
+                    text = { Text(label) },
+                )
+            }
+        }
+        when (pane) {
+            0 -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
@@ -122,9 +125,9 @@ fun SettingsScreen(
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Sign out") }
-        }
+            }
 
-        Section("Security") {
+            1 -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = curPw,
                 onValueChange = { curPw = it },
@@ -155,7 +158,7 @@ fun SettingsScreen(
             }) { Text("Save password") }
         }
 
-        Section("Notifications") {
+            2 -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -178,7 +181,12 @@ fun SettingsScreen(
             }
         }
 
-        Section("Appearance") {
+            3 -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Appearance",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             val options = listOf(
                 ThemePrefs.MODE_SYSTEM to "System default",
                 ThemePrefs.MODE_LIGHT to "Light",
@@ -197,9 +205,13 @@ fun SettingsScreen(
                     Text(label)
                 }
             }
-        }
 
-        Section("App") {
+                Text(
+                    "App",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
             Text(
                 "Version ${Updater.currentVersion(context)}",
                 style = MaterialTheme.typography.bodyMedium,
@@ -217,8 +229,9 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text("Copy crash report") }
             }
-        }
+            }
 
+        }
         if (msg.isNotEmpty()) {
             Text(msg, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
