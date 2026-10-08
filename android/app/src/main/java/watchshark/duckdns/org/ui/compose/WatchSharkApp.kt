@@ -14,19 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Mail
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Mail
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -60,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,6 +63,7 @@ import coil.compose.rememberAsyncImagePainter
 import coil.decode.VideoFrameDecoder
 import kotlinx.coroutines.launch
 import watchshark.duckdns.org.data.ApiClient
+import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.ThemePrefs
 import watchshark.duckdns.org.ui.compose.theme.WatchSharkTheme
 
@@ -163,32 +152,31 @@ fun WatchSharkApp(
                         RailTab(
                             label = "Home",
                             selected = selectedTab == ROUTE_HOME,
-                            selectedIcon = Icons.Filled.Home,
-                            unselectedIcon = Icons.Outlined.Home,
+                            iconRes = R.drawable.ic_home,
                             onClick = { goTab(ROUTE_HOME) },
                         )
                         RailTab(
                             label = "Wheels",
                             selected = selectedTab == ROUTE_WHEELS,
-                            selectedIcon = Icons.Filled.PlayArrow,
-                            unselectedIcon = Icons.Outlined.PlayArrow,
+                            iconRes = R.drawable.ic_movie,
                             onClick = { goTab(ROUTE_WHEELS) },
                         )
                         FloatingActionButton(onClick = { showCreateSheet = true }) {
-                            Icon(Icons.Filled.Add, contentDescription = "Create")
+                            Icon(
+                                painterResource(R.drawable.ic_add),
+                                contentDescription = "Create",
+                            )
                         }
                         RailTab(
                             label = "Messages",
                             selected = selectedTab == ROUTE_MESSAGES,
-                            selectedIcon = Icons.Filled.Mail,
-                            unselectedIcon = Icons.Outlined.Mail,
+                            iconRes = R.drawable.ic_chat,
                             onClick = { goTab(ROUTE_MESSAGES) },
                         )
                         RailTab(
                             label = "You",
                             selected = selectedTab == ROUTE_YOU,
-                            selectedIcon = Icons.Filled.Person,
-                            unselectedIcon = Icons.Outlined.Person,
+                            iconRes = R.drawable.ic_person,
                             onClick = {
                                 val name = meName
                                 if (name != null) nav.navigate("channel/$name")
@@ -245,7 +233,10 @@ fun WatchSharkApp(
                                         searchExpanded = !searchExpanded
                                         if (!searchExpanded) query = ""
                                     }) {
-                                        Icon(Icons.Filled.Search, contentDescription = "Search")
+                                        Icon(
+                                            painterResource(R.drawable.ic_search),
+                                            contentDescription = "Search",
+                                        )
                                     }
                                 },
                                 actions = {
@@ -255,11 +246,17 @@ fun WatchSharkApp(
                                                 if (unread > 0) Badge { Text(if (unread > 9) "9+" else "$unread") }
                                             },
                                         ) {
-                                            Icon(Icons.Filled.Notifications, contentDescription = "Notifications")
+                                            Icon(
+                                                painterResource(R.drawable.ic_notifications),
+                                                contentDescription = "Notifications",
+                                            )
                                         }
                                     }
                                     IconButton(onClick = { nav.navigate("settings") }) {
-                                        Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                                        Icon(
+                                            painterResource(R.drawable.ic_settings),
+                                            contentDescription = "Settings",
+                                        )
                                     }
                                 },
                                 colors = TopAppBarDefaults.topAppBarColors(
@@ -291,10 +288,14 @@ fun WatchSharkApp(
                                     onClick = { goTab(ROUTE_HOME) },
                                     icon = {
                                         Icon(
-                                            if (selectedTab == ROUTE_HOME) Icons.Filled.Home
-                                            else Icons.Outlined.Home,
+                                            painterResource(R.drawable.ic_home),
                                             contentDescription = "Home",
-                                        )
+                                            tint = if (selectedTab == ROUTE_HOME) {
+                                                MaterialTheme.colorScheme.onSurface
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                            },
+                                            )
                                     },
                                     label = { Text("Home") },
                                 )
@@ -303,17 +304,26 @@ fun WatchSharkApp(
                                     onClick = { goTab(ROUTE_WHEELS) },
                                     icon = {
                                         Icon(
-                                            if (selectedTab == ROUTE_WHEELS) Icons.Filled.PlayArrow
-                                            else Icons.Outlined.PlayArrow,
+                                            painterResource(R.drawable.ic_movie),
                                             contentDescription = "Wheels",
-                                        )
+                                            tint = if (selectedTab == ROUTE_WHEELS) {
+                                                MaterialTheme.colorScheme.onSurface
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                            },
+                                            )
                                     },
                                     label = { Text("Wheels") },
                                 )
                                 NavigationBarItem(
                                     selected = false,
                                     onClick = { showCreateSheet = true },
-                                    icon = { Icon(Icons.Filled.Add, contentDescription = "Create") },
+                                    icon = {
+                                        Icon(
+                                            painterResource(R.drawable.ic_add),
+                                            contentDescription = "Create",
+                                        )
+                                    },
                                     label = { Text("Create") },
                                 )
                                 NavigationBarItem(
@@ -321,10 +331,14 @@ fun WatchSharkApp(
                                     onClick = { goTab(ROUTE_MESSAGES) },
                                     icon = {
                                         Icon(
-                                            if (selectedTab == ROUTE_MESSAGES) Icons.Filled.Mail
-                                            else Icons.Outlined.Mail,
+                                            painterResource(R.drawable.ic_chat),
                                             contentDescription = "Messages",
-                                        )
+                                            tint = if (selectedTab == ROUTE_MESSAGES) {
+                                                MaterialTheme.colorScheme.onSurface
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                            },
+                                            )
                                     },
                                     label = { Text("Messages") },
                                 )
@@ -337,10 +351,14 @@ fun WatchSharkApp(
                                     },
                                     icon = {
                                         Icon(
-                                            if (selectedTab == ROUTE_YOU) Icons.Filled.Person
-                                            else Icons.Outlined.Person,
+                                            painterResource(R.drawable.ic_person),
                                             contentDescription = "You",
-                                        )
+                                            tint = if (selectedTab == ROUTE_YOU) {
+                                                MaterialTheme.colorScheme.onSurface
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                            },
+                                            )
                                     },
                                     label = { Text("You") },
                                 )
@@ -452,7 +470,10 @@ fun WatchSharkApp(
                     ListItem(
                         headlineContent = { Text("Upload video / wheel") },
                         leadingContent = {
-                            Icon(Icons.Filled.Add, contentDescription = null)
+                            Icon(
+                                painterResource(R.drawable.ic_add),
+                                contentDescription = null,
+                            )
                         },
                         modifier = Modifier.clickable {
                             showCreateSheet = false
@@ -478,14 +499,20 @@ fun WatchSharkApp(
 private fun androidx.compose.foundation.layout.ColumnScope.RailTab(
     label: String,
     selected: Boolean,
-    selectedIcon: androidx.compose.ui.graphics.vector.ImageVector,
-    unselectedIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconRes: Int,
     onClick: () -> Unit,
 ) {
     NavigationRailItem(
         selected = selected,
         onClick = onClick,
-        icon = { Icon(if (selected) selectedIcon else unselectedIcon, contentDescription = label) },
+        icon = {
+            Icon(
+                painterResource(iconRes),
+                contentDescription = label,
+                tint = if (selected) MaterialTheme.colorScheme.onSurface
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
         label = { Text(label) },
     )
 }

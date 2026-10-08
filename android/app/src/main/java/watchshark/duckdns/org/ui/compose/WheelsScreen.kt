@@ -13,12 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Comment
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.VolumeOff
-import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -45,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -59,6 +54,7 @@ import kotlinx.coroutines.launch
 import watchshark.duckdns.org.data.ApiClient
 import watchshark.duckdns.org.data.AutoQuality
 import watchshark.duckdns.org.data.PlayerCache
+import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.Video
 import watchshark.duckdns.org.ui.fmtNum
 import watchshark.duckdns.org.ui.httpErrorMessage
@@ -417,7 +413,7 @@ fun WheelsScreen(
                     }
                 }) {
                     Icon(
-                        if (vid.liked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                        painterResource(R.drawable.ic_thumb_up),
                         contentDescription = "Like",
                         tint = if (vid.liked) Color(0xFFFF5C5C) else Color.White,
                     )
@@ -428,13 +424,19 @@ fun WheelsScreen(
                     player.volume = if (muted) 0f else 1f
                 }) {
                     Icon(
-                        if (muted) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp,
+                        painterResource(
+                            if (muted) R.drawable.ic_volume_off else R.drawable.ic_volume_up,
+                        ),
                         contentDescription = "Mute",
                         tint = Color.White,
                     )
                 }
                 IconButton(onClick = { onOpenVideo(vid.id) }) {
-                    Icon(Icons.Filled.Comment, contentDescription = "Comments", tint = Color.White)
+                    Icon(
+                        painterResource(R.drawable.ic_chat),
+                        contentDescription = "Comments",
+                        tint = Color.White,
+                    )
                 }
                 TextButton(onClick = { qualityFor = vid }) {
                     Text(

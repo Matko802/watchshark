@@ -13,9 +13,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -37,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.ui.PlayerView
@@ -44,6 +42,7 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import watchshark.duckdns.org.data.ApiClient
 import watchshark.duckdns.org.data.Comment
+import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.Video
 import watchshark.duckdns.org.ui.fmtAge
 import watchshark.duckdns.org.ui.fmtNum
@@ -61,11 +60,17 @@ fun WatchScreen(
     var comments by remember { mutableStateOf<List<Comment>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    var meId by remember { mutableStateOf<Long?>(null) }
 
     LaunchedEffect(videoId) {
         loading = true
         error = null
         try {
+            meId = try {
+                ApiClient.api.me().user?.id
+            } catch (_: Exception) {
+                null
+            }
             val res = ApiClient.api.videoDetail(videoId)
             video = res.video
             comments = res.comments.orEmpty()
@@ -162,22 +167,31 @@ fun WatchScreen(
                     TextButton(onClick = { onOpenChannel(v.username) }) {
                         Text("@${v.username}")
                     }
-                    // Expressive button group: Follow (outlined) + Like (tonal chip).
-                    OutlinedButton(
-                        onClick = {
-                            scope.launch {
-                                try {
-                                    ApiClient.api.follow(v.userId)
-                                    video = v.copy(
-                                        following = !v.following,
-                                        followers = v.followers + if (v.following) -1 else 1,
-                                    )
-                                } catch (_: Exception) {
+                    // Follow (outlined w/ person_add like web) + Like chip. Never on own videos.
+                    if (meId != null && meId != v.userId) {
+                        OutlinedButton(
+                            onClick = {
+                                scope.launch {
+                                    try {
+                                        ApiClient.api.follow(v.userId)
+                                        video = v.copy(
+                                            following = !v.following,
+                                            followers = v.followers + if (v.following) -1 else 1,
+                                        )
+                                    } catch (_: Exception) {
+                                    }
                                 }
+                            },
+                        ) {
+                            if (!v.following) {
+                                Icon(
+                                    painterResource(R.drawable.ic_person_add),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
                             }
-                        },
-                    ) {
-                        Text(if (v.following) "Following" else "Follow")
+                            Text(if (v.following) "Following" else "Follow")
+                        }
                     }
                     FilterChip(
                         selected = v.liked,
@@ -195,7 +209,10 @@ fun WatchScreen(
                         },
                         label = { Text("${fmtNum(v.likes)}") },
                         leadingIcon = {
-                            Icon(Icons.Filled.ThumbUp, contentDescription = null)
+                            Icon(
+                                painterResource(R.drawable.ic_thumb_up),
+                                contentDescription = null,
+                            )
                         },
                     )
                 }
@@ -230,7 +247,10 @@ fun WatchScreen(
                         modifier = Modifier.size(32.dp).clip(CircleShape),
                     )
                 } else {
-                    Icon(Icons.Filled.Person, contentDescription = null)
+                    Icon(
+                        painterResource(R.drawable.ic_person),
+                        contentDescription = null,
+                    )
                 }
                 Column {
                     Text(

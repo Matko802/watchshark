@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -33,11 +34,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import watchshark.duckdns.org.data.ApiClient
 import watchshark.duckdns.org.data.ChannelUser
+import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.Video
 import watchshark.duckdns.org.ui.fmtNum
 
@@ -52,11 +55,17 @@ fun ChannelScreen(
     var user by remember { mutableStateOf<ChannelUser?>(null) }
     var videos by remember { mutableStateOf<List<Video>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
+    var meId by remember { mutableStateOf<Long?>(null) }
     var tab by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(username) {
         loading = true
         try {
+            meId = try {
+                ApiClient.api.me().user?.id
+            } catch (_: Exception) {
+                null
+            }
             val res = ApiClient.api.channel(username)
             user = res.user
             videos = res.videos.orEmpty()
@@ -93,27 +102,37 @@ fun ChannelScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            val following = u.following
-            if (following) {
-                OutlinedButton(onClick = {
-                    scope.launch {
-                        try {
-                            ApiClient.api.follow(u.id)
-                            user = u.copy(following = false, followers = (u.followers - 1).coerceAtLeast(0))
-                        } catch (_: Exception) {
+            // No following yourself (same as web).
+            if (meId != null && meId != u.id) {
+                val following = u.following
+                if (following) {
+                    OutlinedButton(onClick = {
+                        scope.launch {
+                            try {
+                                ApiClient.api.follow(u.id)
+                                user = u.copy(following = false, followers = (u.followers - 1).coerceAtLeast(0))
+                            } catch (_: Exception) {
+                            }
                         }
-                    }
-                }) { Text("Following") }
-            } else {
-                Button(onClick = {
-                    scope.launch {
-                        try {
-                            ApiClient.api.follow(u.id)
-                            user = u.copy(following = true, followers = u.followers + 1)
-                        } catch (_: Exception) {
+                    }) { Text("Following") }
+                } else {
+                    Button(onClick = {
+                        scope.launch {
+                            try {
+                                ApiClient.api.follow(u.id)
+                                user = u.copy(following = true, followers = u.followers + 1)
+                            } catch (_: Exception) {
+                            }
                         }
+                    }) {
+                        Icon(
+                            painterResource(R.drawable.ic_person_add),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Text("Follow")
                     }
-                }) { Text("Follow") }
+                }
             }
         }
         PrimaryTabRow(selectedTabIndex = tab) {
