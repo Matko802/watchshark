@@ -57,9 +57,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.media3.common.MediaItem
@@ -75,6 +77,10 @@ import watchshark.duckdns.org.data.AutoQuality
 import watchshark.duckdns.org.data.PlayerCache
 import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.Video
+import watchshark.duckdns.org.ui.compose.player.BufferingSpinner
+import watchshark.duckdns.org.ui.compose.player.CenterPlayButton
+import watchshark.duckdns.org.ui.compose.player.fmtPlayerTime
+import watchshark.duckdns.org.ui.compose.player.rememberPlayerUiState
 import watchshark.duckdns.org.ui.compose.theme.AppMotion
 import watchshark.duckdns.org.ui.fmtNum
 import watchshark.duckdns.org.ui.httpErrorMessage
@@ -145,6 +151,41 @@ fun WheelsScreen(
     var prepared by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var qualityFor by remember { mutableStateOf<Video?>(null) }
+    var meId by remember { mutableStateOf<Long?>(null) }
+    var immersive by remember { mutableStateOf(false) }
+    val activity = remember(context) { context as? android.app.Activity }
+
+    fun setImmersive(on: Boolean) {
+        try {
+            val window = activity?.window ?: return
+            val controller = WindowCompat.getInsetsController(window, window.decorView)
+            controller.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            if (on) controller.hide(WindowInsetsCompat.Type.systemBars())
+            else controller.show(WindowInsetsCompat.Type.systemBars())
+        } catch (_: Exception) {
+        }
+    }
+
+    LaunchedEffect(immersive) { setImmersive(immersive) }
+    // Never trap the user without system bars if wheels is left behind.
+    DisposableEffect(Unit) {
+        onDispose {
+            try {
+                activity?.window?.let { w ->
+                    WindowCompat.getInsetsController(w, w.decorView)
+                        .show(WindowInsetsCompat.Type.systemBars())
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+    LaunchedEffect(Unit) {
+        try {
+            meId = ApiClient.api.me().user?.id
+        } catch (_: Exception) {
+        }
+    }
 
     fun fullUrl(path: String?): String? = ApiClient.fullUrl(path)
 
@@ -307,6 +348,8 @@ fun WheelsScreen(
     val pageCount = videos.size + if (exhausted && videos.isNotEmpty()) 1 else 0
     val pagerState = rememberPagerState(initialPage = 0) { pageCount }
     val currentPage = pagerState.currentPage
+    // Single live player snapshot (spinner, play badge, clock).
+    val ui = rememberPlayerUiState(player)
 
     LaunchedEffect(currentPage) {
         if (currentPage < videos.size && currentPage < player.mediaItemCount) {
@@ -360,6 +403,25 @@ fun WheelsScreen(
             scope.launch {
                 try {
                     ApiClient.api.like(vid.id)
+                } catch (e: Exception) {
+                    val i = videos.indexOfFirst { it.id == vid.id }
+                    if (i >= 0) videos[i] = cur
+                    error = httpErrorMessage(e)
+                }
+            }
+        }
+        fun doFollow() {
+            // Optimistic follow (web rfollowBtn parity). Never on own wheels.
+            if (vid.userId == 0L) return
+            val myId = meId
+            if (myId != null && myId == vid.userId) return
+            val idx = videos.indexOfFirst { it.id == vid.id }
+            if (idx < 0) return
+            val cur = videos[idx]
+            videos[idx] = cur.copy(following = !cur.following)
+            scope.launch {
+                try {
+                    ApiClient.api.follow(vid.userId)
                 } catch (e: Exception) {
                     val i = videos.indexOfFirst { it.id == vid.id }
                     if (i >= 0) videos[i] = cur
@@ -443,6 +505,17 @@ fun WheelsScreen(
                     modifier = Modifier.size(96.dp),
                 )
             }
+            // Paused badge + buffering spinner (web rbig/rspinner parity).
+            CenterPlayButton(
+                visible = isCurrent && !ui.isPlaying && readyMap[page] == true,
+                playing = false,
+                onToggle = { player.play() },
+                modifier = Modifier.align(Alignment.Center),
+            )
+            BufferingSpinner(
+                visible = isCurrent && readyMap[page] != true,
+                modifier = Modifier.align(Alignment.Center),
+            )
             // Captions above the floating pill.
             AnimatedVisibility(
                 visible = isCurrent,
@@ -495,6 +568,19 @@ fun WheelsScreen(
                     )
                 }
                 Text(fmtNum(vid.likes), color = Color.White, style = MaterialTheme.typography.labelSmall)
+                // Follow pill (web rfollowBtn parity). Hidden on own wheels.
+                val myId = meId
+                if (myId == null || myId != vid.userId) {
+                    RailPillButton(onClick = { doFollow() }, description = "Follow") {
+                        Icon(
+                            painterResource(
+                                if (vid.following) R.drawable.ic_person_fill
+                                else R.drawable.ic_person_add,
+                            ),
+                            contentDescription = "Follow",
+                        )
+                    }
+                }
                 RailPillButton(
                     onClick = {
                         muted = !muted
@@ -515,6 +601,19 @@ fun WheelsScreen(
                         contentDescription = "Comments",
                     )
                 }
+                // Fullscreen pill (web rfullBtn parity): immersive playback.
+                RailPillButton(
+                    onClick = { immersive = !immersive },
+                    description = "Fullscreen",
+                ) {
+                    Icon(
+                        painterResource(
+                            if (immersive) R.drawable.ic_fullscreen_exit
+                            else R.drawable.ic_fullscreen,
+                        ),
+                        contentDescription = "Fullscreen",
+                    )
+                }
                 // Quality gear + label, like web's settings rail button.
                 RailPillButton(onClick = { qualityFor = vid }, description = "Quality") {
                     Icon(
@@ -525,6 +624,12 @@ fun WheelsScreen(
                 Text(
                     qualityOverride[vid.id] ?: "Auto",
                     color = Color.White,
+                    style = MaterialTheme.typography.labelSmall,
+                )
+                // Clock readout (web #rtime parity).
+                Text(
+                    "${fmtPlayerTime(ui.positionMs)} / ${fmtPlayerTime(ui.durationMs)}",
+                    color = Color(0xFFDDDDDD),
                     style = MaterialTheme.typography.labelSmall,
                 )
             }

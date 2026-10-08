@@ -1,6 +1,5 @@
 package watchshark.duckdns.org.ui.compose
 
-import android.view.ViewGroup
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -38,14 +37,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import watchshark.duckdns.org.data.ApiClient
 import watchshark.duckdns.org.data.Comment
 import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.Video
+import watchshark.duckdns.org.ui.compose.player.WatchPlayer
 import watchshark.duckdns.org.ui.fmtAge
 import watchshark.duckdns.org.ui.fmtNum
 
@@ -128,17 +126,9 @@ fun WatchScreen(
 
     LazyColumn(modifier = modifier.fillMaxSize()) {
         item {
-            AndroidView(
-                factory = { ctx ->
-                    PlayerView(ctx).apply {
-                        layoutParams = ViewGroup.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.WRAP_CONTENT,
-                        )
-                        useController = true
-                    }
-                },
-                update = { view -> view.player = player },
+            WatchPlayer(
+                player = player,
+                thumbnailUrl = ApiClient.fullUrl(v.thumbnail),
                 modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
             )
         }
