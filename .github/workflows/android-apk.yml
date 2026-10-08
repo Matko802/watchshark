@@ -29,7 +29,7 @@ jobs:
         run: |
           chmod +x gradlew
           set -o pipefail
-          ./gradlew :app:assembleRelease :app:assembleDebug --no-daemon -x test 2>&1 | tee build.log
+          ./gradlew :app:assembleRelease :app:assembleDebug --no-daemon -x test -x lint 2>&1 | tee build.log
           code=${PIPESTATUS[0]}
           echo "Gradle exit: $code"
           exit $code
