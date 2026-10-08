@@ -31,6 +31,27 @@ private val FallbackDark = darkColorScheme(
     error = Color(0xFFF2B8B5),
 )
 
+// Pure-black AMOLED dark: the pre-rewrite look. All surfaces stay
+// black so feeds and bars melt into the display.
+private val AmoledDark = darkColorScheme(
+    primary = Color.White,
+    onPrimary = Color.Black,
+    primaryContainer = Color(0xFF222222),
+    onPrimaryContainer = Color.White,
+    secondary = Color(0xFFA8A8A8),
+    onSecondary = Color.Black,
+    secondaryContainer = Color(0xFF1A1A1A),
+    onSecondaryContainer = Color.White,
+    tertiary = Color(0xFFDDDDDD),
+    surface = Color.Black,
+    onSurface = Color.White,
+    surfaceVariant = Color.Black,
+    onSurfaceVariant = Color(0xFFA8A8A8),
+    surfaceContainer = Color.Black,
+    surfaceContainerHighest = Color(0xFF111111),
+    error = Color(0xFFF2B8B5),
+)
+
 private val FallbackLight = lightColorScheme(
     primary = Color(0xFF0F0F0F),
     onPrimary = Color.White,
@@ -53,6 +74,7 @@ private val FallbackLight = lightColorScheme(
  * M3 Expressive theme entry.
  * - Uses dynamic color on API 31+ (Material You / Expressive).
  * - Falls back to YouTube-like monochrome otherwise.
+ * - amoled=true forces the old pure-black AMOLED look in dark mode.
  * - Expressive shapes/motion come from material3 1.3+ defaults
  *   (64dp NavigationBar, pill indicators, spring motion).
  */
@@ -60,10 +82,12 @@ private val FallbackLight = lightColorScheme(
 fun WatchSharkTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
+    amoled: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
     val colorScheme = when {
+        darkTheme && amoled -> AmoledDark
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }

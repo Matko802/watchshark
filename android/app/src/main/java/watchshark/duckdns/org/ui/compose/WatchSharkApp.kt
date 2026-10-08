@@ -1,11 +1,19 @@
 package watchshark.duckdns.org.ui.compose
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
@@ -21,7 +29,6 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -34,8 +41,10 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,8 +54,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -54,6 +69,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import kotlinx.coroutines.launch
+import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.ApiClient
 import watchshark.duckdns.org.ui.compose.theme.WatchSharkTheme
 
@@ -67,8 +83,13 @@ private const val ROUTE_YOU = "you"
 fun WatchSharkApp(
     startLoggedIn: Boolean,
     currentUsername: () -> String?,
+    darkThemeOverride: Boolean? = null,
+    amoled: Boolean = false,
 ) {
-    WatchSharkTheme {
+    WatchSharkTheme(
+        darkTheme = darkThemeOverride ?: isSystemInDarkTheme(),
+        amoled = amoled,
+    ) {
         val nav = rememberNavController()
         // Bridge for legacy fragments calling MainActivity.openDetail().
         LaunchedEffect(nav) { AppNavigator.controller = nav }
@@ -163,7 +184,7 @@ fun WatchSharkApp(
                     modifier = Modifier.weight(1f),
                     topBar = {
                         if (!route.startsWith("auth")) {
-                            CenterAlignedTopAppBar(
+                            TopAppBar(
                                 title = {
                                     if (searchExpanded) {
                                         TextField(
@@ -177,7 +198,24 @@ fun WatchSharkApp(
                                             modifier = Modifier,
                                         )
                                     } else {
-                                        Text("WatchShark")
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                            modifier = Modifier.clickable { goTab(ROUTE_HOME) },
+                                        ) {
+                                            Image(
+                                                painter = painterResource(id = R.mipmap.ic_launcher),
+                                                contentDescription = "WatchShark",
+                                                modifier = Modifier
+                                                    .size(32.dp)
+                                                    .clip(CircleShape),
+                                            )
+                                            Text(
+                                                "WatchShark",
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 18.sp,
+                                            )
+                                        }
                                     }
                                 },
                                 navigationIcon = {
@@ -202,17 +240,30 @@ fun WatchSharkApp(
                                         Icon(Icons.Filled.Settings, contentDescription = "Settings")
                                     }
                                 },
-                                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                                colors = TopAppBarDefaults.topAppBarColors(
                                     containerColor = MaterialTheme.colorScheme.surface,
                                 ),
                             )
                         }
                     },
                     bottomBar = {
-                        // M3 Expressive NavigationBar: 64dp, pill indicator,
-                        // filled icon when selected (proper YT phone pattern).
+                        // Floating pill nav (the classic WatchShark look), built
+                        // from the standard M3 Expressive NavigationBar.
                         if (!wide && !route.startsWith("auth") && !route.startsWith("chat")) {
-                            NavigationBar {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp)
+                                    .padding(bottom = 12.dp),
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(28.dp),
+                                    color = MaterialTheme.colorScheme.surfaceContainer,
+                                    tonalElevation = 3.dp,
+                                    shadowElevation = 6.dp,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    NavigationBar(containerColor = Color.Transparent) {
                                 NavigationBarItem(
                                     selected = selectedTab == ROUTE_HOME,
                                     onClick = { goTab(ROUTE_HOME) },
@@ -271,6 +322,8 @@ fun WatchSharkApp(
                                     },
                                     label = { Text("You") },
                                 )
+                                    }
+                                }
                             }
                         }
                     },
@@ -365,6 +418,7 @@ fun WatchSharkApp(
         }
         @Suppress("UNUSED_VARIABLE")
         val unusedDetail = onDetail
+        }
     }
 }
 

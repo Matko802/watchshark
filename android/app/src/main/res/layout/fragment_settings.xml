@@ -178,6 +178,46 @@
             android:visibility="gone">
 
             <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Appearance"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="13sp" />
+
+            <RadioGroup
+                android:id="@+id/s_theme"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:orientation="vertical">
+
+                <RadioButton
+                    android:id="@+id/s_theme_system"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="System default" />
+
+                <RadioButton
+                    android:id="@+id/s_theme_light"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Light" />
+
+                <RadioButton
+                    android:id="@+id/s_theme_dark"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Dark" />
+
+                <RadioButton
+                    android:id="@+id/s_theme_amoled"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="AMOLED black" />
+            </RadioGroup>
+
+            <TextView
                 android:id="@+id/s_version"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

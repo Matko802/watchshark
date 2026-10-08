@@ -5,11 +5,16 @@ import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import watchshark.duckdns.org.data.ApiClient
 import watchshark.duckdns.org.data.CrashLog
+import watchshark.duckdns.org.data.ThemePrefs
 import watchshark.duckdns.org.data.UploadAlerts
 import watchshark.duckdns.org.data.Updater
 import watchshark.duckdns.org.ui.AdminFragment
@@ -37,10 +42,19 @@ class MainActivity : AppCompatActivity() {
     var currentUsername: String? = null
         private set
 
+    /** Appearance choice (Settings → App). Recomposed instantly; Views side follows via delegate. */
+    private var themeMode by mutableIntStateOf(ThemePrefs.MODE_SYSTEM)
+
+    /** Called from Settings when the user picks System / Light / Dark / AMOLED. */
+    fun setThemeMode(mode: Int) {
+        ThemePrefs.setMode(this, mode)
+        themeMode = mode
+        AppCompatDelegate.setDefaultNightMode(ThemePrefs.toNightMode(mode))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
-        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(
-            androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM,
-        )
+        themeMode = ThemePrefs.getMode(this)
+        AppCompatDelegate.setDefaultNightMode(ThemePrefs.toNightMode(themeMode))
         CrashLog.install(this)
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -55,6 +69,8 @@ class MainActivity : AppCompatActivity() {
             WatchSharkApp(
                 startLoggedIn = loggedIn,
                 currentUsername = { currentUsername },
+                darkThemeOverride = ThemePrefs.toDarkOverride(themeMode),
+                amoled = themeMode == ThemePrefs.MODE_AMOLED,
             )
         }
 

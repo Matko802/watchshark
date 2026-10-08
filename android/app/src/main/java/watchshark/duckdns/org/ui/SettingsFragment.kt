@@ -4,6 +4,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.RadioGroup
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -13,6 +14,7 @@ import kotlinx.coroutines.launch
 import watchshark.duckdns.org.MainActivity
 import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.ApiClient
+import watchshark.duckdns.org.data.ThemePrefs
 import watchshark.duckdns.org.data.Updater
 class SettingsFragment : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, saved: Bundle?): View {
@@ -62,6 +64,24 @@ class SettingsFragment : Fragment() {
         }
         view.findViewById<TextView>(R.id.s_version).text =
             "Version ${Updater.currentVersion(requireContext())}"
+        val themeGroup = view.findViewById<RadioGroup>(R.id.s_theme)
+        themeGroup.check(
+            when (ThemePrefs.getMode(requireContext())) {
+                ThemePrefs.MODE_LIGHT -> R.id.s_theme_light
+                ThemePrefs.MODE_DARK -> R.id.s_theme_dark
+                ThemePrefs.MODE_AMOLED -> R.id.s_theme_amoled
+                else -> R.id.s_theme_system
+            },
+        )
+        themeGroup.setOnCheckedChangeListener { _, id ->
+            val mode = when (id) {
+                R.id.s_theme_light -> ThemePrefs.MODE_LIGHT
+                R.id.s_theme_dark -> ThemePrefs.MODE_DARK
+                R.id.s_theme_amoled -> ThemePrefs.MODE_AMOLED
+                else -> ThemePrefs.MODE_SYSTEM
+            }
+            (activity as? MainActivity)?.setThemeMode(mode)
+        }
         view.findViewById<Button>(R.id.s_update).setOnClickListener {
             msg("Checking…")
             Updater.checkManual(this) { status -> if (isAdded) msg(status) }
