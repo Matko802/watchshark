@@ -1,5 +1,6 @@
 package watchshark.duckdns.org.ui.compose
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -8,6 +9,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,13 +22,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.Button
@@ -35,6 +42,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -61,9 +70,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.media3.common.MediaItem
@@ -76,6 +82,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import watchshark.duckdns.org.data.ApiClient
 import watchshark.duckdns.org.data.AutoQuality
+import watchshark.duckdns.org.data.Comment
 import watchshark.duckdns.org.data.Haptics
 import watchshark.duckdns.org.data.PlayerCache
 import watchshark.duckdns.org.R
@@ -85,6 +92,7 @@ import watchshark.duckdns.org.ui.compose.player.CenterPlayButton
 import watchshark.duckdns.org.ui.compose.player.fmtPlayerTime
 import watchshark.duckdns.org.ui.compose.player.rememberPlayerUiState
 import watchshark.duckdns.org.ui.compose.theme.AppMotion
+import watchshark.duckdns.org.ui.fmtAge
 import watchshark.duckdns.org.ui.fmtNum
 import watchshark.duckdns.org.ui.httpErrorMessage
 
@@ -155,34 +163,8 @@ fun WheelsScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var qualityFor by remember { mutableStateOf<Video?>(null) }
     var meId by remember { mutableStateOf<Long?>(null) }
-    var immersive by remember { mutableStateOf(false) }
-    val activity = remember(context) { context as? android.app.Activity }
+    var commentsFor by remember { mutableStateOf<Video?>(null) }
 
-    fun setImmersive(on: Boolean) {
-        try {
-            val window = activity?.window ?: return
-            val controller = WindowCompat.getInsetsController(window, window.decorView)
-            controller.systemBarsBehavior =
-                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            if (on) controller.hide(WindowInsetsCompat.Type.systemBars())
-            else controller.show(WindowInsetsCompat.Type.systemBars())
-        } catch (_: Exception) {
-        }
-    }
-
-    LaunchedEffect(immersive) { setImmersive(immersive) }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            try {
-                activity?.window?.let { w ->
-                    WindowCompat.getInsetsController(w, w.decorView)
-                        .show(WindowInsetsCompat.Type.systemBars())
-                }
-            } catch (_: Exception) {
-            }
-        }
-    }
     LaunchedEffect(Unit) {
         try {
             meId = ApiClient.api.me().user?.id
@@ -601,23 +583,10 @@ fun WheelsScreen(
                         contentDescription = "Mute",
                     )
                 }
-                RailPillButton(onClick = { onOpenVideo(vid.id) }, description = "Comments") {
+                RailPillButton(onClick = { commentsFor = vid }, description = "Comments") {
                     Icon(
                         painterResource(R.drawable.ic_chat),
                         contentDescription = "Comments",
-                    )
-                }
-
-                RailPillButton(
-                    onClick = { immersive = !immersive },
-                    description = "Fullscreen",
-                ) {
-                    Icon(
-                        painterResource(
-                            if (immersive) R.drawable.ic_fullscreen_exit
-                            else R.drawable.ic_fullscreen,
-                        ),
-                        contentDescription = "Fullscreen",
                     )
                 }
 
@@ -689,6 +658,37 @@ fun WheelsScreen(
             CircularProgressIndicator(modifier = Modifier.padding(top = 16.dp))
         }
     }
+
+    BackHandler(enabled = commentsFor != null) { commentsFor = null }
+    AnimatedVisibility(
+        visible = commentsFor != null,
+        enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
+        exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(),
+        label = "commentsDrawer",
+    ) {
+        commentsFor?.let { v ->
+            Box(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.4f))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { commentsFor = null },
+                        ),
+                )
+                WheelCommentsPanel(
+                    video = v,
+                    onClose = { commentsFor = null },
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight()
+                        .fillMaxWidth(0.88f),
+                )
+            }
+        }
+    }
 }
 
 
@@ -733,6 +733,180 @@ private fun RailPillButton(
     ) {
         CompositionLocalProvider(LocalContentColor provides Color.White) {
             icon()
+        }
+    }
+}
+
+@Composable
+private fun WheelCommentsPanel(
+    video: Video,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scope = rememberCoroutineScope()
+    var list by remember(video.id) { mutableStateOf<List<Comment>>(emptyList()) }
+    var loading by remember(video.id) { mutableStateOf(true) }
+    var failed by remember(video.id) { mutableStateOf(false) }
+    var draft by remember(video.id) { mutableStateOf("") }
+    var posting by remember(video.id) { mutableStateOf(false) }
+
+    fun reload() {
+        scope.launch {
+            loading = true
+            failed = false
+            try {
+                list = ApiClient.api.videoDetail(video.id).comments.orEmpty()
+            } catch (_: Exception) {
+                failed = true
+            } finally {
+                loading = false
+            }
+        }
+    }
+    LaunchedEffect(video.id) { reload() }
+
+    fun post() {
+        val body = draft.trim()
+        if (body.isEmpty() || posting) return
+        posting = true
+        scope.launch {
+            try {
+                ApiClient.api.comment(video.id, mapOf("body" to body))
+                draft = ""
+                reload()
+            } catch (_: Exception) {
+            } finally {
+                posting = false
+            }
+        }
+    }
+
+    Surface(
+        shape = RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 3.dp,
+        modifier = modifier,
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, top = 8.dp, end = 8.dp, bottom = 4.dp),
+            ) {
+                Text(
+                    "Comments (${list.size})",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onClose,
+                        ),
+                ) {
+                    Icon(
+                        painterResource(R.drawable.ic_close),
+                        contentDescription = "Close",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            if (loading && list.isEmpty()) {
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else if (failed && list.isEmpty()) {
+                Column(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text("Couldn't load comments", style = MaterialTheme.typography.titleMedium)
+                    Button(onClick = { reload() }) { Text("Retry") }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    items(list, key = { it.id }) { c ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            if (c.avatar != null) {
+                                AsyncImage(
+                                    model = ApiClient.fullUrl(c.avatar),
+                                    contentDescription = c.username,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.size(32.dp).clip(CircleShape),
+                                )
+                            } else {
+                                Icon(
+                                    painterResource(R.drawable.ic_person),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "@${c.username} • ${fmtAge(c.created_at)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(c.body, style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
+                }
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+            ) {
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    placeholder = { Text("Add a comment…") },
+                    maxLines = 3,
+                    modifier = Modifier.weight(1f),
+                )
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (draft.isBlank()) MaterialTheme.colorScheme.surfaceContainerHigh
+                            else MaterialTheme.colorScheme.primaryContainer,
+                        )
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { post() },
+                        ),
+                ) {
+                    Icon(
+                        painterResource(R.drawable.ic_send),
+                        contentDescription = "Send",
+                        tint = if (draft.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant
+                        else MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
+            }
         }
     }
 }
