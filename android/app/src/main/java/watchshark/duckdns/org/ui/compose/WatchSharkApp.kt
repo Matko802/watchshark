@@ -58,6 +58,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -98,9 +99,11 @@ import watchshark.duckdns.org.data.Haptics
 import watchshark.duckdns.org.data.ThemePrefs
 import watchshark.duckdns.org.data.UpdateCheck
 import watchshark.duckdns.org.data.Updater
+import watchshark.duckdns.org.data.Video
 import watchshark.duckdns.org.ui.compose.theme.AppMotion
 import watchshark.duckdns.org.ui.compose.theme.WatchSharkTheme
 import watchshark.duckdns.org.ui.compose.player.VideoPlaying
+import watchshark.duckdns.org.ui.compose.player.rememberPlayerUiState
 
 private const val ROUTE_HOME = "home"
 private const val ROUTE_WHEELS = "wheels"
@@ -145,6 +148,30 @@ fun WatchSharkApp(
         var startupUpdate by remember { mutableStateOf<AppUpdate?>(null) }
         var homeReselect by remember { mutableIntStateOf(0) }
         var wheelsReselect by remember { mutableIntStateOf(0) }
+        val appPlayer = remember(appCtx) { ApiClient.buildPlayer(appCtx) }
+        var miniVideo by remember { mutableStateOf<Video?>(null) }
+        DisposableEffect(Unit) {
+            onDispose {
+                try {
+                    appPlayer.release()
+                } catch (_: Exception) {
+                }
+            }
+        }
+
+        fun closeMini() {
+            try {
+                appPlayer.stop()
+                appPlayer.clearMediaItems()
+            } catch (_: Exception) {
+            }
+            miniVideo = null
+            VideoPlaying.setPlaying(false)
+        }
+
+        LaunchedEffect(route) {
+            if (route.startsWith(ROUTE_WHEELS) && miniVideo != null) closeMini()
+        }
 
         suspend fun refreshBadges() {
             try {
@@ -435,7 +462,7 @@ fun WatchSharkApp(
 
                         val showPill = !wide && !route.startsWith("auth") &&
                             !route.startsWith("chat") && route != "update" &&
-                            !VideoPlaying.isPlaying.value
+                            !route.startsWith("watch")
                         AnimatedVisibility(
                             visible = showPill,
                             enter = slideInVertically { it } + fadeIn(),
@@ -658,6 +685,13 @@ fun WatchSharkApp(
                             val id = entry.arguments?.getLong("id") ?: return@composable
                             WatchScreen(
                                 videoId = id,
+                                player = appPlayer,
+                                miniVideo = miniVideo,
+                                onMinimize = { v ->
+                                    miniVideo = v
+                                    goTab(ROUTE_HOME)
+                                },
+                                onExpand = { miniVideo = null },
                                 onOpenChannel = { name -> goScreen("channel/$name") },
                                 onClose = { goBack() },
                             )
@@ -780,6 +814,35 @@ fun WatchSharkApp(
                             ) { Text("Update later") }
                         }
                     }
+                }
+            }
+
+            miniVideo?.let { v ->
+                if (route.startsWith("watch")) return@let
+                val miniUi = rememberPlayerUiState(appPlayer)
+                LaunchedEffect(miniUi.isPlaying) {
+                    VideoPlaying.setPlaying(miniUi.isPlaying)
+                }
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.BottomCenter,
+                ) {
+                    MiniPlayerBar(
+                        video = v,
+                        playing = miniUi.isPlaying,
+                        onExpand = {
+                            miniVideo = null
+                            goScreen("watch/${v.id}")
+                        },
+                        onToggle = {
+                            if (miniUi.isPlaying) appPlayer.pause() else appPlayer.play()
+                        },
+                        onClose = { closeMini() },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .padding(bottom = 100.dp),
+                    )
                 }
             }
         }

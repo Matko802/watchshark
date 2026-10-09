@@ -36,6 +36,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +50,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import watchshark.duckdns.org.data.ApiClient
@@ -68,6 +70,10 @@ import watchshark.duckdns.org.ui.fmtNum
 @Composable
 fun WatchScreen(
     videoId: Long,
+    player: ExoPlayer,
+    miniVideo: Video?,
+    onMinimize: (Video) -> Unit,
+    onExpand: () -> Unit,
     onOpenChannel: (String) -> Unit,
     modifier: Modifier = Modifier,
     onClose: () -> Unit = {},
@@ -100,18 +106,25 @@ fun WatchScreen(
     }
 
 
-    val player = remember(videoId) { ApiClient.buildPlayer(context) }
-    DisposableEffect(player) {
-        onDispose { player.release() }
+    val miniNow = rememberUpdatedState(miniVideo)
+    DisposableEffect(videoId) {
+        onDispose {
+            if (miniNow.value?.id != videoId) {
+                try {
+                    player.stop()
+                } catch (_: Exception) {
+                }
+            }
+            VideoPlaying.setPlaying(false)
+        }
+    }
+    LaunchedEffect(videoId, miniVideo?.id) {
+        if (miniVideo?.id != null && miniVideo?.id != videoId) onExpand()
     }
     var quality by remember(videoId) { mutableStateOf("Auto") }
-    var miniMode by remember(videoId) { mutableStateOf(false) }
     val playback = rememberPlayerUiState(player)
     LaunchedEffect(playback.isPlaying) {
         VideoPlaying.setPlaying(playback.isPlaying)
-    }
-    DisposableEffect(Unit) {
-        onDispose { VideoPlaying.setPlaying(false) }
     }
 
     fun qualityOptions(v: Video): List<String> {
@@ -182,49 +195,38 @@ fun WatchScreen(
 
     LazyColumn(modifier = modifier.fillMaxSize()) {
         item {
-            if (miniMode) {
-                MiniPlayerBar(
-                    video = v,
-                    playing = playback.isPlaying,
-                    onExpand = { miniMode = false },
-                    onToggle = { if (playback.isPlaying) player.pause() else player.play() },
-                    onClose = onClose,
-                    modifier = Modifier.fillMaxWidth(),
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f)
+                    .graphicsLayer {
+                        translationY = dragY
+                        val shrink = (1f - dragY / 1600f).coerceIn(0.85f, 1f)
+                        scaleX = shrink
+                        scaleY = shrink
+                    }
+                    .pointerInput(videoId) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = { dragY = 0f },
+                            onDrag = { _, dragAmount ->
+                                dragY = (dragY + dragAmount.y).coerceAtLeast(0f)
+                            },
+                            onDragEnd = {
+                                if (dragY > miniThreshold) onMinimize(v)
+                                dragY = 0f
+                            },
+                            onDragCancel = { dragY = 0f },
+                        )
+                    },
+            ) {
+                WatchPlayer(
+                    player = player,
+                    thumbnailUrl = ApiClient.fullUrl(v.thumbnail),
+                    qualities = qualityOptions(v),
+                    quality = quality,
+                    onQuality = { quality = it },
+                    modifier = Modifier.fillMaxSize(),
                 )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(16f / 9f)
-                        .graphicsLayer {
-                            translationY = dragY
-                            val shrink = (1f - dragY / 1600f).coerceIn(0.85f, 1f)
-                            scaleX = shrink
-                            scaleY = shrink
-                        }
-                        .pointerInput(videoId) {
-                            detectDragGesturesAfterLongPress(
-                                onDragStart = { dragY = 0f },
-                                onDrag = { _, dragAmount ->
-                                    dragY = (dragY + dragAmount.y).coerceAtLeast(0f)
-                                },
-                                onDragEnd = {
-                                    if (dragY > miniThreshold) miniMode = true
-                                    dragY = 0f
-                                },
-                                onDragCancel = { dragY = 0f },
-                            )
-                        },
-                ) {
-                    WatchPlayer(
-                        player = player,
-                        thumbnailUrl = ApiClient.fullUrl(v.thumbnail),
-                        qualities = qualityOptions(v),
-                        quality = quality,
-                        onQuality = { quality = it },
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
             }
         }
         item {
