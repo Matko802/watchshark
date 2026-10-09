@@ -64,7 +64,7 @@ fun HomeScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Floating slider pill like on web: Latest / Trending segmented control.
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -94,7 +94,7 @@ fun HomeScreen(
         }
 
         val gridState = rememberLazyGridState()
-        // Endless pagination: load more when near the end.
+
         LaunchedEffect(gridState) {
             snapshotFlow {
                 val layout = gridState.layoutInfo
@@ -107,7 +107,7 @@ fun HomeScreen(
         }
 
         if (state.videos.isEmpty() && state.loading) {
-            // Shimmer skeleton grid instead of a bare spinner.
+
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 320.dp),
                 modifier = Modifier.fillMaxSize(),
@@ -162,7 +162,7 @@ fun HomeScreen(
                 columns = GridCells.Adaptive(minSize = 320.dp),
                 state = gridState,
                 modifier = Modifier.fillMaxSize(),
-                // Bottom inset left open: content scrolls behind the pill.
+
                 contentPadding = PaddingValues(start = 4.dp, top = 4.dp, end = 4.dp, bottom = 104.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),

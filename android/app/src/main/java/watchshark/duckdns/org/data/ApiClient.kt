@@ -67,17 +67,13 @@ object ApiClient {
         if (path.startsWith("http://") || path.startsWith("https://")) return path
         return BASE_URL.trimEnd('/') + "/" + path.trimStart('/')
     }
-    /** Cookie header for the current session, if logged in. */
+
     fun authCookie(): String? {
         val token = sessionToken() ?: return null
         return "ws_token=$token"
     }
-    /**
-     * ExoPlayer with the session cookie attached to media requests.
-     * The server requires auth for /v/ /t/ streams, and plain
-     * MediaItem.fromUri sends no cookies — without this, shorts
-     * fail with 403 and nothing plays.
-     */
+
+
     fun buildPlayer(ctx: Context): ExoPlayer {
         val props = mutableMapOf<String, String>()
         authCookie()?.let { props["Cookie"] = it }

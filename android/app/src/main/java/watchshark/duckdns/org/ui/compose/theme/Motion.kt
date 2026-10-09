@@ -13,12 +13,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 
-/**
- * Central motion tokens (M3 Expressive-inspired).
- * Physics springs for spatial movement, tweens for fades.
- * Keeps every screen on the same feel without depending on the
- * experimental MotionScheme API (works on any BOM).
- */
+
 object AppMotion {
     val fastSpatial = spring<Float>(
         dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -28,8 +23,8 @@ object AppMotion {
         dampingRatio = Spring.DampingRatioNoBouncy,
         stiffness = Spring.StiffnessMediumLow,
     )
-    // Gentle press feedback: no bounce/overshoot, so taps feel soft
-    // instead of snappy. Press targets use a subtle 0.98 scale.
+
+
     val pressSpring = spring<Float>(
         dampingRatio = Spring.DampingRatioNoBouncy,
         stiffness = Spring.StiffnessMedium,
@@ -38,7 +33,7 @@ object AppMotion {
     fun fadeFast() = fadeIn(tween(150, easing = FastOutSlowInEasing))
     fun fadeOutFast() = fadeOut(tween(150, easing = FastOutSlowInEasing))
 
-    // Shared-axis style nav transitions (YouTube-like lateral motion).
+
     val screenEnter = fadeIn(tween(220, easing = FastOutSlowInEasing)) +
         slideInHorizontally(tween(220, easing = FastOutSlowInEasing)) { it / 8 }
     val screenExit = fadeOut(tween(180, easing = FastOutSlowInEasing)) +

@@ -6,10 +6,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 
-/**
- * Button vibration feedback (SpatialFlow-style): master toggle plus
- * 0–100 strength slider with a test buzz on change.
- */
+
 object Haptics {
     private const val PREFS = "watchshark_haptics"
     private const val KEY_ON = "haptics_on"
@@ -62,7 +59,7 @@ object Haptics {
         }
     }
 
-    /** Short tick for button taps. Silent when toggled off. */
+
     fun tick(ctx: Context) {
         if (!isOn(ctx)) return
         buzz(ctx, 20)

@@ -3,7 +3,7 @@ package watchshark.duckdns.org.data
 import android.content.Context
 import androidx.appcompat.app.AppCompatDelegate
 
-/** Persisted appearance choice (Settings → App → Appearance). */
+
 object ThemePrefs {
     const val MODE_SYSTEM = 0
     const val MODE_LIGHT = 1
@@ -17,8 +17,8 @@ object ThemePrefs {
     fun getMode(ctx: Context): Int {
         return when (val stored = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getInt(KEY_MODE, MODE_SYSTEM)) {
-            // Legacy Light/Dark options were replaced by System / Grey /
-            // AMOLED — migrate old installs to System default.
+
+
             MODE_LIGHT, MODE_DARK -> MODE_SYSTEM
             else -> stored.coerceIn(MODE_SYSTEM, MODE_GREY)
         }
@@ -31,14 +31,14 @@ object ThemePrefs {
             .apply()
     }
 
-    /** Views side (AppCompat): AMOLED and Grey render as night. */
+
     fun toNightMode(mode: Int): Int = when (mode) {
         MODE_LIGHT -> AppCompatDelegate.MODE_NIGHT_NO
         MODE_SYSTEM -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
         else -> AppCompatDelegate.MODE_NIGHT_YES
     }
 
-    /** Compose side: null = follow system. */
+
     fun toDarkOverride(mode: Int): Boolean? = when (mode) {
         MODE_LIGHT -> false
         MODE_DARK, MODE_AMOLED, MODE_GREY -> true

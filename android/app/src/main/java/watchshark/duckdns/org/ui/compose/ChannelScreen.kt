@@ -106,7 +106,7 @@ fun ChannelScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            // No following yourself (same as web). Flips instantly (optimistic).
+
             if (meId != null && meId != u.id) {
                 val following = u.following
                 if (following) {

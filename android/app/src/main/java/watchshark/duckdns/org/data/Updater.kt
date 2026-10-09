@@ -21,7 +21,7 @@ sealed interface UpdateCheck {
     data class Failed(val reason: String) : UpdateCheck
 }
 object Updater {
-    /** Update selected by the user, consumed by the fullscreen update screen. */
+
     @Volatile
     var pending: AppUpdate? = null
     private const val LATEST_URL =
@@ -40,7 +40,7 @@ object Updater {
         .followRedirects(false)
         .followSslRedirects(false)
         .build()
-    /** Must be called once at startup (alongside ApiClient.init). */
+
     fun init(ctx: Context) {
         appContext = ctx.applicationContext
         if (http == null) {
@@ -76,20 +76,15 @@ object Updater {
         if (n <= 0) return ""
         return if (n >= 1048576) "${n / 1048576} MB" else "${n / 1024} KB"
     }
-    /** Installed app version, e.g. 1.6.8. */
+
     fun currentVersion(ctx: Context): String = try {
         ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName
             ?: BuildConfig.VERSION_NAME
     } catch (_: Exception) {
         BuildConfig.VERSION_NAME
     }
-    /**
-     * Returns Available / UpToDate / Failed (network, HTTP error).
-     * Uses the public releases page (no API rate limits) and a
-     * deterministic asset URL — no api.github.com involved.
-     * Never throws; callers must surface Failed instead of pretending
-     * everything is up to date.
-     */
+
+
     suspend fun checkForUpdate(): UpdateCheck = withContext(Dispatchers.IO) {
         val current = parseVer(BuildConfig.VERSION_NAME)
         try {
@@ -125,11 +120,8 @@ object Updater {
             UpdateCheck.Failed("Could not check for updates (${e.message ?: "network error"})")
         }
     }
-    /**
-     * Debug builds and release builds are signed with different keys, so a
-     * release APK can never install over a debug one (and vice versa).
-     * Detect it up front instead of dumping the user at a dead installer.
-     */
+
+
     private fun signaturesMatch(ctx: Context, apkFile: File): Boolean {
         return try {
             val pm = ctx.packageManager
@@ -166,10 +158,7 @@ object Updater {
         ctx.startActivity(intent)
     }
 
-    /**
-     * Downloads [update] on IO, reporting (receivedBytes, totalBytes).
-     * Throws on HTTP errors or incomplete downloads.
-     */
+
     suspend fun downloadApk(
         ctx: Context,
         update: AppUpdate,
@@ -201,10 +190,7 @@ object Updater {
         }
     }
 
-    /**
-     * Verifies + installs a downloaded APK. Returns an error message, or
-     * null when the installer was launched.
-     */
+
     fun installDownloaded(ctx: Context, file: File, update: AppUpdate): String? {
         if (!signaturesMatch(ctx, file)) {
             return "This update is signed with a different key than the installed app, " +

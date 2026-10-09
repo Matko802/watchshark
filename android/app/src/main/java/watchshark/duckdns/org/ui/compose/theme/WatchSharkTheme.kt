@@ -11,8 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
-// Fallback YouTube-like neutrals when dynamic color is unavailable.
-// Dynamic color is preferred (user choice) for M3 Expressive.
+
 private val FallbackDark = darkColorScheme(
     primary = Color.White,
     onPrimary = Color.Black,
@@ -33,8 +32,7 @@ private val FallbackDark = darkColorScheme(
     error = Color(0xFFF2B8B5),
 )
 
-// Pure-black AMOLED fallback when dynamic color is unavailable.
-// All surfaces stay black so feeds and bars melt into the display.
+
 private val AmoledDark = darkColorScheme(
     primary = Color.White,
     onPrimary = Color.Black,
@@ -59,8 +57,7 @@ private val AmoledDark = darkColorScheme(
     error = Color(0xFFF2B8B5),
 )
 
-// Neutral YouTube-like grey dark (the "Grey" mode): grey surfaces,
-// monochrome accents — distinct from AMOLED's true black.
+
 private val GreyDark = darkColorScheme(
     primary = Color.White,
     onPrimary = Color.Black,
@@ -105,16 +102,7 @@ private val FallbackLight = lightColorScheme(
     error = Color(0xFFB3261E),
 )
 
-/**
- * M3 Expressive theme entry.
- * - Uses dynamic color on API 31+ (Material You / Expressive).
- * - Falls back to YouTube-like monochrome otherwise.
- * - amoled=true keeps the dynamic (Material You) accents but forces
- *   true-black surfaces in dark mode — same theme, AMOLED blacks.
- * - grey=true forces the neutral grey dark look in dark mode.
- * - Expressive shapes/motion come from material3 1.3+ defaults
- *   (64dp NavigationBar, pill indicators, spring motion).
- */
+
 @Composable
 fun WatchSharkTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -127,8 +115,8 @@ fun WatchSharkTheme(
     val useDynamic = dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val colorScheme = when {
         darkTheme && amoled && useDynamic -> {
-            // Same dynamic theme, AMOLED blacks: keep every Material You
-            // accent, only crush surfaces/backgrounds to true black.
+
+
             val base = dynamicDarkColorScheme(context)
             base.copy(
                 background = Color.Black,
@@ -152,8 +140,8 @@ fun WatchSharkTheme(
     }
     MaterialTheme(
         colorScheme = colorScheme,
-        // Use default M3 Expressive type + shapes from the library.
-        // Custom brand typography can be added here later.
+
+
         content = content,
     )
 }

@@ -5,16 +5,8 @@ import androidx.media3.common.Format
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.upstream.BandwidthMeter
-/**
- * Adaptive quality for the progressive renditions (360p / 480p / 720p /
- * Source). ExoPlayer's shared bandwidth meter measures the real connection
- * speed while video flows; Auto picks the highest rung that fits with
- * headroom, steps down fast on stalls, and steps up when the estimate
- * stays comfortably above the next rung. Manual overrides bypass it.
- *
- * Server encodes (video + 96k audio): 360p ~0.6 Mbps, 480p ~1.1 Mbps,
- * 720p ~2.6 Mbps; Source is the original file (unknown, often huge).
- */
+
+
 object AutoQuality {
     data class Rung(val key: String, val needBps: Long)
     private val LADDER = listOf(
@@ -23,11 +15,11 @@ object AutoQuality {
         Rung("720p", 4_000_000),
         Rung("src", 12_000_000)
     )
-    /** Min time between upgrades (avoids yo-yoing). */
+
     const val UPGRADE_GAP_MS = 10_000L
-    /** Min time between downgrades (still fast enough to unstick). */
+
     const val DOWNGRADE_GAP_MS = 5_000L
-    /** Don't bother upgrading this close to the end. */
+
     private const val TAIL_MS = 5_000L
     @Volatile
     var meter: BandwidthMeter? = null
@@ -77,7 +69,7 @@ object AutoQuality {
         val cur = rungIndex(curKey)
         return readyKeys(vid).filter { rungIndex(it) < cur }.maxByOrNull { rungIndex(it) }
     }
-    /** Throttle gate for any switch; stamps the clock when it opens. */
+
     fun tryBeginSwitch(gapMs: Long): Boolean {
         val now = SystemClock.uptimeMillis()
         if (now - lastSwitchMs < gapMs) return false
@@ -92,10 +84,8 @@ object AutoQuality {
         exo.seekTo(pos)
         exo.playWhenReady = resume
     }
-    /**
-     * Upgrade check for single-item players. Returns the new key, or null
-     * when no switch happened (same/better rung, throttled, or near the end).
-     */
+
+
     fun maybeUpgradeSingle(exo: ExoPlayer, vid: Video, curKey: String?): String? {
         val want = pickReadyKey(vid)
         if (rungIndex(want) <= rungIndex(curKey)) return null

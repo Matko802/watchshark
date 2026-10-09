@@ -192,7 +192,7 @@ fun UploadScreen(
         ) {
             Text(msg, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        // Clearance above the floating pill.
+
         Spacer(
             modifier = Modifier.height(88.dp),
         )

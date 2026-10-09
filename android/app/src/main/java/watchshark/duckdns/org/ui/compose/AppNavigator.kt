@@ -2,11 +2,7 @@ package watchshark.duckdns.org.ui.compose
 
 import androidx.navigation.NavHostController
 
-/**
- * Bridge from legacy Views fragments (which call
- * `MainActivity.openDetail(...)`) to the Compose NavController.
- * Set by WatchSharkApp once navigation is ready.
- */
+
 object AppNavigator {
     @Volatile
     var controller: NavHostController? = null

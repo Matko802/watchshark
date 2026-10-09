@@ -41,7 +41,7 @@ import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.Haptics
 import watchshark.duckdns.org.ui.compose.theme.AppMotion
 
-/** Snapshot of player state for Compose controls. */
+
 data class PlayerUiState(
     val isPlaying: Boolean = false,
     val playbackState: Int = Player.STATE_IDLE,
@@ -54,10 +54,7 @@ data class PlayerUiState(
     val isMuted: Boolean get() = volume == 0f
 }
 
-/**
- * Observes an ExoPlayer: instant updates for play/pause/buffering via
- * listener, plus a 500ms poll for position/duration/volume.
- */
+
 @Composable
 fun rememberPlayerUiState(player: Player?): PlayerUiState {
     var isPlaying by remember(player) { mutableStateOf(player?.isPlaying == true) }
@@ -99,7 +96,7 @@ fun rememberPlayerUiState(player: Player?): PlayerUiState {
     return PlayerUiState(isPlaying, playbackState, volume, positionMs, durationMs)
 }
 
-/** Bare video surface (web parity: no stock controller, Compose draws UI). */
+
 @Composable
 fun VideoSurface(
     player: Player?,
@@ -121,7 +118,7 @@ fun VideoSurface(
     )
 }
 
-/** Big center play/pause button, like web's #bigplay fab. No highlight. */
+
 @Composable
 fun CenterPlayButton(
     visible: Boolean,
@@ -167,7 +164,7 @@ fun CenterPlayButton(
     }
 }
 
-/** Themed buffering spinner over video. */
+
 @Composable
 fun BufferingSpinner(
     visible: Boolean,
@@ -185,7 +182,7 @@ fun BufferingSpinner(
     }
 }
 
-/** m:ss (or h:mm:ss) time readout, like web's time display. */
+
 fun fmtPlayerTime(ms: Long): String {
     val totalSec = (ms / 1000).coerceAtLeast(0)
     val h = totalSec / 3600

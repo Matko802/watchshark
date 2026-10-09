@@ -53,12 +53,7 @@ import kotlinx.coroutines.delay
 import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.Haptics
 
-/**
- * Themed watch-page player, 1:1 with web (watch.html):
- * bare video surface, tap toggles an auto-hiding control bar
- * (play / mute / time / seek / fullscreen), big center play button,
- * "tap to unmute" pill, poster until first frame. No click highlights.
- */
+
 @Composable
 fun WatchPlayer(
     player: Player?,
@@ -107,7 +102,7 @@ private fun PlayerChrome(
     var controlsVisible by remember { mutableStateOf(true) }
     var hideTick by remember { mutableIntStateOf(0) }
 
-    // Web parity: controls fade out after 3s of playback, stay while paused.
+
     LaunchedEffect(ui.isPlaying, hideTick) {
         if (ui.isPlaying) {
             delay(3000)
@@ -130,7 +125,7 @@ private fun PlayerChrome(
     ) {
         VideoSurface(player = player, modifier = Modifier.matchParentSize())
 
-        // Poster until the first frame (web sets <video> poster).
+
         if (!ui.isReady && thumbnailUrl != null) {
             AsyncImage(
                 model = thumbnailUrl,
@@ -155,7 +150,7 @@ private fun PlayerChrome(
             modifier = Modifier.align(Alignment.Center),
         )
 
-        // "Tap to unmute" pill (web #unmute).
+
         AnimatedVisibility(
             visible = ui.isMuted && ui.isPlaying,
             enter = fadeIn() + slideInVertically { it / 2 },
@@ -197,7 +192,7 @@ private fun PlayerChrome(
             }
         }
 
-        // Bottom control bar over a readability scrim (web .controls).
+
         AnimatedVisibility(
             visible = controlsVisible && ui.isReady,
             enter = fadeIn() + slideInVertically { it / 3 },
@@ -299,7 +294,7 @@ private fun PlayerChrome(
     }
 }
 
-/** 48dp white control icon without highlight, for over-video bars. */
+
 @Composable
 fun PlayerIconButton(
     onClick: () -> Unit,

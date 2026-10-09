@@ -108,7 +108,7 @@ fun WatchSharkApp(
         themeMode = mode
         androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(ThemePrefs.toNightMode(mode))
     }
-    // Coil loader with video-frame decoding so .webm thumbnails render.
+
     val videoLoader = remember(appCtx) {
         ImageLoader.Builder(appCtx)
             .components { add(VideoFrameDecoder.Factory()) }
@@ -122,7 +122,7 @@ fun WatchSharkApp(
     ) {
         CompositionLocalProvider(LocalImageLoader provides videoLoader) {
         val nav = rememberNavController()
-        // Exposes navigation to MainActivity (launcher shortcuts).
+
         LaunchedEffect(nav) { AppNavigator.controller = nav }
         val scope = rememberCoroutineScope()
         var query by remember { mutableStateOf("") }
@@ -167,8 +167,8 @@ fun WatchSharkApp(
                     restoreState = true
                 }
             } catch (_: Exception) {
-                // Navigation can throw for a tearing-down controller;
-                // never let a tab tap die silently.
+
+
                 try {
                     nav.navigate(tab) { launchSingleTop = true }
                 } catch (_: Exception) {
@@ -177,10 +177,7 @@ fun WatchSharkApp(
             scope.launch { refreshBadges() }
         }
 
-        // Same guarded single-top navigation the tabs use, for every
-        // menu destination (settings, notifications, upload, channels,
-        // watch, chat, admin, update): no duplicate stacking, taps can
-        // never die from a navigation throw.
+
         fun goScreen(route: String) {
             Haptics.tick(appCtx)
             try {
@@ -193,8 +190,8 @@ fun WatchSharkApp(
             val wide = maxWidth >= 600.dp
             Row(modifier = Modifier.fillMaxSize()) {
                 if (wide) {
-                    // M3 Expressive collapsed NavigationRail for medium+ windows
-                    // (replaces drawer, proper YT tablet pattern).
+
+
                     NavigationRail {
                         RailTab(
                             label = "Home",
@@ -315,12 +312,8 @@ fun WatchSharkApp(
                         }
                     },
                     bottomBar = {
-                        // Floating pill nav (classic WatchShark look), built
-                        // to the M3 Expressive bar anatomy: 24dp icons +
-                        // 11sp labels, one 56x32 pill indicator on the
-                        // active tab. Compact wrap-content stadium (like
-                        // web #bottomnav) so the outer layer reads as a
-                        // pill floating over content, never a full-width bar.
+
+
                         val showPill = !wide && !route.startsWith("auth") &&
                             !route.startsWith("chat") && route != "update"
                         AnimatedVisibility(
@@ -329,8 +322,8 @@ fun WatchSharkApp(
                             exit = slideOutVertically { it } + fadeOut(),
                             label = "pillBar",
                         ) {
-                            // Contrasts with the Scaffold background on every
-                            // theme (dynamic / grey / AMOLED / light).
+
+
                             val pillContainer = MaterialTheme.colorScheme.surfaceContainerHigh
                             Box(
                                 modifier = Modifier
@@ -380,8 +373,8 @@ fun WatchSharkApp(
                                                 contentDescription = null,
                                             )
                                         }
-                                        // Center button: transparent circle with
-                                        // outline + plus (no fill, no highlight).
+
+
                                         Box(
                                             contentAlignment = Alignment.Center,
                                             modifier = Modifier
@@ -448,8 +441,8 @@ fun WatchSharkApp(
                     NavHost(
                         navController = nav,
                         startDestination = if (startLoggedIn) ROUTE_HOME else "auth",
-                        // Top inset only: feeds scroll behind the floating
-                        // pill instead of stopping above it.
+
+
                         modifier = Modifier.padding(top = padding.calculateTopPadding()),
                         enterTransition = { AppMotion.screenEnter },
                         exitTransition = { AppMotion.screenExit },
@@ -579,7 +572,7 @@ fun WatchSharkApp(
             }
         }
 
-        // Collapse search on back when on home.
+
         BackHandler(enabled = searchExpanded) {
             searchExpanded = false
             query = ""
@@ -591,10 +584,6 @@ fun WatchSharkApp(
 }
 
 
-/**
- * One bottom-pill destination: 24dp icon over an 11sp label, with the
- * M3 Expressive 56x32 pill indicator behind the icon when selected.
- */
 @Composable
 private fun androidx.compose.foundation.layout.RowScope.PillTab(
     selected: Boolean,
@@ -606,9 +595,8 @@ private fun androidx.compose.foundation.layout.RowScope.PillTab(
     badgeText: String = "",
     icon: @Composable () -> Unit,
 ) {
-    // Every tab gets its own interaction source: no ripple, but a
-    // soft press glow behind the icon plus the springing selection
-    // pill, so every tap gives visible click feedback.
+
+
     val tabInteraction = remember { MutableInteractionSource() }
     val pressed by tabInteraction.collectIsPressedAsState()
     val glowAlpha by animateFloatAsState(
@@ -656,7 +644,7 @@ private fun androidx.compose.foundation.layout.RowScope.PillTab(
                     .clip(RoundedCornerShape(16.dp))
                     .background(MaterialTheme.colorScheme.secondaryContainer),
             )
-            // Press glow: soft highlight while the finger is down.
+
             Box(
                 modifier = Modifier
                     .size(width = 56.dp, height = 32.dp)
@@ -686,7 +674,7 @@ private fun androidx.compose.foundation.layout.RowScope.PillTab(
                 text = label,
                 fontSize = 11.sp,
                 color = if (selected) selectedColor else idleColor,
-                modifier = Modifier.padding(top = 3.dp),
+                modifier = Modifier.padding(top = 1.dp),
             )
         }
     }

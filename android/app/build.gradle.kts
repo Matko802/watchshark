@@ -12,8 +12,8 @@ android {
         applicationId = "watchshark.duckdns.org"
         minSdk = 26
         targetSdk = 34
-        versionCode = 10808
-        versionName = "1.8.7"
+        versionCode = 10809
+        versionName = "1.8.8"
         buildConfigField("String", "APP_URL", "\"https://watchshark.duckdns.org\"")
     }
 
@@ -33,8 +33,8 @@ android {
         }
     }
     lint {
-        // lintVitalAnalyzeRelease crashes on the new Compose/M3 1.4
-        // artifacts (lint bug) — don't block APK assembly.
+
+
         abortOnError = false
         checkReleaseBuilds = false
     }
@@ -53,7 +53,7 @@ android {
 
 dependencies {
     implementation(platform("androidx.compose:compose-bom:2025.10.00"))
-    // Compose M3 Expressive + adaptive navigation (YT-like proper)
+
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")

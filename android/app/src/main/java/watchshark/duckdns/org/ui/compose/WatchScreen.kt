@@ -84,7 +84,7 @@ fun WatchScreen(
         }
     }
 
-    // ExoPlayer with session cookie (server requires auth for streams).
+
     val player = remember(videoId) { ApiClient.buildPlayer(context) }
     DisposableEffect(player) {
         onDispose { player.release() }
@@ -162,8 +162,8 @@ fun WatchScreen(
                     TextButton(onClick = { onOpenChannel(v.username) }) {
                         Text("@${v.username}")
                     }
-                    // Follow (outlined w/ person_add like web) + Like chip. Never on own videos.
-                    // Both flip instantly (optimistic) so taps never feel dead.
+
+
                     if (meId != null && meId != v.userId) {
                         OutlinedButton(
                             onClick = {
@@ -274,7 +274,7 @@ fun WatchScreen(
                 }
             }
         }
-        // Clearance so the last comment scrolls above the floating pill.
+
         item { Spacer(modifier = Modifier.height(104.dp)) }
     }
 }

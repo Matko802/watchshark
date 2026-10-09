@@ -43,7 +43,7 @@ fun fmtDur(sec: Long): String {
     val s = sec % 60
     return "$m:${s.toString().padStart(2, '0')}"
 }
-/** Server timestamps are UTC — render absolute time in the device timezone. */
+
 fun fmtDateTime(s: String?): String {
     if (s.isNullOrEmpty()) return ""
     return try {

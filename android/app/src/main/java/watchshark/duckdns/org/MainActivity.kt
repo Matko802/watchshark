@@ -16,14 +16,11 @@ import watchshark.duckdns.org.data.Updater
 import watchshark.duckdns.org.ui.compose.AppNavigator
 import watchshark.duckdns.org.ui.compose.WatchSharkApp
 
-/**
- * Pure-Compose M3 Expressive shell (YouTube-style navigation).
- * All screens are Compose; no Fragments remain.
- */
+
 class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Views-side night mode (dialogs, splash) follows the saved choice.
+
         AppCompatDelegate.setDefaultNightMode(
             ThemePrefs.toNightMode(ThemePrefs.getMode(this)),
         )

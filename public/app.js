@@ -26,11 +26,9 @@ function avatarHtml(file, cls) {
   if (file.endsWith('.webm')) return `<video class="${cls}" src="${file}" autoplay loop muted playsinline></video>`;
   return `<img class="${cls}" src="${file}" alt="">`;
 }
-/** Online presence dot (green = active in last 5 min, grey = offline). */
 function statusDot(online) {
   return `<span class="onlinedot${online ? ' on' : ''}"></span>`;
 }
-/** Avatar with presence dot overlay. */
 function avatarStatusHtml(avatar, cls, online) {
   return `<span class="avwrap">${avatarHtml(avatar, cls)}${statusDot(online)}</span>`;
 }
@@ -166,11 +164,6 @@ async function pjaxHead(doc) {
       document.head.appendChild(el);
     }
   });
-  // Page-specific <style> blocks (e.g. messages.html DM layout) live in
-  // <head>, which pjaxSwap does not replace (only body is swapped). Without
-  // this, PJAX navigation renders the page unstyled — a different-looking
-  // menu than a full refresh. Drop stale page styles, then copy the new
-  // page's ones.
   try {
     document.querySelectorAll('head style[data-pjax-style]').forEach((el) => el.remove());
   } catch {}
@@ -230,9 +223,6 @@ async function pjaxSwap(url, push) {
       document.body.appendChild(el);
       el.remove();
     }
-    // NOTE: do NOT call window.__boot() here. Every page script auto-invokes
-    // its own __boot on eval, so calling it again double-boots the page
-    // (two Swipers on wheels = duplicate slides + unpausable videos).
     try {
       if (!vendorComponentsOk()) setTimeout(ensureVendor, 1500);
     } catch {}
@@ -246,7 +236,6 @@ function hideBoot() {
   const b = document.getElementById('bootloader');
   if (b) b.remove();
 }
-/** Blur effects toggle (translucent bars); default on. */
 function blurDisabled() {
   try {
     if (localStorage.getItem('ws_blur') === '0') return true;
@@ -262,8 +251,6 @@ function applyBlurPref() {
   } catch {}
   updateDynamicBlur();
 }
-/** Dynamic topbar blur: fades blur+background in over the first ~120px of scroll
- *  instead of a static backdrop. Skipped when blur is disabled. */
 let __blurTick = false;
 function updateDynamicBlur() {
   try {
@@ -274,7 +261,6 @@ function updateDynamicBlur() {
     }
     const y = Math.max(0, window.scrollY || 0);
     const t = Math.min(1, y / 120);
-    // 4px -> 20px blur, 0.25 -> 0.65 background alpha
     const blur = (4 + 16 * t).toFixed(1) + 'px';
     const bg = (0.25 + 0.40 * t).toFixed(3);
     root.style.setProperty('--ws-topblur', blur);
@@ -341,7 +327,6 @@ try {
 } catch {}
 applyThemePref();
 document.addEventListener('DOMContentLoaded', () => setTimeout(hideBoot, 1500));
-/** Desktop left nav like YouTube (injected, desktop widths only). */
 function ensureSidebar() {
   if (window.innerWidth < 1000) return;
   const bare = ['/forgot', '/reset', '/verify'].some((p) => location.pathname.startsWith(p));
@@ -412,7 +397,6 @@ window.addEventListener('popstate', async (e) => {
     updateDynamicBlur();
   }
 });
-/** Segmented slider tabs (pill container + sliding indicator). Returns {pick, move}. */
 function segTabs(el, onPick) {
   if (!el) return null;
   const btns = [...el.querySelectorAll('.segbtn')];
@@ -446,7 +430,6 @@ function esc(s) {
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   }[c]));
 }
-/** Server timestamps are UTC ("YYYY-MM-DD HH:MM:SS") — anchor them so the client converts to local time. */
 function utcMs(s) {
   const t = String(s).replace(' ', 'T').replace(/Z$/, '') + 'Z';
   const ms = Date.parse(t);

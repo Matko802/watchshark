@@ -74,7 +74,7 @@ fun VideoCard(
             .padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // 16:9 expressive rounded thumbnail (M3 shape scale, 12dp).
+
         Box {
         AsyncImage(
             model = ApiClient.fullUrl(video.thumbnail),

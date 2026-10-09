@@ -4,7 +4,7 @@
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
-        <!-- Monochrome light: no Material purple anywhere. -->
+
         <item name="colorPrimary">#0F0F0F</item>
         <item name="colorOnPrimary">@android:color/white</item>
         <item name="colorPrimaryContainer">#E7E7E7</item>

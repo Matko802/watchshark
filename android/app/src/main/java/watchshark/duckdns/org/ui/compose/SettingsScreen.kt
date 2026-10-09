@@ -75,11 +75,7 @@ private const val SET_NOTIFICATIONS = "set_notifications"
 private const val SET_HAPTICS = "set_haptics"
 private const val SET_ABOUT = "set_about"
 
-/**
- * Settings hub in the SpatialFlow style: one grouped card of icon rows
- * (title + subtitle + chevron) opening dedicated sub-pages with
- * slide transitions, instead of tab switching.
- */
+
 @Composable
 fun SettingsScreen(
     themeMode: Int,
@@ -403,7 +399,7 @@ fun SettingsScreen(
     }
 }
 
-/** Segmented group card: 32dp outer corners, 4dp inner joints. */
+
 @Composable
 private fun SettingsGroup(items: List<@Composable () -> Unit>) {
     Column(
@@ -436,7 +432,7 @@ private fun SettingsGroup(items: List<@Composable () -> Unit>) {
     }
 }
 
-/** Hub row: 48dp tinted icon circle, title + subtitle, chevron. No highlight. */
+
 @Composable
 private fun SettingsCategoryRow(
     title: String,
@@ -486,7 +482,7 @@ private fun SettingsCategoryRow(
     )
 }
 
-/** About logo card (SpatialFlow AppLogoSection style): app icon + name + version. */
+
 @Composable
 private fun AppAboutCard(version: String) {
     val appCtx = LocalContext.current
@@ -527,7 +523,7 @@ private fun AppAboutCard(version: String) {
     }
 }
 
-/** Detail sub-page: back header + scrolling content. */
+
 @Composable
 private fun SettingsDetail(
     title: String,

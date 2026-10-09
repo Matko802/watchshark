@@ -41,10 +41,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-/**
- * Fullscreen update page (follows the system theme like everything
- * else): expressive flower wheel, percent, size readout, cancel.
- */
+
 @Composable
 fun UpdateScreen(
     onDone: () -> Unit,
@@ -117,8 +114,8 @@ fun UpdateScreen(
             label = "updateProgress",
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            // Expressive flower wheel (M3 wavy style): a rippling ring
-            // whose lit arc follows download progress.
+
+
             FlowerProgressWheel(
                 progress = progress,
                 modifier = Modifier.padding(top = 24.dp),
@@ -142,10 +139,7 @@ fun UpdateScreen(
     }
 }
 
-/**
- * Expressive flower wheel in the M3 wavy style: a sine-rippled ring
- * with a travelling wave phase; the lit arc tracks [progress].
- */
+
 @Composable
 private fun FlowerProgressWheel(
     progress: Float,

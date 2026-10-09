@@ -123,7 +123,7 @@ private fun parseWheelVideo(o: JsonObject): Video? {
     }
 }
 
-/** Dynamic rendition URL (generates on first request server-side). */
+
 private fun dynRendition(src: String, res: String): String? {
     val stem = Regex("""/v/(.+)\.[a-z0-9]+$""", RegexOption.IGNORE_CASE)
         .find(src)?.groupValues?.get(1)
@@ -170,7 +170,7 @@ fun WheelsScreen(
     }
 
     LaunchedEffect(immersive) { setImmersive(immersive) }
-    // Never trap the user without system bars if wheels is left behind.
+
     DisposableEffect(Unit) {
         onDispose {
             try {
@@ -229,7 +229,7 @@ fun WheelsScreen(
                     } else if (state == Player.STATE_BUFFERING && playWhenReady &&
                         readyMap[idx] == true
                     ) {
-                        // Adaptive step-down while rebuffering.
+
                         val vid = videos.getOrNull(idx) ?: return
                         if (qualityOverride.containsKey(vid.id)) return
                         val want = AutoQuality.lowerReadyKey(vid, autoKeys[vid.id]) ?: return
@@ -249,7 +249,7 @@ fun WheelsScreen(
         }
     }
 
-    // Pause with the app, resume when back.
+
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle, player) {
         val obs = LifecycleEventObserver { _, event ->
@@ -350,7 +350,7 @@ fun WheelsScreen(
     val pageCount = videos.size + if (exhausted && videos.isNotEmpty()) 1 else 0
     val pagerState = rememberPagerState(initialPage = 0) { pageCount }
     val currentPage = pagerState.currentPage
-    // Single live player snapshot (spinner, play badge, clock).
+
     val ui = rememberPlayerUiState(player)
 
     LaunchedEffect(currentPage) {
@@ -371,7 +371,7 @@ fun WheelsScreen(
         beyondViewportPageCount = 1,
     ) { page ->
         if (page >= videos.size) {
-            // End card.
+
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("You're all caught up", style = MaterialTheme.typography.titleLarge)
@@ -388,13 +388,13 @@ fun WheelsScreen(
         }
         val vid = videos[page]
         val isCurrent = page == currentPage
-        // Pager depth transformer: neighbors shrink + fade for a TikTok-like feel.
+
         val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
         val offsetAbs = pageOffset.coerceIn(-1f, 1f).let { kotlin.math.abs(it) }
         var heartBurst by remember(vid.id) { mutableStateOf(false) }
         fun doLike() {
-            // Optimistic: flip the heart instantly so the tap never
-            // feels dead on slow networks; revert only on failure.
+
+
             val idx = videos.indexOfFirst { it.id == vid.id }
             if (idx < 0) return
             val cur = videos[idx]
@@ -413,7 +413,7 @@ fun WheelsScreen(
             }
         }
         fun doFollow() {
-            // Optimistic follow (web rfollowBtn parity). Never on own wheels.
+
             if (vid.userId == 0L) return
             val myId = meId
             if (myId != null && myId == vid.userId) return
@@ -480,7 +480,7 @@ fun WheelsScreen(
                     modifier = Modifier.fillMaxSize(),
                 )
             }
-            // Bottom scrim so captions stay readable.
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -492,7 +492,7 @@ fun WheelsScreen(
                     )
                     .padding(top = 96.dp),
             )
-            // Double-tap heart burst.
+
             AnimatedVisibility(
                 visible = heartBurst,
                 enter = scaleIn(AppMotion.fastSpatial, initialScale = 0.4f) + fadeIn(),
@@ -507,7 +507,7 @@ fun WheelsScreen(
                     modifier = Modifier.size(96.dp),
                 )
             }
-            // Paused badge + buffering spinner (web rbig/rspinner parity).
+
             CenterPlayButton(
                 visible = isCurrent && !ui.isPlaying && readyMap[page] == true,
                 playing = false,
@@ -518,7 +518,7 @@ fun WheelsScreen(
                 visible = isCurrent && readyMap[page] != true,
                 modifier = Modifier.align(Alignment.Center),
             )
-            // Captions above the floating pill.
+
             AnimatedVisibility(
                 visible = isCurrent,
                 enter = fadeIn() + androidx.compose.animation.slideInVertically { it / 4 },
@@ -545,7 +545,7 @@ fun WheelsScreen(
                 )
             }
             }
-            // Action rail.
+
             AnimatedVisibility(
                 visible = isCurrent,
                 enter = fadeIn() + androidx.compose.animation.slideInVertically { it / 4 },
@@ -559,7 +559,7 @@ fun WheelsScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                // Heart like, 1:1 with web (favorite outline/filled, always white).
+
                 RailPillButton(onClick = { doLike() }, description = "Like") {
                     Icon(
                         painterResource(
@@ -570,7 +570,7 @@ fun WheelsScreen(
                     )
                 }
                 Text(fmtNum(vid.likes), color = Color.White, style = MaterialTheme.typography.labelSmall)
-                // Follow pill (web rfollowBtn parity). Hidden on own wheels.
+
                 val myId = meId
                 if (myId == null || myId != vid.userId) {
                     RailPillButton(onClick = { doFollow() }, description = "Follow") {
@@ -603,7 +603,7 @@ fun WheelsScreen(
                         contentDescription = "Comments",
                     )
                 }
-                // Fullscreen pill (web rfullBtn parity): immersive playback.
+
                 RailPillButton(
                     onClick = { immersive = !immersive },
                     description = "Fullscreen",
@@ -616,7 +616,7 @@ fun WheelsScreen(
                         contentDescription = "Fullscreen",
                     )
                 }
-                // Quality gear + label, like web's settings rail button.
+
                 RailPillButton(onClick = { qualityFor = vid }, description = "Quality") {
                     Icon(
                         painterResource(R.drawable.ic_settings),
@@ -628,7 +628,7 @@ fun WheelsScreen(
                     color = Color.White,
                     style = MaterialTheme.typography.labelSmall,
                 )
-                // Clock readout (web #rtime parity).
+
                 Text(
                     "${fmtPlayerTime(ui.positionMs)} / ${fmtPlayerTime(ui.durationMs)}",
                     color = Color(0xFFDDDDDD),
@@ -639,7 +639,7 @@ fun WheelsScreen(
         }
     }
 
-    // Quality picker.
+
     qualityFor?.let { v ->
         val options = buildList {
             add("Auto")
@@ -687,11 +687,7 @@ fun WheelsScreen(
     }
 }
 
-/**
- * Over-video circular pill button, 1:1 with web
- * (.reel-rail .railitem md-icon-button): translucent black circle,
- * white icon, darker background + 0.92 squeeze on press.
- */
+
 @Composable
 private fun RailPillButton(
     onClick: () -> Unit,

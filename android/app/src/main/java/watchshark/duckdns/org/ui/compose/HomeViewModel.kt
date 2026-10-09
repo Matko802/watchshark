@@ -41,7 +41,7 @@ class HomeViewModel : ViewModel() {
     fun setQuery(q: String) {
         if (query == q) return
         query = q
-        // Debounce typing: avoids a request per keystroke, keeps search smooth.
+
         queryJob?.cancel()
         queryJob = viewModelScope.launch {
             delay(350)

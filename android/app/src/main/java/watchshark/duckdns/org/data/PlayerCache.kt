@@ -12,13 +12,7 @@ import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import java.io.File
 
-/**
- * Shared on-disk media cache (TikTok-style instant replays + offline-ish
- * revisits). One process-wide SimpleCache; every wheels/reel MediaSource
- * reads through it so already-watched bytes never hit the network again.
- * ExoPlayer's default LoadControl already buffers ahead into the next
- * playlist items — combined with this cache, swiping stays smooth.
- */
+
 @UnstableApi
 object PlayerCache {
     private const val DIR = "media"
@@ -36,7 +30,7 @@ object PlayerCache {
         ).also { cache = it }
     }
 
-    /** Cache-backed source for one stream URL (auth cookies forwarded). */
+
     fun mediaSource(context: Context, url: String, props: Map<String, String>): MediaSource {
         val http = DefaultHttpDataSource.Factory()
             .setDefaultRequestProperties(props)
