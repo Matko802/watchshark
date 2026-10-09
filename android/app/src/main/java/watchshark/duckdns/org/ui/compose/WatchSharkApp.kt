@@ -83,7 +83,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Download
 import coil.ImageLoader
 import coil.compose.AsyncImage
 import coil.compose.LocalImageLoader
@@ -258,7 +258,7 @@ fun WatchSharkApp(
                             iconRes = R.drawable.ic_movie,
                             onClick = { goTab(ROUTE_WHEELS) },
                         )
-                        FloatingActionButton(onClick = { goScreen("upload") }) {
+                        FloatingActionButton(onClick = { goSection("upload") }) {
                             Icon(
                                 painterResource(R.drawable.ic_add),
                                 contentDescription = "Create",
@@ -451,7 +451,7 @@ fun WatchSharkApp(
                                                     interactionSource = createInteraction,
                                                     indication = null,
                                                     role = Role.Button,
-                                                    onClick = { goScreen("upload") },
+                                                    onClick = { goSection("upload") },
                                                 ),
                                         ) {
                                             Icon(
@@ -672,9 +672,9 @@ fun WatchSharkApp(
                             modifier = Modifier.padding(32.dp),
                         ) {
                             Icon(
-                                Icons.Filled.Warning,
+                                Icons.Filled.Download,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(72.dp),
                             )
                             Text(

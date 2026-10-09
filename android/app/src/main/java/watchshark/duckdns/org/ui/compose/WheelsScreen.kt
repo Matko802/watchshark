@@ -17,10 +17,10 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.VerticalPager
@@ -49,7 +49,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -369,7 +368,10 @@ fun WheelsScreen(
 
     VerticalPager(
         state = pagerState,
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Black),
+        contentPadding = PaddingValues(bottom = 100.dp),
         beyondViewportPageCount = 1,
     ) { page ->
         if (page >= videos.size) {
@@ -494,18 +496,6 @@ fun WheelsScreen(
                     )
                     .padding(top = 96.dp),
             )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .height(128.dp)
-                    .blur(24.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color.Transparent, Color(0xB3000000)),
-                        ),
-                    ),
-            )
 
             AnimatedVisibility(
                 visible = heartBurst,
@@ -543,7 +533,7 @@ fun WheelsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth(0.78f)
-                    .padding(start = 12.dp, bottom = 96.dp, end = 8.dp),
+                    .padding(start = 12.dp, bottom = 16.dp, end = 8.dp),
             ) {
                 Text(
                     vid.title,
@@ -569,7 +559,7 @@ fun WheelsScreen(
             ) {
             Column(
                 modifier = Modifier
-                    .padding(end = 8.dp, bottom = 96.dp),
+                    .padding(end = 8.dp, bottom = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
