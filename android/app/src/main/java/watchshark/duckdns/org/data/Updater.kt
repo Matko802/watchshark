@@ -215,6 +215,7 @@ object Updater {
                 }
             }
         }
+        throw IllegalStateException("unreachable")
     }
 
     private fun pruneOldDownloads(ctx: Context, keepVersion: String) {
