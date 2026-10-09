@@ -55,6 +55,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -81,6 +83,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
 import coil.ImageLoader
 import coil.compose.LocalImageLoader
 import coil.compose.rememberAsyncImagePainter
@@ -88,8 +92,11 @@ import coil.decode.VideoFrameDecoder
 import kotlinx.coroutines.launch
 import watchshark.duckdns.org.data.ApiClient
 import watchshark.duckdns.org.R
+import watchshark.duckdns.org.data.AppUpdate
 import watchshark.duckdns.org.data.Haptics
 import watchshark.duckdns.org.data.ThemePrefs
+import watchshark.duckdns.org.data.UpdateCheck
+import watchshark.duckdns.org.data.Updater
 import watchshark.duckdns.org.ui.compose.theme.AppMotion
 import watchshark.duckdns.org.ui.compose.theme.WatchSharkTheme
 
@@ -133,6 +140,7 @@ fun WatchSharkApp(
         var unread by remember { mutableIntStateOf(0) }
         var showCreateSheet by remember { mutableStateOf(false) }
         var meName by remember { mutableStateOf<String?>(null) }
+        var startupUpdate by remember { mutableStateOf<AppUpdate?>(null) }
 
         suspend fun refreshBadges() {
             try {
@@ -145,6 +153,12 @@ fun WatchSharkApp(
             }
         }
         LaunchedEffect(Unit) { refreshBadges() }
+        LaunchedEffect(Unit) {
+            when (val result = Updater.checkForUpdate()) {
+                is UpdateCheck.Available -> startupUpdate = result.update
+                else -> {}
+            }
+        }
 
         val backStack by nav.currentBackStackEntryAsState()
         val route = backStack?.destination?.route ?: ROUTE_HOME
@@ -640,6 +654,63 @@ fun WatchSharkApp(
                             goScreen("upload")
                         },
                     )
+                }
+            }
+
+            startupUpdate?.let { update ->
+                Dialog(
+                    onDismissRequest = { startupUpdate = null },
+                    properties = DialogProperties(
+                        usePlatformDefaultWidth = false,
+                        decorFitsSystemWindows = false,
+                    ),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.surface),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.padding(32.dp),
+                        ) {
+                            Icon(
+                                Icons.Filled.Warning,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(72.dp),
+                            )
+                            Text(
+                                "Oh no…",
+                                style = MaterialTheme.typography.headlineMedium,
+                            )
+                            Text(
+                                "You're using an outdated client, please update!",
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                            Text(
+                                "v${update.version}",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Button(
+                                onClick = {
+                                    Updater.pending = update
+                                    startupUpdate = null
+                                    goScreen("update")
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 12.dp),
+                            ) { Text("Update") }
+                            TextButton(
+                                onClick = { startupUpdate = null },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) { Text("Update later") }
+                        }
+                    }
                 }
             }
         }
