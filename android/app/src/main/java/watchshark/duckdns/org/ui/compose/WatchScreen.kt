@@ -39,14 +39,17 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.media3.common.Player
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import watchshark.duckdns.org.data.ApiClient
+import watchshark.duckdns.org.data.AutoQuality
 import watchshark.duckdns.org.data.Comment
 import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.Video
 import watchshark.duckdns.org.data.Haptics
 import watchshark.duckdns.org.ui.compose.player.WatchPlayer
+import watchshark.duckdns.org.ui.compose.player.dynRenditionUrl
 import watchshark.duckdns.org.ui.fmtAge
 import watchshark.duckdns.org.ui.fmtNum
 
@@ -89,16 +92,42 @@ fun WatchScreen(
     DisposableEffect(player) {
         onDispose { player.release() }
     }
+    var quality by remember(videoId) { mutableStateOf("Auto") }
 
-    LaunchedEffect(video) {
-        val v = video ?: return@LaunchedEffect
-        val url = v.renditions?.get("720p")
+    fun qualityOptions(v: Video): List<String> {
+        return buildList {
+            add("Auto")
+            if (v.renditions?.containsKey("720p") == true || dynRenditionUrl(v.src, "720p") != null) add("720p")
+            if (v.renditions?.containsKey("480p") == true || dynRenditionUrl(v.src, "480p") != null) add("480p")
+            if (v.renditions?.containsKey("360p") == true || dynRenditionUrl(v.src, "360p") != null) add("360p")
+            add("Source")
+        }
+    }
+
+    fun qualityUrl(v: Video, selected: String): String? {
+        if (selected != "Auto" && selected != "Source") {
+            return v.renditions?.get(selected)
+                ?: dynRenditionUrl(v.src, selected)
+                ?: ApiClient.fullUrl(v.src)
+        }
+        if (selected == "Auto") {
+            val key = AutoQuality.pickReadyKey(v)
+            AutoQuality.readyUrl(v, key)?.let { return it }
+        }
+        return v.renditions?.get("720p")
             ?: v.renditions?.values?.firstOrNull()
             ?: ApiClient.fullUrl(v.src)
-            ?: return@LaunchedEffect
+    }
+
+    LaunchedEffect(video, quality) {
+        val v = video ?: return@LaunchedEffect
+        val url = qualityUrl(v, quality) ?: return@LaunchedEffect
         try {
+            val keep = player.playbackState != Player.STATE_IDLE && player.duration.coerceAtLeast(0) > 0
+            val pos = if (keep) player.currentPosition.coerceAtLeast(0) else 0L
             player.setMediaItem(ApiClient.mediaItem(url))
             player.prepare()
+            player.seekTo(pos)
             player.playWhenReady = true
         } catch (_: Exception) {
         }
@@ -132,6 +161,9 @@ fun WatchScreen(
             WatchPlayer(
                 player = player,
                 thumbnailUrl = ApiClient.fullUrl(v.thumbnail),
+                qualities = qualityOptions(v),
+                quality = quality,
+                onQuality = { quality = it },
                 modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
             )
         }

@@ -20,9 +20,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -146,33 +143,14 @@ fun ChannelScreen(
                 }
             }
         }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            SingleChoiceSegmentedButtonRow {
-                SegmentedButton(
-                    selected = tab == 0,
-                    onClick = { tab = 0 },
-                    shape = SegmentedButtonDefaults.itemShape(0, 2),
-                    icon = {
-                        Icon(painterResource(R.drawable.ic_play), contentDescription = null)
-                    },
-                    label = { Text("Videos") },
-                )
-                SegmentedButton(
-                    selected = tab == 1,
-                    onClick = { tab = 1 },
-                    shape = SegmentedButtonDefaults.itemShape(1, 2),
-                    icon = {
-                        Icon(painterResource(R.drawable.ic_movie), contentDescription = null)
-                    },
-                    label = { Text("Wheels") },
-                )
-            }
-        }
+        SectionTabs(
+            tabs = listOf(
+                SectionTab("Videos", iconRes = R.drawable.ic_play),
+                SectionTab("Wheels", iconRes = R.drawable.ic_movie),
+            ),
+            selectedIndex = tab,
+            onSelect = { tab = it },
+        )
         val shown = if (tab == 0) videos.filter { it.kind != "wheel" } else videos.filter { it.kind == "wheel" }
         AnimatedContent(targetState = tab, label = "channelTab") { _ ->
         LazyVerticalGrid(

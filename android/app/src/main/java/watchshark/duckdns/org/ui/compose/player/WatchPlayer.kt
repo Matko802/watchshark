@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -58,6 +59,9 @@ import watchshark.duckdns.org.data.Haptics
 fun WatchPlayer(
     player: Player?,
     thumbnailUrl: String?,
+    qualities: List<String> = emptyList(),
+    quality: String = "Auto",
+    onQuality: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var fullscreen by remember { mutableStateOf(false) }
@@ -74,6 +78,9 @@ fun WatchPlayer(
                 thumbnailUrl = thumbnailUrl,
                 fullscreen = true,
                 onToggleFullscreen = { fullscreen = false },
+                qualities = qualities,
+                quality = quality,
+                onQuality = onQuality,
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black),
@@ -85,6 +92,9 @@ fun WatchPlayer(
             thumbnailUrl = thumbnailUrl,
             fullscreen = false,
             onToggleFullscreen = { fullscreen = true },
+            qualities = qualities,
+            quality = quality,
+            onQuality = onQuality,
             modifier = modifier,
         )
     }
@@ -96,11 +106,15 @@ private fun PlayerChrome(
     thumbnailUrl: String?,
     fullscreen: Boolean,
     onToggleFullscreen: () -> Unit,
+    qualities: List<String>,
+    quality: String,
+    onQuality: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val ui = rememberPlayerUiState(player)
     var controlsVisible by remember { mutableStateOf(true) }
     var hideTick by remember { mutableIntStateOf(0) }
+    var qualityOpen by remember { mutableStateOf(false) }
 
 
     LaunchedEffect(ui.isPlaying, hideTick) {
@@ -194,11 +208,11 @@ private fun PlayerChrome(
 
 
         AnimatedVisibility(
-            visible = controlsVisible && ui.isReady,
-            enter = fadeIn() + slideInVertically { it / 3 },
-            exit = fadeOut() + slideOutVertically { it / 3 },
+            visible = ui.isReady,
+            enter = fadeIn(),
+            exit = fadeOut(),
             modifier = Modifier.align(Alignment.BottomCenter),
-            label = "controls",
+            label = "progressBar",
         ) {
             Column(
                 modifier = Modifier
@@ -208,7 +222,7 @@ private fun PlayerChrome(
                             listOf(Color.Transparent, Color(0xC8000000)),
                         ),
                     )
-                    .padding(start = 4.dp, end = 4.dp, top = 24.dp, bottom = 4.dp),
+                    .padding(start = 4.dp, end = 4.dp, top = 8.dp, bottom = 4.dp),
             ) {
                 val fraction = if (ui.durationMs > 0) {
                     (ui.positionMs.toFloat() / ui.durationMs).coerceIn(0f, 1f)
@@ -230,63 +244,111 @@ private fun PlayerChrome(
                         .fillMaxWidth()
                         .padding(horizontal = 8.dp),
                 )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth(),
+                AnimatedVisibility(
+                    visible = controlsVisible,
+                    enter = fadeIn() + slideInVertically { it / 3 },
+                    exit = fadeOut() + slideOutVertically { it / 3 },
+                    label = "controls",
                 ) {
-                    PlayerIconButton(
-                        onClick = {
-                            if (ui.isPlaying) player?.pause() else player?.play()
-                            poke()
-                        },
-                        description = if (ui.isPlaying) "Pause" else "Play",
-                    ) {
-                        Icon(
-                            painterResource(
-                                if (ui.isPlaying) R.drawable.ic_pause
-                                else R.drawable.ic_play_arrow,
-                            ),
-                            contentDescription = null,
-                        )
-                    }
-                    PlayerIconButton(
-                        onClick = {
-                            player?.volume = if (ui.isMuted) 1f else 0f
-                            poke()
-                        },
-                        description = "Mute",
-                    ) {
-                        Icon(
-                            painterResource(
-                                if (ui.isMuted) R.drawable.ic_volume_off
-                                else R.drawable.ic_volume_up,
-                            ),
-                            contentDescription = null,
-                        )
-                    }
-                    Text(
-                        "${fmtPlayerTime(ui.positionMs)} / ${fmtPlayerTime(ui.durationMs)}",
-                        color = Color.White,
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.padding(start = 4.dp),
-                    )
-                    Spacer(
-                        modifier = Modifier.weight(1f),
-                    )
-                    PlayerIconButton(
-                        onClick = {
-                            onToggleFullscreen()
-                            poke()
-                        },
-                        description = "Fullscreen",
-                    ) {
-                        Icon(
-                            painterResource(
-                                if (fullscreen) R.drawable.ic_fullscreen_exit
-                                else R.drawable.ic_fullscreen,
-                            ),
-                            contentDescription = null,
-                        )
+                    Column {
+                        AnimatedVisibility(
+                            visible = qualityOpen && qualities.size > 1,
+                            enter = fadeIn() + slideInVertically { it / 3 },
+                            exit = fadeOut() + slideOutVertically { it / 3 },
+                            label = "qualityChips",
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                            ) {
+                                qualities.forEach { option ->
+                                    FilterChip(
+                                        selected = quality == option,
+                                        onClick = {
+                                            onQuality(option)
+                                            qualityOpen = false
+                                            poke()
+                                        },
+                                        label = { Text(option) },
+                                    )
+                                }
+                            }
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            PlayerIconButton(
+                                onClick = {
+                                    if (ui.isPlaying) player?.pause() else player?.play()
+                                    poke()
+                                },
+                                description = if (ui.isPlaying) "Pause" else "Play",
+                            ) {
+                                Icon(
+                                    painterResource(
+                                        if (ui.isPlaying) R.drawable.ic_pause
+                                        else R.drawable.ic_play_arrow,
+                                    ),
+                                    contentDescription = null,
+                                )
+                            }
+                            PlayerIconButton(
+                                onClick = {
+                                    player?.volume = if (ui.isMuted) 1f else 0f
+                                    poke()
+                                },
+                                description = "Mute",
+                            ) {
+                                Icon(
+                                    painterResource(
+                                        if (ui.isMuted) R.drawable.ic_volume_off
+                                        else R.drawable.ic_volume_up,
+                                    ),
+                                    contentDescription = null,
+                                )
+                            }
+                            Text(
+                                "${fmtPlayerTime(ui.positionMs)} / ${fmtPlayerTime(ui.durationMs)}",
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.padding(start = 4.dp),
+                            )
+                            Spacer(
+                                modifier = Modifier.weight(1f),
+                            )
+                            if (qualities.size > 1) {
+                                PlayerIconButton(
+                                    onClick = {
+                                        qualityOpen = !qualityOpen
+                                        poke()
+                                    },
+                                    description = "Quality",
+                                ) {
+                                    Icon(
+                                        painterResource(R.drawable.ic_settings),
+                                        contentDescription = null,
+                                    )
+                                }
+                            }
+                            PlayerIconButton(
+                                onClick = {
+                                    onToggleFullscreen()
+                                    poke()
+                                },
+                                description = "Fullscreen",
+                            ) {
+                                Icon(
+                                    painterResource(
+                                        if (fullscreen) R.drawable.ic_fullscreen_exit
+                                        else R.drawable.ic_fullscreen,
+                                    ),
+                                    contentDescription = null,
+                                )
+                            }
+                        }
                     }
                 }
             }

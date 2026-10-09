@@ -2,9 +2,7 @@ package watchshark.duckdns.org.ui.compose
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -89,6 +87,7 @@ import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.Video
 import watchshark.duckdns.org.ui.compose.player.BufferingSpinner
 import watchshark.duckdns.org.ui.compose.player.CenterPlayButton
+import watchshark.duckdns.org.ui.compose.player.dynRenditionUrl
 import watchshark.duckdns.org.ui.compose.player.fmtPlayerTime
 import watchshark.duckdns.org.ui.compose.player.rememberPlayerUiState
 import watchshark.duckdns.org.ui.compose.theme.AppMotion
@@ -133,14 +132,6 @@ private fun parseWheelVideo(o: JsonObject): Video? {
 }
 
 
-private fun dynRendition(src: String, res: String): String? {
-    val stem = Regex("""/v/(.+)\.[a-z0-9]+$""", RegexOption.IGNORE_CASE)
-        .find(src)?.groupValues?.get(1)
-        ?.removeSuffix("-720p")?.removeSuffix("-480p")?.removeSuffix("-360p")
-        ?: return null
-    return "/v/$stem-$res.webm"
-}
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun WheelsScreen(
@@ -158,7 +149,6 @@ fun WheelsScreen(
     val readyMap = remember { mutableStateMapOf<Int, Boolean>() }
     var loading by remember { mutableStateOf(false) }
     var exhausted by remember { mutableStateOf(false) }
-    var muted by remember { mutableStateOf(false) }
     var prepared by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var qualityFor by remember { mutableStateOf<Video?>(null) }
@@ -183,7 +173,7 @@ fun WheelsScreen(
         val override = qualityOverride[v.id]
         val url = when {
             override != null -> v.renditions?.get(override)
-                ?: override.let { dynRendition(v.src, it) } ?: v.src
+                ?: override.let { dynRenditionUrl(v.src, it) } ?: v.src
             else -> {
                 val key = AutoQuality.pickReadyKey(v)
                 autoKeys[v.id] = key
@@ -447,6 +437,7 @@ fun WheelsScreen(
                 factory = { ctx ->
                     PlayerView(ctx).apply {
                         useController = false
+                        setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
                         layoutParams = android.view.ViewGroup.LayoutParams(
                             android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                             android.view.ViewGroup.LayoutParams.MATCH_PARENT,
@@ -569,20 +560,6 @@ fun WheelsScreen(
                         )
                     }
                 }
-                RailPillButton(
-                    onClick = {
-                        muted = !muted
-                        player.volume = if (muted) 0f else 1f
-                    },
-                    description = "Mute",
-                ) {
-                    Icon(
-                        painterResource(
-                            if (muted) R.drawable.ic_volume_off else R.drawable.ic_volume_up,
-                        ),
-                        contentDescription = "Mute",
-                    )
-                }
                 RailPillButton(onClick = { commentsFor = vid }, description = "Comments") {
                     Icon(
                         painterResource(R.drawable.ic_chat),
@@ -616,9 +593,9 @@ fun WheelsScreen(
     qualityFor?.let { v ->
         val options = buildList {
             add("Auto")
-            if (v.renditions?.containsKey("720p") == true || dynRendition(v.src, "720p") != null) add("720p")
-            if (v.renditions?.containsKey("480p") == true || dynRendition(v.src, "480p") != null) add("480p")
-            if (v.renditions?.containsKey("360p") == true || dynRendition(v.src, "360p") != null) add("360p")
+            if (v.renditions?.containsKey("720p") == true || dynRenditionUrl(v.src, "720p") != null) add("720p")
+            if (v.renditions?.containsKey("480p") == true || dynRenditionUrl(v.src, "480p") != null) add("480p")
+            if (v.renditions?.containsKey("360p") == true || dynRenditionUrl(v.src, "360p") != null) add("360p")
             add("Source")
         }
         DropdownMenu(expanded = true, onDismissRequest = { qualityFor = null }) {
@@ -653,7 +630,8 @@ fun WheelsScreen(
         }
     }
 
-    if (loading && videos.isNotEmpty()) {
+    val currentUnready = currentPage < videos.size && readyMap[currentPage] != true
+    if (loading && videos.isNotEmpty() && !currentUnready) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             CircularProgressIndicator(modifier = Modifier.padding(top = 16.dp))
         }
@@ -701,11 +679,6 @@ private fun RailPillButton(
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val buzzCtx = LocalContext.current
-    val bgAlpha by animateFloatAsState(
-        targetValue = if (pressed) 0.78f else 0.55f,
-        animationSpec = tween(150, easing = FastOutSlowInEasing),
-        label = "railBg",
-    )
     val scale by animateFloatAsState(
         targetValue = if (pressed) 0.92f else 1f,
         animationSpec = AppMotion.pressSpring,
@@ -720,7 +693,7 @@ private fun RailPillButton(
                 scaleY = scale
             }
             .clip(CircleShape)
-            .background(Color.Black.copy(alpha = bgAlpha))
+            .background(MaterialTheme.colorScheme.secondaryContainer)
             .clickable(
                 interactionSource = interaction,
                 indication = null,
@@ -731,7 +704,9 @@ private fun RailPillButton(
                 },
             ),
     ) {
-        CompositionLocalProvider(LocalContentColor provides Color.White) {
+        CompositionLocalProvider(
+            LocalContentColor provides MaterialTheme.colorScheme.onSecondaryContainer,
+        ) {
             icon()
         }
     }

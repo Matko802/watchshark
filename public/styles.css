@@ -163,24 +163,23 @@ md-icon { --md-icon-font: 'Material Symbols Sharp'; font-size: 24px; width: 24px
 .reel-rail { position: absolute; right: 8px; bottom: 96px; display: flex; flex-direction: column; gap: 8px; align-items: center; z-index: 10; }
 .railitem { display: flex; flex-direction: column; align-items: center; color: #fff; font-size: 12px; font-weight: 500; }
 .railitem md-icon-button { --md-icon-button-icon-color: #fff; }
-/* Pill buttons over video, matching the watch player controls. */
 .reel-rail .railitem md-icon-button {
-  background: rgba(0,0,0,.55);
+  background: var(--md-sys-color-secondary-container);
   border-radius: 50%;
-  --md-icon-button-icon-color: #fff;
-  --md-icon-button-unselected-icon-color: #fff;
-  --md-icon-button-selected-icon-color: #fff;
-  --md-icon-button-hover-icon-color: #fff;
-  --md-icon-button-focus-icon-color: #fff;
-  --md-icon-button-pressed-icon-color: #fff;
+  --md-icon-button-icon-color: var(--md-sys-color-on-secondary-container);
+  --md-icon-button-unselected-icon-color: var(--md-sys-color-on-secondary-container);
+  --md-icon-button-selected-icon-color: var(--md-sys-color-on-secondary-container);
+  --md-icon-button-hover-icon-color: var(--md-sys-color-on-secondary-container);
+  --md-icon-button-focus-icon-color: var(--md-sys-color-on-secondary-container);
+  --md-icon-button-pressed-icon-color: var(--md-sys-color-on-secondary-container);
   --md-icon-button-hover-state-layer-color: transparent;
   --md-icon-button-pressed-state-layer-color: transparent;
   --md-icon-button-focus-state-layer-color: transparent;
   --md-icon-button-selected-hover-state-layer-color: transparent;
   --md-icon-button-selected-pressed-state-layer-color: transparent;
-  transition: background .2s ease, transform .15s ease;
+  transition: background .2s ease, transform .15s ease, filter .2s ease;
 }
-.reel-rail .railitem md-icon-button:hover { background: rgba(0,0,0,.78); }
+.reel-rail .railitem md-icon-button:hover { filter: brightness(1.12); }
 .reel-rail .railitem md-icon-button:active { transform: scale(.92); }
 .reel-meta { position: absolute; left: 0; right: 0; bottom: 0; z-index: 10; padding: 8px 14px 30px; background: linear-gradient(transparent, rgba(0,0,0,.8)); color: #fff; }
 .reel-meta h3 { margin: 0 0 6px; font-size: 16px; font-weight: 500; }

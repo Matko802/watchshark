@@ -191,3 +191,11 @@ fun fmtPlayerTime(ms: Long): String {
     return if (h > 0) "%d:%02d:%02d".format(h, m, s)
     else "%d:%02d".format(m, s)
 }
+
+fun dynRenditionUrl(src: String, res: String): String? {
+    val stem = Regex("""/v/(.+)\.[a-z0-9]+$""", RegexOption.IGNORE_CASE)
+        .find(src)?.groupValues?.get(1)
+        ?.removeSuffix("-720p")?.removeSuffix("-480p")?.removeSuffix("-360p")
+        ?: return null
+    return "/v/$stem-$res.webm"
+}

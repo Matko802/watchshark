@@ -28,11 +28,7 @@ import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -104,33 +100,14 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 stickyHeader {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.Center,
-                    ) {
-                        SingleChoiceSegmentedButtonRow {
-                            SegmentedButton(
-                                selected = viewModel.sort == "new",
-                                onClick = { viewModel.setSort("new") },
-                                shape = SegmentedButtonDefaults.itemShape(0, 2),
-                                icon = {
-                                    Icon(Icons.Filled.NewReleases, contentDescription = null)
-                                },
-                                label = { Text("Latest") },
-                            )
-                            SegmentedButton(
-                                selected = viewModel.sort == "popular",
-                                onClick = { viewModel.setSort("popular") },
-                                shape = SegmentedButtonDefaults.itemShape(1, 2),
-                                icon = {
-                                    Icon(Icons.Filled.Whatshot, contentDescription = null)
-                                },
-                                label = { Text("Trending") },
-                            )
-                        }
-                    }
+                    SectionTabs(
+                        tabs = listOf(
+                            SectionTab("Latest", iconVector = Icons.Filled.NewReleases),
+                            SectionTab("Trending", iconVector = Icons.Filled.Whatshot),
+                        ),
+                        selectedIndex = if (viewModel.sort == "new") 0 else 1,
+                        onSelect = { viewModel.setSort(if (it == 0) "new" else "popular") },
+                    )
                 }
                 if (state.videos.isEmpty() && state.loading) {
                     items(6) { VideoCardSkeleton() }
