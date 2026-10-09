@@ -17,8 +17,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.maxLineSpan
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -63,129 +65,132 @@ fun HomeScreen(
         viewModel.setQuery(query)
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    val gridState = rememberLazyGridState()
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            SingleChoiceSegmentedButtonRow {
-                SegmentedButton(
-                    selected = viewModel.sort == "new",
-                    onClick = { viewModel.setSort("new") },
-                    shape = SegmentedButtonDefaults.itemShape(0, 2),
-                    icon = {
-                        Icon(Icons.Filled.NewReleases, contentDescription = null)
-                    },
-                    label = { Text("Latest") },
-                )
-                SegmentedButton(
-                    selected = viewModel.sort == "popular",
-                    onClick = { viewModel.setSort("popular") },
-                    shape = SegmentedButtonDefaults.itemShape(1, 2),
-                    icon = {
-                        Icon(Icons.Filled.Whatshot, contentDescription = null)
-                    },
-                    label = { Text("Trending") },
-                )
-            }
+    LaunchedEffect(gridState) {
+        snapshotFlow {
+            val layout = gridState.layoutInfo
+            val total = layout.totalItemsCount
+            val last = layout.visibleItemsInfo.lastOrNull()?.index ?: 0
+            Pair(total, last)
+        }.map { (total, last) -> last >= total - 6 && total > 0 }
+            .distinctUntilChanged()
+            .collect { nearEnd -> if (nearEnd) viewModel.loadMore() }
+    }
+
+    LaunchedEffect(viewModel.sort) {
+        try {
+            gridState.scrollToItem(0)
+        } catch (_: Exception) {
         }
+    }
 
-        val gridState = rememberLazyGridState()
-
-        LaunchedEffect(gridState) {
-            snapshotFlow {
-                val layout = gridState.layoutInfo
-                val total = layout.totalItemsCount
-                val last = layout.visibleItemsInfo.lastOrNull()?.index ?: 0
-                Pair(total, last)
-            }.map { (total, last) -> last >= total - 6 && total > 0 }
-                .distinctUntilChanged()
-                .collect { nearEnd -> if (nearEnd) viewModel.loadMore() }
-        }
-
-        if (state.videos.isEmpty() && state.loading) {
-
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 320.dp),
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(4.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                userScrollEnabled = false,
-            ) {
-                items(6) { VideoCardSkeleton() }
-            }
-        } else if (state.videos.isEmpty() && state.error != null) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(24.dp),
-                ) {
-                    Text("Couldn't load videos", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        state.error ?: "Network error",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Button(onClick = { viewModel.refresh() }) { Text("Retry") }
-                }
-            }
-        } else if (state.videos.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("No videos yet", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        if (query.isNotEmpty()) "Try a different search"
-                        else "Pull down to refresh",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        } else {
-            val pullState = rememberPullToRefreshState()
-            PullToRefreshBox(
-                isRefreshing = state.loading,
-                onRefresh = { viewModel.refresh() },
-                state = pullState,
-                modifier = Modifier.fillMaxSize(),
-            ) {
-            AnimatedContent(
-                targetState = viewModel.sort,
-                label = "sortSwitch",
-            ) { _ ->
+    val pullState = rememberPullToRefreshState()
+    PullToRefreshBox(
+        isRefreshing = state.loading && state.videos.isNotEmpty(),
+        onRefresh = { viewModel.refresh() },
+        state = pullState,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        AnimatedContent(
+            targetState = viewModel.sort,
+            label = "sortSwitch",
+        ) { _ ->
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 320.dp),
                 state = gridState,
                 modifier = Modifier.fillMaxSize(),
-
-                contentPadding = PaddingValues(start = 4.dp, top = 4.dp, end = 4.dp, bottom = 104.dp),
+                contentPadding = PaddingValues(start = 4.dp, end = 4.dp, bottom = 104.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                items(state.videos, key = { it.id }) { video ->
-                    VideoCard(
-                        video = video,
-                        onOpen = onOpenVideo,
-                        modifier = Modifier.animateItem(),
-                    )
-                }
-                if (state.loading) {
-                    item {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            CircularProgressIndicator()
+                stickyHeader {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.Center,
+                    ) {
+                        SingleChoiceSegmentedButtonRow {
+                            SegmentedButton(
+                                selected = viewModel.sort == "new",
+                                onClick = { viewModel.setSort("new") },
+                                shape = SegmentedButtonDefaults.itemShape(0, 2),
+                                icon = {
+                                    Icon(Icons.Filled.NewReleases, contentDescription = null)
+                                },
+                                label = { Text("Latest") },
+                            )
+                            SegmentedButton(
+                                selected = viewModel.sort == "popular",
+                                onClick = { viewModel.setSort("popular") },
+                                shape = SegmentedButtonDefaults.itemShape(1, 2),
+                                icon = {
+                                    Icon(Icons.Filled.Whatshot, contentDescription = null)
+                                },
+                                label = { Text("Trending") },
+                            )
                         }
                     }
                 }
-            }
-            }
+                if (state.videos.isEmpty() && state.loading) {
+                    items(6) { VideoCardSkeleton() }
+                } else if (state.videos.isEmpty() && state.error != null) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 64.dp)
+                                .padding(horizontal = 24.dp),
+                        ) {
+                            Text("Couldn't load videos", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                state.error ?: "Network error",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Button(onClick = { viewModel.refresh() }) { Text("Retry") }
+                        }
+                    }
+                } else if (state.videos.isEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 64.dp),
+                        ) {
+                            Text("No videos yet", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                if (query.isNotEmpty()) "Try a different search"
+                                else "Pull down to refresh",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                } else {
+                    items(state.videos, key = { it.id }) { video ->
+                        VideoCard(
+                            video = video,
+                            onOpen = onOpenVideo,
+                            modifier = Modifier.animateItem(),
+                        )
+                    }
+                    if (state.loading) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
+                    }
+                }
             }
         }
     }
