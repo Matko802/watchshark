@@ -199,3 +199,12 @@ fun dynRenditionUrl(src: String, res: String): String? {
         ?: return null
     return "/v/$stem-$res.webm"
 }
+
+object VideoPlaying {
+    var isPlaying = mutableStateOf(false)
+        private set
+
+    fun setPlaying(value: Boolean) {
+        isPlaying.value = value
+    }
+}

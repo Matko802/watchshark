@@ -100,6 +100,7 @@ import watchshark.duckdns.org.data.UpdateCheck
 import watchshark.duckdns.org.data.Updater
 import watchshark.duckdns.org.ui.compose.theme.AppMotion
 import watchshark.duckdns.org.ui.compose.theme.WatchSharkTheme
+import watchshark.duckdns.org.ui.compose.player.VideoPlaying
 
 private const val ROUTE_HOME = "home"
 private const val ROUTE_WHEELS = "wheels"
@@ -433,7 +434,8 @@ fun WatchSharkApp(
 
 
                         val showPill = !wide && !route.startsWith("auth") &&
-                            !route.startsWith("chat") && route != "update"
+                            !route.startsWith("chat") && route != "update" &&
+                            !VideoPlaying.isPlaying.value
                         AnimatedVisibility(
                             visible = showPill,
                             enter = slideInVertically { it } + fadeIn(),
@@ -657,6 +659,7 @@ fun WatchSharkApp(
                             WatchScreen(
                                 videoId = id,
                                 onOpenChannel = { name -> goScreen("channel/$name") },
+                                onClose = { goBack() },
                             )
                         }
                         composable(

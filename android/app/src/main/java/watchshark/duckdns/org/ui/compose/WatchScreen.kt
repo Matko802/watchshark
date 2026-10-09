@@ -2,7 +2,10 @@ package watchshark.duckdns.org.ui.compose
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,12 +25,14 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -35,9 +40,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import coil.compose.AsyncImage
@@ -49,7 +58,9 @@ import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.Video
 import watchshark.duckdns.org.data.Haptics
 import watchshark.duckdns.org.ui.compose.player.WatchPlayer
+import watchshark.duckdns.org.ui.compose.player.VideoPlaying
 import watchshark.duckdns.org.ui.compose.player.dynRenditionUrl
+import watchshark.duckdns.org.ui.compose.player.rememberPlayerUiState
 import watchshark.duckdns.org.ui.fmtAge
 import watchshark.duckdns.org.ui.fmtNum
 
@@ -59,6 +70,7 @@ fun WatchScreen(
     videoId: Long,
     onOpenChannel: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onClose: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -93,6 +105,14 @@ fun WatchScreen(
         onDispose { player.release() }
     }
     var quality by remember(videoId) { mutableStateOf("Auto") }
+    var miniMode by remember(videoId) { mutableStateOf(false) }
+    val playback = rememberPlayerUiState(player)
+    LaunchedEffect(playback.isPlaying) {
+        VideoPlaying.setPlaying(playback.isPlaying)
+    }
+    DisposableEffect(Unit) {
+        onDispose { VideoPlaying.setPlaying(false) }
+    }
 
     fun qualityOptions(v: Video): List<String> {
         return buildList {
@@ -156,16 +176,56 @@ fun WatchScreen(
         return
     }
 
+    val density = LocalDensity.current
+    val miniThreshold = with(density) { 110.dp.toPx() }
+    var dragY by remember(videoId) { mutableFloatStateOf(0f) }
+
     LazyColumn(modifier = modifier.fillMaxSize()) {
         item {
-            WatchPlayer(
-                player = player,
-                thumbnailUrl = ApiClient.fullUrl(v.thumbnail),
-                qualities = qualityOptions(v),
-                quality = quality,
-                onQuality = { quality = it },
-                modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
-            )
+            if (miniMode) {
+                MiniPlayerBar(
+                    video = v,
+                    playing = playback.isPlaying,
+                    onExpand = { miniMode = false },
+                    onToggle = { if (playback.isPlaying) player.pause() else player.play() },
+                    onClose = onClose,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(16f / 9f)
+                        .graphicsLayer {
+                            translationY = dragY
+                            val shrink = (1f - dragY / 1600f).coerceIn(0.85f, 1f)
+                            scaleX = shrink
+                            scaleY = shrink
+                        }
+                        .pointerInput(videoId) {
+                            detectDragGesturesAfterLongPress(
+                                onDragStart = { dragY = 0f },
+                                onDrag = { _, dragAmount ->
+                                    dragY = (dragY + dragAmount.y).coerceAtLeast(0f)
+                                },
+                                onDragEnd = {
+                                    if (dragY > miniThreshold) miniMode = true
+                                    dragY = 0f
+                                },
+                                onDragCancel = { dragY = 0f },
+                            )
+                        },
+                ) {
+                    WatchPlayer(
+                        player = player,
+                        thumbnailUrl = ApiClient.fullUrl(v.thumbnail),
+                        qualities = qualityOptions(v),
+                        quality = quality,
+                        onQuality = { quality = it },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
         }
         item {
             Column(
@@ -308,5 +368,101 @@ fun WatchScreen(
         }
 
         item { Spacer(modifier = Modifier.height(104.dp)) }
+    }
+}
+
+@Composable
+private fun MiniPlayerBar(
+    video: Video,
+    playing: Boolean,
+    onExpand: () -> Unit,
+    onToggle: () -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        tonalElevation = 3.dp,
+        shadowElevation = 6.dp,
+        modifier = modifier,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(8.dp),
+        ) {
+            AsyncImage(
+                model = ApiClient.fullUrl(video.thumbnail),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(width = 96.dp, height = 54.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onExpand,
+                    ),
+            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onExpand,
+                    ),
+            ) {
+                Text(
+                    video.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    "@${video.username}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onToggle,
+                    ),
+            ) {
+                Icon(
+                    painterResource(
+                        if (playing) R.drawable.ic_pause else R.drawable.ic_play_arrow,
+                    ),
+                    contentDescription = if (playing) "Pause" else "Play",
+                )
+            }
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onClose,
+                    ),
+            ) {
+                Icon(
+                    painterResource(R.drawable.ic_close),
+                    contentDescription = "Close",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
