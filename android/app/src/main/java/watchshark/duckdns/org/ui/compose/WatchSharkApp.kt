@@ -156,24 +156,26 @@ fun WatchSharkApp(
             else -> null
         }
 
-        fun goTab(tab: String) {
+        fun goSection(route: String) {
             Haptics.tick(appCtx)
-            query = ""
-            searchExpanded = false
             try {
-                nav.navigate(tab) {
+                nav.navigate(route) {
                     popUpTo(nav.graph.startDestinationId) { saveState = true }
                     launchSingleTop = true
                     restoreState = true
                 }
             } catch (_: Exception) {
-
-
                 try {
-                    nav.navigate(tab) { launchSingleTop = true }
+                    nav.navigate(route) { launchSingleTop = true }
                 } catch (_: Exception) {
                 }
             }
+        }
+
+        fun goTab(tab: String) {
+            query = ""
+            searchExpanded = false
+            goSection(tab)
             scope.launch { refreshBadges() }
         }
 
@@ -316,7 +318,7 @@ fun WatchSharkApp(
                                     }
                                 },
                                 actions = {
-                                    IconButton(onClick = { goScreen("notifications") }) {
+                                    IconButton(onClick = { goSection("notifications") }) {
                                         BadgedBox(
                                             badge = {
                                                 if (unread > 0) Badge { Text(if (unread > 9) "9+" else "$unread") }
@@ -328,7 +330,7 @@ fun WatchSharkApp(
                                             )
                                         }
                                     }
-                                    IconButton(onClick = { goScreen("settings") }) {
+                                    IconButton(onClick = { goSection("settings") }) {
                                         Icon(
                                             painterResource(R.drawable.ic_settings),
                                             contentDescription = "Settings",
