@@ -1,5 +1,6 @@
 package watchshark.duckdns.org.ui.compose
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -53,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import coil.compose.rememberAsyncImagePainter
 import kotlinx.coroutines.launch
 import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.ApiClient
@@ -212,8 +214,8 @@ fun SettingsScreen(
                 }) { Text("Save name") }
                 Text(
                     "Password",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(top = 8.dp),
                 )
                 OutlinedTextField(
@@ -336,8 +338,8 @@ fun SettingsScreen(
                 }
                 Text(
                     "Strength",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(top = 8.dp),
                 )
                 Row(
@@ -361,6 +363,12 @@ fun SettingsScreen(
 
         composable(SET_ABOUT) {
             SettingsDetail(title = "About", onBack = ::back) {
+                AppAboutCard(version = Updater.currentVersion(context))
+                Text(
+                    "App",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
                 Text(
                     "Version ${Updater.currentVersion(context)}",
                     style = MaterialTheme.typography.bodyMedium,
@@ -478,6 +486,47 @@ private fun SettingsCategoryRow(
     )
 }
 
+/** About logo card (SpatialFlow AppLogoSection style): app icon + name + version. */
+@Composable
+private fun AppAboutCard(version: String) {
+    val appCtx = LocalContext.current
+    val appIcon = remember(appCtx) {
+        try {
+            appCtx.applicationInfo.loadIcon(appCtx.packageManager)
+        } catch (_: Exception) {
+            null
+        }
+    }
+    Surface(
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.padding(16.dp),
+        ) {
+            Image(
+                painter = rememberAsyncImagePainter(model = appIcon),
+                contentDescription = "WatchShark",
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+            )
+            Column {
+                Text("WatchShark", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    "Version $version",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
 /** Detail sub-page: back header + scrolling content. */
 @Composable
 private fun SettingsDetail(
@@ -516,7 +565,7 @@ private fun SettingsDetail(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
-                .padding(bottom = 24.dp),
+                .padding(bottom = 104.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             content()

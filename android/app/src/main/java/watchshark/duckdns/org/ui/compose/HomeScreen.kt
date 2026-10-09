@@ -162,7 +162,8 @@ fun HomeScreen(
                 columns = GridCells.Adaptive(minSize = 320.dp),
                 state = gridState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(4.dp),
+                // Bottom inset left open: content scrolls behind the pill.
+                contentPadding = PaddingValues(start = 4.dp, top = 4.dp, end = 4.dp, bottom = 104.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {

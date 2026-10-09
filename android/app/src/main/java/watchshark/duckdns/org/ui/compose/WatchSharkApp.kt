@@ -336,7 +336,7 @@ fun WatchSharkApp(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 16.dp)
-                                    .padding(bottom = 14.dp),
+                                    .padding(bottom = 17.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Surface(
@@ -448,7 +448,9 @@ fun WatchSharkApp(
                     NavHost(
                         navController = nav,
                         startDestination = if (startLoggedIn) ROUTE_HOME else "auth",
-                        modifier = Modifier.padding(padding),
+                        // Top inset only: feeds scroll behind the floating
+                        // pill instead of stopping above it.
+                        modifier = Modifier.padding(top = padding.calculateTopPadding()),
                         enterTransition = { AppMotion.screenEnter },
                         exitTransition = { AppMotion.screenExit },
                         popEnterTransition = { AppMotion.screenPopEnter },

@@ -154,7 +154,7 @@ fun ChannelScreen(
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = 320.dp),
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(4.dp),
+            contentPadding = PaddingValues(start = 4.dp, top = 4.dp, end = 4.dp, bottom = 104.dp),
         ) {
             items(shown, key = { it.id }) { v ->
                 VideoCard(video = v, onOpen = onOpenVideo, modifier = Modifier.animateItem())

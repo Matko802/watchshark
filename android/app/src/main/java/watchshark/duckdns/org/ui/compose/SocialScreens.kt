@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -65,7 +66,10 @@ fun MessagesScreen(
         }
         return
     }
-    LazyColumn(modifier.fillMaxSize()) {
+    LazyColumn(
+        modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 104.dp),
+    ) {
         items(conversations, key = { it.userId }) { c ->
             ListItem(
                 headlineContent = { Text("@${c.username}") },
@@ -229,7 +233,10 @@ fun NotificationsScreen(
         }
         return
     }
-    LazyColumn(modifier.fillMaxSize()) {
+    LazyColumn(
+        modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 104.dp),
+    ) {
         items(items, key = { it.id }) { n ->
             ListItem(
                 headlineContent = { Text(n.title) },
