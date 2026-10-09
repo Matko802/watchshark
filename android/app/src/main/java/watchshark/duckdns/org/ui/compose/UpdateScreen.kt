@@ -25,7 +25,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,8 +33,12 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
+import watchshark.duckdns.org.data.ApkDownload
 import watchshark.duckdns.org.data.Updater
 import kotlin.math.PI
 import kotlin.math.cos
@@ -49,38 +52,67 @@ fun UpdateScreen(
 ) {
     val context = LocalContext.current
     val appCtx = remember(context) { context.applicationContext }
-    val scope = rememberCoroutineScope()
+    val wm = remember(appCtx) { WorkManager.getInstance(appCtx) }
     val update = remember { Updater.pending }
     var progress by remember { mutableFloatStateOf(0f) }
     var status by remember { mutableStateOf("Starting…") }
     var error by remember { mutableStateOf<String?>(null) }
-    var job by remember { mutableStateOf<Job?>(null) }
+    var done by remember { mutableStateOf(false) }
 
     LaunchedEffect(update) {
         if (update == null) {
             error = "No update selected."
             return@LaunchedEffect
         }
-        job = scope.launch {
-            try {
-                val file = Updater.downloadApk(appCtx, update) { received, total ->
-                    if (total > 0) {
-                        progress = (received.toFloat() / total).coerceIn(0f, 1f)
-                        status = "${(progress * 100).toInt()}%"
+        ApkDownload.enqueue(appCtx, update)
+        while (isActive && !done) {
+            val info = try {
+                withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    wm.getWorkInfosForUniqueWork(ApkDownload.workName(update.version)).get()
+                }.firstOrNull()
+            } catch (_: Exception) {
+                null
+            }
+            when (info?.state) {
+                WorkInfo.State.SUCCEEDED -> {
+                    val file = Updater.cachedApkFile(appCtx, update.version)
+                    if (!file.exists() || file.length() <= 0) {
+                        error = "Download missing, try again"
+                    } else {
+                        progress = 1f
+                        status = "100%"
+                        Updater.installDownloaded(appCtx, file, update)?.let { err ->
+                            error = err
+                            return@LaunchedEffect
+                        }
+                        Updater.pending = null
+                        done = true
+                        onDone()
+                    }
+                    return@LaunchedEffect
+                }
+                WorkInfo.State.FAILED -> {
+                    error = "Download failed, try again"
+                    return@LaunchedEffect
+                }
+                WorkInfo.State.CANCELLED -> {
+                    error = "Download cancelled"
+                    return@LaunchedEffect
+                }
+                WorkInfo.State.BLOCKED, WorkInfo.State.ENQUEUED -> {
+                    status = "Waiting for network…"
+                }
+                else -> {
+                    val pct = info?.progress?.getInt(ApkDownload.KEY_PROGRESS, -1) ?: -1
+                    if (pct in 0..100) {
+                        progress = pct / 100f
+                        status = "$pct%"
                     } else {
                         status = "Downloading…"
                     }
                 }
-                Updater.installDownloaded(appCtx, file, update)?.let { err ->
-                    error = err
-                    return@launch
-                }
-                Updater.pending = null
-                onDone()
-            } catch (e: Exception) {
-                if (e is kotlinx.coroutines.CancellationException) throw e
-                error = e.message ?: "Download failed"
             }
+            delay(500)
         }
     }
 
@@ -129,7 +161,7 @@ fun UpdateScreen(
         }
         OutlinedButton(
             onClick = {
-                job?.cancel()
+                update?.let { ApkDownload.cancel(appCtx, it.version) }
                 onDone()
             },
             modifier = Modifier

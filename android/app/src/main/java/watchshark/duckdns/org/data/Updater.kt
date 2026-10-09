@@ -219,6 +219,14 @@ object Updater {
     }
 
     private fun pruneOldDownloads(ctx: Context, keepVersion: String) {
+        pruneApkCache(ctx, keepVersion)
+    }
+
+    fun cachedApkFile(ctx: Context, version: String): File {
+        return File(ctx.cacheDir, "watchshark-update-$version.apk")
+    }
+
+    fun pruneApkCache(ctx: Context, keepVersion: String) {
         try {
             ctx.cacheDir.listFiles { f ->
                 f.isFile && f.name.startsWith("watchshark-update") &&
@@ -232,8 +240,6 @@ object Updater {
         } catch (_: Exception) {
         }
     }
-
-
     fun installDownloaded(ctx: Context, file: File, update: AppUpdate): String? {
         if (!signaturesMatch(ctx, file)) {
             return "This update is signed with a different key than the installed app, " +
