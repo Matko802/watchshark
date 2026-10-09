@@ -16,6 +16,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -365,14 +366,18 @@ fun WatchSharkApp(
                                                 contentDescription = null,
                                             )
                                         }
-                                        // Original center button: white circle, black plus.
-                                        // Full 48dp tap target, no highlight ripple.
+                                        // Center button: transparent circle with
+                                        // outline + plus (no fill, no highlight).
                                         Box(
                                             contentAlignment = Alignment.Center,
                                             modifier = Modifier
                                                 .size(48.dp)
                                                 .clip(CircleShape)
-                                                .background(Color.White)
+                                                .border(
+                                                    1.5.dp,
+                                                    MaterialTheme.colorScheme.outline,
+                                                    CircleShape,
+                                                )
                                                 .clickable(
                                                     interactionSource = remember { MutableInteractionSource() },
                                                     indication = null,
@@ -383,7 +388,7 @@ fun WatchSharkApp(
                                             Icon(
                                                 painterResource(R.drawable.ic_add),
                                                 contentDescription = "Create",
-                                                tint = Color.Black,
+                                                tint = MaterialTheme.colorScheme.onSurface,
                                                 modifier = Modifier.size(24.dp),
                                             )
                                         }
