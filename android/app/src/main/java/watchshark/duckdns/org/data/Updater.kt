@@ -8,6 +8,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import watchshark.duckdns.org.BuildConfig
 import java.io.File
+import java.io.FileOutputStream
 import java.util.concurrent.TimeUnit
 data class AppUpdate(
     val version: String,
@@ -164,29 +165,69 @@ object Updater {
         update: AppUpdate,
         onProgress: (received: Long, total: Long) -> Unit,
     ): File = withContext(Dispatchers.IO) {
-        val req = Request.Builder().url(update.url).get().build()
-        client().newCall(req).execute().use { resp ->
-            if (!resp.isSuccessful) throw IllegalStateException("HTTP ${resp.code}")
-            val total = resp.body?.contentLength() ?: update.size
-            val file = File(ctx.cacheDir, "watchshark-update.apk")
-            if (file.exists()) file.delete()
-            var received = 0L
-            resp.body!!.byteStream().use { input ->
-                file.outputStream().use { out ->
-                    val buf = ByteArray(64 * 1024)
-                    while (true) {
-                        val n = input.read(buf)
-                        if (n < 0) break
-                        out.write(buf, 0, n)
-                        received += n
-                        onProgress(received, total)
+        pruneOldDownloads(ctx, update.version)
+        val file = File(ctx.cacheDir, "watchshark-update-${update.version}.apk")
+        val expected = update.size.takeIf { it > 0 }
+        if (expected != null && file.exists() && file.length() == expected) {
+            onProgress(expected, expected)
+            return@withContext file
+        }
+        var attempt = 0
+        while (true) {
+            attempt++
+            val resumeFrom =
+                if (attempt == 1 && expected != null && file.exists() && file.length() in 1 until expected) {
+                    file.length()
+                } else {
+                    0L
+                }
+            if (resumeFrom == 0L && file.exists()) file.delete()
+            val req = Request.Builder().url(update.url).get().apply {
+                if (resumeFrom > 0) header("Range", "bytes=$resumeFrom-")
+            }.build()
+            client().newCall(req).execute().use { resp ->
+                if (resumeFrom > 0 && resp.code != 206) {
+                    file.delete()
+                    if (attempt >= 2) throw IllegalStateException("Server refused resume, try again")
+                    return@use
+                }
+                if (!resp.isSuccessful) throw IllegalStateException("HTTP ${resp.code}")
+                val bodyLen = resp.body?.contentLength() ?: -1L
+                val total = if (bodyLen < 0) expected ?: -1L else bodyLen + resumeFrom
+                var received = resumeFrom
+                onProgress(received, total)
+                resp.body!!.byteStream().use { input ->
+                    FileOutputStream(file, resumeFrom > 0).use { out ->
+                        val buf = ByteArray(64 * 1024)
+                        while (true) {
+                            val n = input.read(buf)
+                            if (n < 0) break
+                            out.write(buf, 0, n)
+                            received += n
+                            onProgress(received, total)
+                        }
                     }
                 }
+                if (total > 0 && file.length() != total) {
+                    throw IllegalStateException("Download incomplete, try again")
+                }
+                return@withContext file
             }
-            if (total > 0 && file.length() != total) {
-                throw IllegalStateException("Download incomplete, try again")
+        }
+    }
+
+    private fun pruneOldDownloads(ctx: Context, keepVersion: String) {
+        try {
+            ctx.cacheDir.listFiles { f ->
+                f.isFile && f.name.startsWith("watchshark-update") &&
+                    f.name != "watchshark-update-$keepVersion.apk"
+            }?.forEach {
+                try {
+                    it.delete()
+                } catch (_: Exception) {
+                }
             }
-            file
+        } catch (_: Exception) {
         }
     }
 
