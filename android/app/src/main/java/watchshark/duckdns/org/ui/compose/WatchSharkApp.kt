@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -299,10 +300,11 @@ fun WatchSharkApp(
                     },
                     bottomBar = {
                         // Floating pill nav (classic WatchShark look), built
-                        // to the M3 Expressive bar anatomy: 64dp tall,
-                        // 24dp icons + 11sp labels, one 56x32 pill indicator
-                        // on the active tab. Weight-distributed row, so the
-                        // five slots are symmetric by construction.
+                        // to the M3 Expressive bar anatomy: 24dp icons +
+                        // 11sp labels, one 56x32 pill indicator on the
+                        // active tab. Compact wrap-content stadium (like
+                        // web #bottomnav) so the outer layer reads as a
+                        // pill floating over content, never a full-width bar.
                         val showPill = !wide && !route.startsWith("auth") &&
                             !route.startsWith("chat") && route != "update"
                         AnimatedVisibility(
@@ -311,10 +313,9 @@ fun WatchSharkApp(
                             exit = slideOutVertically { it } + fadeOut(),
                             label = "pillBar",
                         ) {
-                            val pillContainer = if (isSystemInDarkTheme()) Color.Black
-                            else MaterialTheme.colorScheme.surface
-                            val pillStroke = if (isSystemInDarkTheme()) Color(0xFF3D3D3D)
-                            else MaterialTheme.colorScheme.outlineVariant
+                            // Contrasts with the Scaffold background on every
+                            // theme (dynamic / grey / AMOLED / light).
+                            val pillContainer = MaterialTheme.colorScheme.surfaceContainerHigh
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -323,16 +324,16 @@ fun WatchSharkApp(
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Surface(
-                                    shape = RoundedCornerShape(32.dp),
+                                    shape = CircleShape,
                                     color = pillContainer,
                                     tonalElevation = 3.dp,
-                                    shadowElevation = 6.dp,
-                                    border = BorderStroke(1.dp, pillStroke),
+                                    shadowElevation = 8.dp,
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                                 ) {
                                     Row(
                                         modifier = Modifier.padding(
-                                            horizontal = 8.dp,
-                                            vertical = 9.dp,
+                                            horizontal = 6.dp,
+                                            vertical = 6.dp,
                                         ),
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
@@ -573,11 +574,12 @@ private fun androidx.compose.foundation.layout.RowScope.PillTab(
     icon: @Composable () -> Unit,
 ) {
     // Every tab gets its own interaction source (no highlight ripple)
-    // and a full-bleed 48dp minimum touch target, so taps always land.
+    // and a fixed 64dp slot, so the bar hugs its content like a pill
+    // and every tap lands on a full-size target.
     val tabInteraction = remember { MutableInteractionSource() }
     Column(
         modifier = Modifier
-            .weight(1f)
+            .width(64.dp)
             .defaultMinSize(minHeight = 48.dp)
             .clip(RoundedCornerShape(16.dp))
             .clickable(
