@@ -13,26 +13,40 @@ object Haptics {
     private const val KEY_STRENGTH = "haptics_strength"
 
     fun isOn(ctx: Context): Boolean {
-        return ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getBoolean(KEY_ON, true)
+        return try {
+            ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean(KEY_ON, true)
+        } catch (_: Exception) {
+            true
+        }
     }
 
     fun setOn(ctx: Context, on: Boolean) {
-        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putBoolean(KEY_ON, on).apply()
+        try {
+            ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().putBoolean(KEY_ON, on).apply()
+        } catch (_: Exception) {
+        }
         if (on) buzz(ctx, 30)
     }
 
     fun strength(ctx: Context): Float {
-        return ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getFloat(KEY_STRENGTH, 80f)
-            .coerceIn(0f, 100f)
+        return try {
+            ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getFloat(KEY_STRENGTH, 80f)
+                .coerceIn(0f, 100f)
+        } catch (_: Exception) {
+            80f
+        }
     }
 
     fun setStrength(ctx: Context, value: Float) {
         val s = value.coerceIn(0f, 100f)
-        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putFloat(KEY_STRENGTH, s).apply()
+        try {
+            ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().putFloat(KEY_STRENGTH, s).apply()
+        } catch (_: Exception) {
+        }
         if (s > 0) buzz(ctx, 40)
     }
 
@@ -61,7 +75,10 @@ object Haptics {
 
 
     fun tick(ctx: Context) {
-        if (!isOn(ctx)) return
-        buzz(ctx, 20)
+        try {
+            if (!isOn(ctx)) return
+            buzz(ctx, 20)
+        } catch (_: Exception) {
+        }
     }
 }

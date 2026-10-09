@@ -141,6 +141,8 @@ fun WatchSharkApp(
         var meName by remember { mutableStateOf<String?>(null) }
         var meAvatar by remember { mutableStateOf<String?>(null) }
         var startupUpdate by remember { mutableStateOf<AppUpdate?>(null) }
+        var homeReselect by remember { mutableIntStateOf(0) }
+        var wheelsReselect by remember { mutableIntStateOf(0) }
 
         suspend fun refreshBadges() {
             try {
@@ -191,7 +193,16 @@ fun WatchSharkApp(
         fun goTab(tab: String) {
             query = ""
             searchExpanded = false
+            val alreadyHere = try {
+                nav.currentDestination?.route == tab
+            } catch (_: Exception) {
+                false
+            }
             goSection(tab)
+            if (alreadyHere) {
+                if (tab == ROUTE_HOME) homeReselect++
+                if (tab == ROUTE_WHEELS) wheelsReselect++
+            }
             scope.launch { refreshBadges() }
         }
 
@@ -508,12 +519,14 @@ fun WatchSharkApp(
                         composable(ROUTE_HOME) {
                             HomeScreen(
                                 query = query,
+                                reselectTick = homeReselect,
                                 onOpenVideo = { v -> goScreen("watch/${v.id}") },
                                 onOpenChannel = { name -> goScreen("channel/$name") },
                             )
                         }
                         composable(ROUTE_WHEELS) {
                             WheelsScreen(
+                                reselectTick = wheelsReselect,
                                 onOpenVideo = { id -> goScreen("watch/$id") },
                                 onOpenChannel = { name -> goScreen("channel/$name") },
                             )

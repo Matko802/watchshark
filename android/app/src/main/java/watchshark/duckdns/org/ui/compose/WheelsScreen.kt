@@ -138,6 +138,7 @@ fun WheelsScreen(
     onOpenVideo: (Long) -> Unit,
     onOpenChannel: (String) -> Unit,
     modifier: Modifier = Modifier,
+    reselectTick: Int = 0,
 ) {
     val context = LocalContext.current
     val appCtx = remember(context) { context.applicationContext }
@@ -323,6 +324,14 @@ fun WheelsScreen(
     val pageCount = videos.size + if (exhausted && videos.isNotEmpty()) 1 else 0
     val pagerState = rememberPagerState(initialPage = 0) { pageCount }
     val currentPage = pagerState.currentPage
+
+    LaunchedEffect(reselectTick) {
+        if (reselectTick == 0) return@LaunchedEffect
+        try {
+            pagerState.scrollToPage(0)
+        } catch (_: Exception) {
+        }
+    }
 
     val ui = rememberPlayerUiState(player)
 

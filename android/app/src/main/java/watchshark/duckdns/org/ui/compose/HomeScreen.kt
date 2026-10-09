@@ -53,6 +53,7 @@ fun HomeScreen(
     onOpenChannel: (String) -> Unit,
     viewModel: HomeViewModel = viewModel(),
     query: String = "",
+    reselectTick: Int = 0,
 ) {
     val state by viewModel.state.collectAsState()
 
@@ -78,6 +79,15 @@ fun HomeScreen(
             gridState.scrollToItem(0)
         } catch (_: Exception) {
         }
+    }
+
+    LaunchedEffect(reselectTick) {
+        if (reselectTick == 0) return@LaunchedEffect
+        try {
+            gridState.scrollToItem(0)
+        } catch (_: Exception) {
+        }
+        viewModel.refresh()
     }
 
     val pullState = rememberPullToRefreshState()
