@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -892,6 +893,7 @@ private fun androidx.compose.foundation.layout.RowScope.PillTab(
                 text = label,
                 fontSize = 11.sp,
                 color = if (selected) selectedColor else idleColor,
+                modifier = Modifier.offset(y = (-2).dp),
             )
         }
     }
