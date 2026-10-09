@@ -169,10 +169,6 @@ fun WatchSharkApp(
             VideoPlaying.setPlaying(false)
         }
 
-        LaunchedEffect(route) {
-            if (route.startsWith(ROUTE_WHEELS) && miniVideo != null) closeMini()
-        }
-
         suspend fun refreshBadges() {
             try {
                 unread = ApiClient.api.notifications().unread
@@ -201,6 +197,10 @@ fun WatchSharkApp(
             route.startsWith(ROUTE_MESSAGES) || route.startsWith("chat") -> ROUTE_MESSAGES
             route.startsWith(ROUTE_YOU) || route.startsWith("channel") -> ROUTE_YOU
             else -> null
+        }
+
+        LaunchedEffect(route) {
+            if (route.startsWith(ROUTE_WHEELS) && miniVideo != null) closeMini()
         }
 
         fun goSection(route: String) {

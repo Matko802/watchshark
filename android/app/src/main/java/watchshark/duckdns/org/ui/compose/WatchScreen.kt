@@ -374,7 +374,7 @@ fun WatchScreen(
 }
 
 @Composable
-private fun MiniPlayerBar(
+fun MiniPlayerBar(
     video: Video,
     playing: Boolean,
     onExpand: () -> Unit,
