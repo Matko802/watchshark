@@ -2,6 +2,7 @@ package watchshark.duckdns.org.ui.compose
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,8 +25,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,9 +40,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
+import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.ApiClient
 import watchshark.duckdns.org.data.DmConversation
 import watchshark.duckdns.org.data.DmMessage
@@ -233,26 +240,110 @@ fun NotificationsScreen(
         }
         return
     }
+    if (items.isEmpty()) {
+        Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("All caught up", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "New likes, follows and uploads land here",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        return
+    }
     LazyColumn(
         modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 104.dp),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 104.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        items(items, key = { it.id }) { n ->
-            ListItem(
-                headlineContent = { Text(n.title) },
-                supportingContent = { Text("@${n.username} • ${fmtAge(n.created_at)}") },
-                modifier = Modifier
-                    .animateItem()
-                    .clickable {
-                    scope.launch {
-                        try {
-                            ApiClient.api.notifRead(mapOf("id" to n.id))
-                        } catch (_: Exception) {
+        items(items.size, key = { items[it].id }) { index ->
+            val n = items[index]
+            val outer = 28.dp
+            val inner = 4.dp
+            val shape = when {
+                items.size <= 1 -> RoundedCornerShape(outer)
+                index == 0 -> RoundedCornerShape(
+                    topStart = outer, topEnd = outer,
+                    bottomStart = inner, bottomEnd = inner,
+                )
+                index == items.size - 1 -> RoundedCornerShape(
+                    topStart = inner, topEnd = inner,
+                    bottomStart = outer, bottomEnd = outer,
+                )
+                else -> RoundedCornerShape(inner)
+            }
+            Surface(
+                shape = shape,
+                color = if (!n.read) MaterialTheme.colorScheme.secondaryContainer
+                else MaterialTheme.colorScheme.surfaceContainerHigh,
+                modifier = Modifier.animateItem(),
+            ) {
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            n.title,
+                            color = if (!n.read) MaterialTheme.colorScheme.onSecondaryContainer
+                            else MaterialTheme.colorScheme.onSurface,
+                        )
+                    },
+                    supportingContent = { Text("@${n.username} • ${fmtAge(n.created_at)}") },
+                    leadingContent = {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                painterResource(
+                                    if (n.videoId != null) R.drawable.ic_play
+                                    else R.drawable.ic_notifications,
+                                ),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(26.dp),
+                            )
                         }
-                    }
-                    n.videoId?.let { onOpenVideo(it) }
-                },
-            )
+                    },
+                    trailingContent = {
+                        if (!n.read) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary),
+                            )
+                        } else {
+                            Icon(
+                                painterResource(R.drawable.ic_arrow_back),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.graphicsLayer { rotationZ = 180f },
+                            )
+                        }
+                    },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    modifier = Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            items = items.map {
+                                if (it.id == n.id) it.copy(read = true) else it
+                            }
+                            scope.launch {
+                                try {
+                                    ApiClient.api.notifRead(mapOf("id" to n.id))
+                                } catch (_: Exception) {
+                                }
+                            }
+                            n.videoId?.let { onOpenVideo(it) }
+                        },
+                    ),
+                )
+            }
         }
     }
 }

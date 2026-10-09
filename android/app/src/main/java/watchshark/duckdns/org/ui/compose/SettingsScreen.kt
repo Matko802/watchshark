@@ -109,6 +109,7 @@ fun SettingsScreen(
 
     val sub = rememberNavController()
     fun open(route: String) {
+        msg = ""
         try {
             sub.navigate(route) { launchSingleTop = true }
         } catch (_: Exception) {
@@ -256,7 +257,7 @@ fun SettingsScreen(
                             }
                             ApiClient.clearSession()
                             UploadAlerts.cancel(context)
-                            onSignedOut()
+                            if (sub.currentDestination?.route == SET_ACCOUNT) onSignedOut()
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -376,7 +377,7 @@ fun SettingsScreen(
                             when (val result = Updater.checkForUpdate()) {
                                 is UpdateCheck.Available -> {
                                     Updater.pending = result.update
-                                    onUpdateAvailable()
+                                    if (sub.currentDestination?.route == SET_ABOUT) onUpdateAvailable()
                                 }
                                 UpdateCheck.UpToDate -> msg = "Already on the latest version"
                                 is UpdateCheck.Failed -> msg = result.reason
