@@ -42,9 +42,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
@@ -69,7 +67,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
@@ -86,6 +85,7 @@ import androidx.navigation.navArgument
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
 import coil.ImageLoader
+import coil.compose.AsyncImage
 import coil.compose.LocalImageLoader
 import coil.compose.rememberAsyncImagePainter
 import coil.decode.VideoFrameDecoder
@@ -138,8 +138,8 @@ fun WatchSharkApp(
         var query by remember { mutableStateOf("") }
         var searchExpanded by remember { mutableStateOf(false) }
         var unread by remember { mutableIntStateOf(0) }
-        var showCreateSheet by remember { mutableStateOf(false) }
         var meName by remember { mutableStateOf<String?>(null) }
+        var meAvatar by remember { mutableStateOf<String?>(null) }
         var startupUpdate by remember { mutableStateOf<AppUpdate?>(null) }
 
         suspend fun refreshBadges() {
@@ -148,7 +148,9 @@ fun WatchSharkApp(
             } catch (_: Exception) {
             }
             try {
-                meName = ApiClient.api.me().user?.username
+                val u = ApiClient.api.me().user
+                meName = u?.username
+                meAvatar = ApiClient.fullUrl(u?.avatar)
             } catch (_: Exception) {
             }
         }
@@ -256,7 +258,7 @@ fun WatchSharkApp(
                             iconRes = R.drawable.ic_movie,
                             onClick = { goTab(ROUTE_WHEELS) },
                         )
-                        FloatingActionButton(onClick = { showCreateSheet = true }) {
+                        FloatingActionButton(onClick = { goScreen("upload") }) {
                             Icon(
                                 painterResource(R.drawable.ic_add),
                                 contentDescription = "Create",
@@ -272,6 +274,7 @@ fun WatchSharkApp(
                             label = "You",
                             selected = selectedTab == ROUTE_YOU,
                             iconRes = R.drawable.ic_person,
+                            avatarUrl = meAvatar,
                             onClick = { goTab(ROUTE_YOU) },
                         )
                     }
@@ -423,10 +426,21 @@ fun WatchSharkApp(
                                         }
 
 
+                                        val createInteraction = remember { MutableInteractionSource() }
+                                        val createPressed by createInteraction.collectIsPressedAsState()
+                                        val createScale by animateFloatAsState(
+                                            targetValue = if (createPressed) 0.8f else 1f,
+                                            animationSpec = AppMotion.fastSpatial,
+                                            label = "createPress",
+                                        )
                                         Box(
                                             contentAlignment = Alignment.Center,
                                             modifier = Modifier
                                                 .size(48.dp)
+                                                .graphicsLayer {
+                                                    scaleX = createScale
+                                                    scaleY = createScale
+                                                }
                                                 .clip(CircleShape)
                                                 .border(
                                                     1.5.dp,
@@ -434,13 +448,10 @@ fun WatchSharkApp(
                                                     CircleShape,
                                                 )
                                                 .clickable(
-                                                    interactionSource = remember { MutableInteractionSource() },
+                                                    interactionSource = createInteraction,
                                                     indication = null,
                                                     role = Role.Button,
-                                                    onClick = {
-                                                        Haptics.tick(appCtx)
-                                                        showCreateSheet = true
-                                                    },
+                                                    onClick = { goScreen("upload") },
                                                 ),
                                         ) {
                                             Icon(
@@ -470,6 +481,7 @@ fun WatchSharkApp(
                                             label = "You",
                                             selectedColor = selectedTabColor,
                                             idleColor = idleTabColor,
+                                            avatarUrl = meAvatar,
                                         ) {
                                             Icon(
                                                 painterResource(R.drawable.ic_person),
@@ -608,6 +620,7 @@ fun WatchSharkApp(
                                 onSignedOut = {
                                     scope.launch { refreshBadges() }
                                     meName = null
+                                    meAvatar = null
                                     try {
                                         nav.navigate("auth") {
                                             popUpTo(nav.graph.startDestinationId) { inclusive = true }
@@ -636,24 +649,6 @@ fun WatchSharkApp(
                             AuthScreen(onAuthComplete = { handleAuthComplete(it) })
                         }
                     }
-                }
-            }
-
-            if (showCreateSheet) {
-                ModalBottomSheet(onDismissRequest = { showCreateSheet = false }) {
-                    ListItem(
-                        headlineContent = { Text("Upload video / wheel") },
-                        leadingContent = {
-                            Icon(
-                                painterResource(R.drawable.ic_add),
-                                contentDescription = null,
-                            )
-                        },
-                        modifier = Modifier.clickable {
-                            showCreateSheet = false
-                            goScreen("upload")
-                        },
-                    )
                 }
             }
 
@@ -734,6 +729,7 @@ private fun androidx.compose.foundation.layout.RowScope.PillTab(
     idleColor: Color,
     badge: Boolean = false,
     badgeText: String = "",
+    avatarUrl: String? = null,
     icon: @Composable () -> Unit,
 ) {
 
@@ -794,10 +790,21 @@ private fun androidx.compose.foundation.layout.RowScope.PillTab(
                     .background(MaterialTheme.colorScheme.onSurface),
             )
             Box {
-                CompositionLocalProvider(
-                    LocalContentColor provides if (selected) selectedColor else idleColor,
-                ) {
-                    icon()
+                if (avatarUrl != null) {
+                    AsyncImage(
+                        model = avatarUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(CircleShape),
+                    )
+                } else {
+                    CompositionLocalProvider(
+                        LocalContentColor provides if (selected) selectedColor else idleColor,
+                    ) {
+                        icon()
+                    }
                 }
                 if (badge) {
                     Badge(
@@ -826,17 +833,29 @@ private fun androidx.compose.foundation.layout.ColumnScope.RailTab(
     selected: Boolean,
     iconRes: Int,
     onClick: () -> Unit,
+    avatarUrl: String? = null,
 ) {
     NavigationRailItem(
         selected = selected,
         onClick = onClick,
         icon = {
-            Icon(
-                painterResource(iconRes),
-                contentDescription = label,
-                tint = if (selected) MaterialTheme.colorScheme.onSurface
-                else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            if (avatarUrl != null) {
+                AsyncImage(
+                    model = avatarUrl,
+                    contentDescription = label,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape),
+                )
+            } else {
+                Icon(
+                    painterResource(iconRes),
+                    contentDescription = label,
+                    tint = if (selected) MaterialTheme.colorScheme.onSurface
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         },
         label = { Text(label) },
     )
