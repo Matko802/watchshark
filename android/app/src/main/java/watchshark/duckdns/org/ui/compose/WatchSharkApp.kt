@@ -18,6 +18,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -573,10 +574,16 @@ private fun androidx.compose.foundation.layout.RowScope.PillTab(
     badgeText: String = "",
     icon: @Composable () -> Unit,
 ) {
-    // Every tab gets its own interaction source (no highlight ripple)
-    // and a fixed 64dp slot, so the bar hugs its content like a pill
-    // and every tap lands on a full-size target.
+    // Every tab gets its own interaction source: no ripple, but a
+    // soft press glow behind the icon plus the springing selection
+    // pill, so every tap gives visible click feedback.
     val tabInteraction = remember { MutableInteractionSource() }
+    val pressed by tabInteraction.collectIsPressedAsState()
+    val glowAlpha by animateFloatAsState(
+        targetValue = if (pressed) 0.35f else 0f,
+        animationSpec = AppMotion.fastSpatial,
+        label = "pillGlow",
+    )
     Column(
         modifier = Modifier
             .width(72.dp)
@@ -616,6 +623,14 @@ private fun androidx.compose.foundation.layout.RowScope.PillTab(
                     }
                     .clip(RoundedCornerShape(16.dp))
                     .background(MaterialTheme.colorScheme.secondaryContainer),
+            )
+            // Press glow: soft highlight while the finger is down.
+            Box(
+                modifier = Modifier
+                    .size(width = 56.dp, height = 32.dp)
+                    .graphicsLayer { alpha = glowAlpha }
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.onSurface),
             )
             Box {
                 CompositionLocalProvider(

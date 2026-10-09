@@ -1,11 +1,13 @@
 package watchshark.duckdns.org.ui.compose
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,13 +17,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -34,10 +37,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.ApiClient
 import watchshark.duckdns.org.data.CrashLog
 import watchshark.duckdns.org.data.MeUser
@@ -45,6 +51,7 @@ import watchshark.duckdns.org.data.ThemePrefs
 import watchshark.duckdns.org.data.Updater
 import watchshark.duckdns.org.data.UpdateCheck
 import watchshark.duckdns.org.data.UploadAlerts
+import watchshark.duckdns.org.ui.compose.theme.AppMotion
 import watchshark.duckdns.org.ui.httpErrorMessage
 
 @Composable
@@ -65,8 +72,8 @@ fun SettingsScreen(
     var notifOn by remember { mutableStateOf(false) }
     var msg by remember { mutableStateOf("") }
     var showCrash by remember { mutableStateOf(false) }
-    var pane by remember { mutableIntStateOf(0) }
-    val panes = listOf("Account", "Notifications", "App")
+    // Accordion: tapping a section force-opens it and closes the other one.
+    var openSection by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(Unit) {
         try {
@@ -86,18 +93,13 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text("Settings", style = MaterialTheme.typography.headlineSmall)
-        TabRow(selectedTabIndex = pane) {
-            panes.forEachIndexed { i, label ->
-                Tab(
-                    selected = pane == i,
-                    onClick = { pane = i },
-                    text = { Text(label) },
-                )
-            }
-        }
-        AnimatedContent(targetState = pane, label = "settingsPane") { _ ->
-        when (pane) {
-            0 -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SettingsSection(
+            title = "Account",
+            iconRes = R.drawable.ic_person,
+            open = openSection == 0,
+            onOpen = { openSection = 0 },
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
@@ -169,8 +171,14 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Sign out") }
             }
-
-            1 -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        }
+        SettingsSection(
+            title = "Notifications",
+            iconRes = R.drawable.ic_notifications,
+            open = openSection == 1,
+            onOpen = { openSection = 1 },
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -191,9 +199,15 @@ fun SettingsScreen(
                 )
                 Text("Upload alerts from followed channels")
             }
+            }
         }
-
-            2 -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SettingsSection(
+            title = "App",
+            iconRes = R.drawable.ic_settings,
+            open = openSection == 2,
+            onOpen = { openSection = 2 },
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     "Appearance",
                     style = MaterialTheme.typography.titleSmall,
@@ -250,8 +264,6 @@ fun SettingsScreen(
                 ) { Text("Copy crash report") }
             }
             }
-
-        }
         }
         AnimatedVisibility(
             visible = msg.isNotEmpty(),
@@ -260,6 +272,75 @@ fun SettingsScreen(
             label = "settingsMsg",
         ) {
             Text(msg, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/**
+ * One accordion section: tapping the header force-opens it (and the
+ * open one closes), arrow rotates, body expands with a spring.
+ * No highlight ripple — motion is the feedback.
+ */
+@Composable
+private fun SettingsSection(
+    title: String,
+    iconRes: Int,
+    open: Boolean,
+    onOpen: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    val arrow by animateFloatAsState(
+        targetValue = if (open) 180f else 0f,
+        animationSpec = AppMotion.fastSpatial,
+        label = "sectionArrow",
+    )
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Column {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onOpen,
+                    )
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+            ) {
+                Icon(
+                    painterResource(iconRes),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                Icon(
+                    painterResource(R.drawable.ic_expand_more),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.graphicsLayer { rotationZ = arrow },
+                )
+            }
+            AnimatedVisibility(
+                visible = open,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+                label = "sectionBody",
+            ) {
+                Column(
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                ) {
+                    content()
+                }
+            }
         }
     }
 }
