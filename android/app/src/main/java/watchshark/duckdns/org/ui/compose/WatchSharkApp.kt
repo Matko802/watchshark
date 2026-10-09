@@ -252,6 +252,18 @@ fun WatchSharkApp(
             }
         }
 
+        fun goBack() {
+            try {
+                Haptics.tick(appCtx)
+            } catch (_: Exception) {
+            }
+            try {
+                if (nav.popBackStack()) return
+            } catch (_: Exception) {
+            }
+            goTab(ROUTE_HOME)
+        }
+
         fun enterHome() {
             query = ""
             searchExpanded = false
@@ -370,16 +382,24 @@ fun WatchSharkApp(
                                     }
                                 },
                                 navigationIcon = {
-                                    IconButton(onClick = {
-                                        Haptics.tick(appCtx)
-                                        if (!searchExpanded && selectedTab == null) goTab(ROUTE_HOME)
-                                        searchExpanded = !searchExpanded
-                                        if (!searchExpanded) query = ""
-                                    }) {
-                                        Icon(
-                                            painterResource(R.drawable.ic_search),
-                                            contentDescription = "Search",
-                                        )
+                                    if (selectedTab == null) {
+                                        IconButton(onClick = { goBack() }) {
+                                            Icon(
+                                                painterResource(R.drawable.ic_arrow_back),
+                                                contentDescription = "Back",
+                                            )
+                                        }
+                                    } else {
+                                        IconButton(onClick = {
+                                            Haptics.tick(appCtx)
+                                            searchExpanded = !searchExpanded
+                                            if (!searchExpanded) query = ""
+                                        }) {
+                                            Icon(
+                                                painterResource(R.drawable.ic_search),
+                                                contentDescription = "Search",
+                                            )
+                                        }
                                     }
                                 },
                                 actions = {
