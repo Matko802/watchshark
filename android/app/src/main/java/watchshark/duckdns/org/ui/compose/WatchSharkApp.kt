@@ -30,7 +30,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -145,12 +145,12 @@ fun WatchSharkApp(
 
         val backStack by nav.currentBackStackEntryAsState()
         val route = backStack?.destination?.route ?: ROUTE_HOME
-        val selectedTab = when {
+        val selectedTab: String? = when {
             route.startsWith(ROUTE_HOME) -> ROUTE_HOME
             route.startsWith(ROUTE_WHEELS) -> ROUTE_WHEELS
             route.startsWith(ROUTE_MESSAGES) || route.startsWith("chat") -> ROUTE_MESSAGES
             route.startsWith(ROUTE_YOU) || route.startsWith("channel") -> ROUTE_YOU
-            else -> ROUTE_HOME
+            else -> null
         }
         val onDetail = route.startsWith("watch") || route.startsWith("chat") ||
             route.startsWith("channel") || route == "upload" ||
@@ -340,10 +340,12 @@ fun WatchSharkApp(
                                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                                 ) {
                                     Row(
-                                        modifier = Modifier.padding(
-                                            horizontal = 6.dp,
-                                            vertical = 6.dp,
-                                        ),
+                                        modifier = Modifier
+                                            .widthIn(max = 360.dp)
+                                            .padding(
+                                                horizontal = 6.dp,
+                                                vertical = 6.dp,
+                                            ),
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         val selectedTabColor = MaterialTheme.colorScheme.onSurface
@@ -606,7 +608,7 @@ private fun androidx.compose.foundation.layout.RowScope.PillTab(
     )
     Column(
         modifier = Modifier
-            .width(72.dp)
+            .weight(1f)
             .defaultMinSize(minHeight = 48.dp)
             .clip(RoundedCornerShape(16.dp))
             .clickable(

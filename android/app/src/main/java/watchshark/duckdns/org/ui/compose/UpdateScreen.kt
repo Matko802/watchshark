@@ -154,7 +154,7 @@ private fun FlowerProgressWheel(
     )
     val color = MaterialTheme.colorScheme.primary
     val trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f)
-    Canvas(modifier = modifier.size(76.dp)) {
+    Canvas(modifier = modifier.size(120.dp)) {
         val stroke = size.minDimension / 13f
         val baseR = size.minDimension / 2f - stroke
         val amp = size.minDimension * 0.035f
