@@ -26,9 +26,18 @@ class HomeViewModel : ViewModel() {
         private set
     var query: String = ""
         private set
+    var kind: String = "video"
+        private set
     private var queryJob: Job? = null
 
     init {
+        refresh()
+    }
+
+    fun setKind(k: String) {
+        val clean = if (k == "music") "music" else "video"
+        if (kind == clean) return
+        kind = clean
         refresh()
     }
 
@@ -58,7 +67,7 @@ class HomeViewModel : ViewModel() {
                     sort = sort,
                     page = 1,
                     limit = 24,
-                    kind = "video",
+                    kind = kind,
                 )
                 _state.value = HomeUiState(
                     videos = res.videos.orEmpty(),
@@ -87,7 +96,7 @@ class HomeViewModel : ViewModel() {
                     sort = sort,
                     page = next.toLong(),
                     limit = 24,
-                    kind = "video",
+                    kind = kind,
                 )
                 _state.value = s.copy(
                     videos = s.videos + res.videos.orEmpty(),

@@ -242,9 +242,7 @@ object Updater {
     }
     fun installDownloaded(ctx: Context, file: File, update: AppUpdate): String? {
         if (!signaturesMatch(ctx, file)) {
-            return "This update is signed with a different key than the installed app, " +
-                "so Android refuses to install it. Uninstall WatchShark first, then install " +
-                "the downloaded update — your account and videos stay on the server, just log in again."
+            return "This 1.9.0 update uses a new signing key, so Android cannot install it over the old app. Uninstall WatchShark first, then install the downloaded update. Your account and videos stay on the server, just log in again."
         }
         installApk(ctx, file)
         return null

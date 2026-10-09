@@ -58,11 +58,13 @@ fun ChannelScreen(
     var user by remember { mutableStateOf<ChannelUser?>(null) }
     var videos by remember { mutableStateOf<List<Video>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
     var meId by remember { mutableStateOf<Long?>(null) }
     var tab by remember { mutableIntStateOf(0) }
-
-    LaunchedEffect(username) {
+    val scope = rememberCoroutineScope()
+    suspend fun load() {
         loading = true
+        error = null
         try {
             meId = try {
                 ApiClient.api.me().user?.id
@@ -72,15 +74,32 @@ fun ChannelScreen(
             val res = ApiClient.api.channel(username)
             user = res.user
             videos = res.videos.orEmpty()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            error = watchshark.duckdns.org.data.AppErrors.message(e)
         } finally {
             loading = false
         }
     }
 
+    LaunchedEffect(username) {
+        load()
+    }
+
     if (loading && user == null) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
+        }
+        return
+    }
+    if (user == null) {
+        Column(
+            modifier.fillMaxSize().padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("Could not load channel", style = MaterialTheme.typography.titleMedium)
+            Text(error ?: "", style = MaterialTheme.typography.bodySmall)
+            Button(onClick = { scope.launch { load() } }) { Text("Retry") }
         }
         return
     }
@@ -136,7 +155,7 @@ fun ChannelScreen(
                     }) {
                         Icon(
                             painterResource(R.drawable.ic_person_add),
-                            contentDescription = null,
+                            contentDescription = "Follow ${u.username}",
                             modifier = Modifier.size(18.dp),
                         )
                         Text("Follow")
@@ -144,7 +163,11 @@ fun ChannelScreen(
                 }
             }
         }
-        val shown = if (tab == 0) videos.filter { it.kind != "wheel" } else videos.filter { it.kind == "wheel" }
+        val shown = when (tab) {
+            0 -> videos.filter { it.kind != "wheel" && it.kind != "music" }
+            1 -> videos.filter { it.kind == "wheel" }
+            else -> videos.filter { it.kind == "music" }
+        }
         val gridState = rememberLazyGridState()
         LaunchedEffect(tab) {
             try {
@@ -164,6 +187,7 @@ fun ChannelScreen(
                     tabs = listOf(
                         SectionTab("Videos", iconRes = R.drawable.ic_play),
                         SectionTab("Wheels", iconRes = R.drawable.ic_movie),
+                        SectionTab("Music", iconRes = R.drawable.ic_music_note),
                     ),
                     selectedIndex = tab,
                     onSelect = { tab = it },

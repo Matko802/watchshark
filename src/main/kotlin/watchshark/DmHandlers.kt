@@ -32,7 +32,6 @@ object DmHandlers {
         }
     }
 
-    /** True when a and b follow each other (friends). Caller must hold Db.lock. */
     private fun isMutualLocked(a: Long, b: Long): Boolean {
         if (a == b) return false
         Db.conn.prepareStatement(
@@ -44,7 +43,6 @@ object DmHandlers {
         }
     }
 
-    /** All mutual-friend ids of uid. Caller must hold Db.lock. */
     private fun mutualIdsLocked(uid: Long): Set<Long> {
         val following = mutableSetOf<Long>()
         Db.conn.prepareStatement("SELECT followed_id FROM follows WHERE follower_id=?").use { ps ->
@@ -85,7 +83,6 @@ object DmHandlers {
         if (ids.isEmpty()) {
             return emptyList()
         }
-        // last message id per friend (either direction)
         val lastIds = mutableMapOf<Long, Long>()
         val placeholders = ids.joinToString(",") { "?" }
         val idList = ids.toList()
@@ -198,7 +195,8 @@ object DmHandlers {
             HttpUtil.writeErr(ctx, 400, "Bad request")
             return
         }
-        val to = node.get("to")?.asText("") ?: ""
+        val toNode = node.get("to")?.takeUnless { it.isNull } ?: node.get("user")
+        val to = toNode?.asText("") ?: ""
         var body = node.get("body")?.asText("") ?: ""
         body = HttpUtil.truncateRunes(body, 2000)
         if (to.trim().isEmpty()) {
@@ -433,7 +431,6 @@ object DmHandlers {
         val like = "%${HttpUtil.escapeLike(q.lowercase())}%"
         val out = mutableListOf<Map<String, Any?>>()
         synchronized(Db.lock) {
-            // friends only: must follow each other
             Db.conn.prepareStatement(
                 "SELECT u.id,u.username,u.avatar,u.last_seen FROM users u " +
                     "WHERE lower(u.username) LIKE ? ESCAPE '\\' AND u.id!=? AND u.deleted=0 " +

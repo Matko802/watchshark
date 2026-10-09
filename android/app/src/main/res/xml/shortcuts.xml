@@ -40,4 +40,14 @@
             android:targetPackage="watchshark.duckdns.org"
             android:targetClass="watchshark.duckdns.org.MainActivity" />
     </shortcut>
+    <shortcut
+        android:shortcutId="music"
+        android:enabled="true"
+        android:icon="@drawable/ic_music_note"
+        android:shortcutShortLabel="@string/sh_music">
+        <intent
+            android:action="watchshark.duckdns.org.action.MUSIC"
+            android:targetPackage="watchshark.duckdns.org"
+            android:targetClass="watchshark.duckdns.org.MainActivity" />
+    </shortcut>
 </shortcuts>

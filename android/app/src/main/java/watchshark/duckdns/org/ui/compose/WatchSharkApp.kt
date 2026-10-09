@@ -96,6 +96,7 @@ import watchshark.duckdns.org.data.ApiClient
 import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.AppUpdate
 import watchshark.duckdns.org.data.Haptics
+import watchshark.duckdns.org.data.PlayerManager
 import watchshark.duckdns.org.data.ThemePrefs
 import watchshark.duckdns.org.data.UpdateCheck
 import watchshark.duckdns.org.data.Updater
@@ -107,6 +108,7 @@ import watchshark.duckdns.org.ui.compose.player.rememberPlayerUiState
 
 private const val ROUTE_HOME = "home"
 private const val ROUTE_WHEELS = "wheels"
+private const val ROUTE_MUSIC = "music"
 private const val ROUTE_MESSAGES = "messages"
 private const val ROUTE_YOU = "you"
 
@@ -148,12 +150,14 @@ fun WatchSharkApp(
         var startupUpdate by remember { mutableStateOf<AppUpdate?>(null) }
         var homeReselect by remember { mutableIntStateOf(0) }
         var wheelsReselect by remember { mutableIntStateOf(0) }
-        val appPlayer = remember(appCtx) { ApiClient.buildPlayer(appCtx) }
+        var musicReselect by remember { mutableIntStateOf(0) }
+        val appCtxSafe = appCtx.applicationContext
+        val appPlayer = remember(appCtxSafe) { PlayerManager.get(appCtxSafe) }
         var miniVideo by remember { mutableStateOf<Video?>(null) }
         DisposableEffect(Unit) {
             onDispose {
                 try {
-                    appPlayer.release()
+                    PlayerManager.stopAndClear()
                 } catch (_: Exception) {
                 }
             }
@@ -194,6 +198,7 @@ fun WatchSharkApp(
         val selectedTab: String? = when {
             route.startsWith(ROUTE_HOME) -> ROUTE_HOME
             route.startsWith(ROUTE_WHEELS) -> ROUTE_WHEELS
+            route.startsWith(ROUTE_MUSIC) -> ROUTE_MUSIC
             route.startsWith(ROUTE_MESSAGES) || route.startsWith("chat") -> ROUTE_MESSAGES
             route.startsWith(ROUTE_YOU) || route.startsWith("channel") -> ROUTE_YOU
             else -> null
@@ -221,7 +226,7 @@ fun WatchSharkApp(
                     emptyList()
                 }
                 val anchor = listOf(
-                    ROUTE_HOME, ROUTE_WHEELS, ROUTE_MESSAGES, ROUTE_YOU,
+                    ROUTE_HOME, ROUTE_WHEELS, ROUTE_MUSIC, ROUTE_MESSAGES, ROUTE_YOU,
                     "settings", "notifications",
                 ).firstOrNull { section -> stackRoutes.any { it == section } }
                 nav.navigate(route) {
@@ -256,6 +261,7 @@ fun WatchSharkApp(
             if (alreadyHere) {
                 if (tab == ROUTE_HOME) homeReselect++
                 if (tab == ROUTE_WHEELS) wheelsReselect++
+                if (tab == ROUTE_MUSIC) musicReselect++
             }
             scope.launch { refreshBadges() }
         }
@@ -346,6 +352,12 @@ fun WatchSharkApp(
                             selected = selectedTab == ROUTE_WHEELS,
                             iconRes = R.drawable.ic_movie,
                             onClick = { goTab(ROUTE_WHEELS) },
+                        )
+                        RailTab(
+                            label = "Music",
+                            selected = selectedTab == ROUTE_MUSIC,
+                            iconRes = R.drawable.ic_music_note,
+                            onClick = { goTab(ROUTE_MUSIC) },
                         )
                         FloatingActionButton(onClick = { goSection("upload") }) {
                             Icon(
@@ -507,7 +519,7 @@ fun WatchSharkApp(
                                         ) {
                                             Icon(
                                                 painterResource(R.drawable.ic_home),
-                                                contentDescription = null,
+                                                contentDescription = "Home",
                                             )
                                         }
                                         PillTab(
@@ -519,7 +531,19 @@ fun WatchSharkApp(
                                         ) {
                                             Icon(
                                                 painterResource(R.drawable.ic_movie),
-                                                contentDescription = null,
+                                                contentDescription = "Wheels",
+                                            )
+                                        }
+                                        PillTab(
+                                            selected = selectedTab == ROUTE_MUSIC,
+                                            onClick = { goTab(ROUTE_MUSIC) },
+                                            label = "Music",
+                                            selectedColor = selectedTabColor,
+                                            idleColor = idleTabColor,
+                                        ) {
+                                            Icon(
+                                                painterResource(R.drawable.ic_music_note),
+                                                contentDescription = "Music",
                                             )
                                         }
 
@@ -570,7 +594,7 @@ fun WatchSharkApp(
                                         ) {
                                             Icon(
                                                 painterResource(R.drawable.ic_chat),
-                                                contentDescription = null,
+                                                contentDescription = "Messages",
                                             )
                                         }
                                         PillTab(
@@ -583,7 +607,7 @@ fun WatchSharkApp(
                                         ) {
                                             Icon(
                                                 painterResource(R.drawable.ic_person),
-                                                contentDescription = null,
+                                                contentDescription = "You",
                                             )
                                         }
                                     }
@@ -615,6 +639,14 @@ fun WatchSharkApp(
                             WheelsScreen(
                                 reselectTick = wheelsReselect,
                                 onOpenVideo = { id -> goScreen("watch/$id") },
+                                onOpenChannel = { name -> goScreen("channel/$name") },
+                            )
+                        }
+                        composable(ROUTE_MUSIC) {
+                            MusicScreen(
+                                query = query,
+                                reselectTick = musicReselect,
+                                onOpenVideo = { v -> goScreen("watch/${v.id}") },
                                 onOpenChannel = { name -> goScreen("channel/$name") },
                             )
                         }

@@ -15,13 +15,8 @@ object ThemePrefs {
     private const val KEY_MODE = "theme_mode"
 
     fun getMode(ctx: Context): Int {
-        return when (val stored = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getInt(KEY_MODE, MODE_SYSTEM)) {
-
-
-            MODE_LIGHT, MODE_DARK -> MODE_SYSTEM
-            else -> stored.coerceIn(MODE_SYSTEM, MODE_GREY)
-        }
+        return ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getInt(KEY_MODE, MODE_SYSTEM).coerceIn(MODE_SYSTEM, MODE_GREY)
     }
 
     fun setMode(ctx: Context, mode: Int) {

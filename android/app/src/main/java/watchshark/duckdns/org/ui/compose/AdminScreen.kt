@@ -47,6 +47,8 @@ fun AdminScreen(
     var users by remember { mutableStateOf<List<AdminUser>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    var query by remember { mutableStateOf("") }
+    var filter by remember { mutableStateOf("all") }
 
     fun reload() {
         scope.launch {
@@ -64,8 +66,36 @@ fun AdminScreen(
 
     LaunchedEffect(Unit) { reload() }
 
+    val shown = users.filter { u ->
+        val q = query.trim().lowercase()
+        val matchQ = q.isEmpty() || u.username.lowercase().contains(q)
+        val status = when {
+            u.deleted -> "deleted"
+            u.banned -> "banned"
+            u.verified -> "active"
+            else -> "pending"
+        }
+        matchQ && (filter == "all" || status == filter)
+    }
+
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
         Text("Admin", style = MaterialTheme.typography.headlineSmall)
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            label = { Text("Search users") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 8.dp)) {
+            listOf("all", "pending", "active", "banned", "deleted").forEach { f ->
+                androidx.compose.material3.FilterChip(
+                    selected = filter == f,
+                    onClick = { filter = f },
+                    label = { Text(f) }
+                )
+            }
+        }
         if (loading && users.isEmpty()) {
             CircularProgressIndicator(modifier = Modifier.padding(top = 24.dp))
             return@Column
@@ -77,7 +107,7 @@ fun AdminScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(bottom = 104.dp),
         ) {
-            items(users, key = { it.id }) { u ->
+            items(shown, key = { it.id }) { u ->
                 AdminRow(
                     user = u,
                     onOpenChannel = onOpenChannel,
@@ -205,9 +235,10 @@ private fun AdminRow(
                     }
                     if (!user.deleted) {
                         OutlinedButton(onClick = {
+                            val r = reason.trim().ifEmpty { "Removed by admin" }
                             run {
                                 ApiClient.api.adminSoftDelete(
-                                    mapOf("id" to user.id, "reason" to "Removed by admin"),
+                                    mapOf("id" to user.id, "reason" to r),
                                 )
                             }
                         }) { Text("Delete") }

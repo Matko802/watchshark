@@ -19,12 +19,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -46,25 +51,31 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import watchshark.duckdns.org.data.ApiClient
+import watchshark.duckdns.org.data.AppErrors
 import watchshark.duckdns.org.data.AutoQuality
 import watchshark.duckdns.org.data.Comment
 import watchshark.duckdns.org.R
+import watchshark.duckdns.org.data.PlayerManager
+import watchshark.duckdns.org.data.QualityKit
 import watchshark.duckdns.org.data.Video
 import watchshark.duckdns.org.data.Haptics
+import watchshark.duckdns.org.ui.compose.common.CommentRow
 import watchshark.duckdns.org.ui.compose.player.WatchPlayer
 import watchshark.duckdns.org.ui.compose.player.VideoPlaying
-import watchshark.duckdns.org.ui.compose.player.dynRenditionUrl
-import watchshark.duckdns.org.ui.compose.player.rememberPlayerUiState
 import watchshark.duckdns.org.ui.fmtAge
 import watchshark.duckdns.org.ui.fmtNum
+import watchshark.duckdns.org.ui.httpErrorMessage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,6 +96,27 @@ fun WatchScreen(
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var meId by remember { mutableStateOf<Long?>(null) }
+    var draft by remember { mutableStateOf("") }
+    var posting by remember { mutableStateOf(false) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val obs = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) {
+                PlayerManager.pauseForBackground()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(obs)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
+    }
+
+    suspend fun reloadComments() {
+        try {
+            comments = ApiClient.api.videoDetail(videoId).comments.orEmpty()
+        } catch (e: Exception) {
+            AppErrors.log(e, "watchComments")
+        }
+    }
 
     LaunchedEffect(videoId) {
         loading = true
@@ -122,35 +154,14 @@ fun WatchScreen(
         if (miniVideo?.id != null && miniVideo?.id != videoId) onExpand()
     }
     var quality by remember(videoId) { mutableStateOf("Auto") }
-    val playback = rememberPlayerUiState(player)
+    val playback = watchshark.duckdns.org.ui.compose.player.rememberPlayerUiState(player)
     LaunchedEffect(playback.isPlaying) {
         VideoPlaying.setPlaying(playback.isPlaying)
     }
 
-    fun qualityOptions(v: Video): List<String> {
-        return buildList {
-            add("Auto")
-            if (v.renditions?.containsKey("720p") == true || dynRenditionUrl(v.src, "720p") != null) add("720p")
-            if (v.renditions?.containsKey("480p") == true || dynRenditionUrl(v.src, "480p") != null) add("480p")
-            if (v.renditions?.containsKey("360p") == true || dynRenditionUrl(v.src, "360p") != null) add("360p")
-            add("Source")
-        }
-    }
+    fun qualityOptions(v: Video): List<String> = QualityKit.options(v)
 
-    fun qualityUrl(v: Video, selected: String): String? {
-        if (selected != "Auto" && selected != "Source") {
-            return v.renditions?.get(selected)
-                ?: dynRenditionUrl(v.src, selected)
-                ?: ApiClient.fullUrl(v.src)
-        }
-        if (selected == "Auto") {
-            val key = AutoQuality.pickReadyKey(v)
-            AutoQuality.readyUrl(v, key)?.let { return it }
-        }
-        return v.renditions?.get("720p")
-            ?: v.renditions?.values?.firstOrNull()
-            ?: ApiClient.fullUrl(v.src)
-    }
+    fun qualityUrl(v: Video, selected: String): String? = QualityKit.url(v, selected)
 
     LaunchedEffect(video, quality) {
         val v = video ?: return@LaunchedEffect
@@ -279,7 +290,7 @@ fun WatchScreen(
                             if (!v.following) {
                                 Icon(
                                     painterResource(R.drawable.ic_person_add),
-                                    contentDescription = null,
+                                    contentDescription = "Follow ${v.username}",
                                     modifier = Modifier.size(18.dp),
                                 )
                             }
@@ -298,7 +309,8 @@ fun WatchScreen(
                             scope.launch {
                                 try {
                                     ApiClient.api.like(cur.id)
-                                } catch (_: Exception) {
+                                } catch (e: Exception) {
+                                    AppErrors.log(e, "like")
                                     video = cur
                                 }
                             }
@@ -310,10 +322,28 @@ fun WatchScreen(
                                     if (v.liked) R.drawable.ic_favorite_fill
                                     else R.drawable.ic_favorite_outline,
                                 ),
-                                contentDescription = null,
+                                contentDescription = if (v.liked) "Unlike" else "Like",
                             )
                         },
                     )
+                    IconButton(onClick = {
+                        Haptics.tick(context)
+                        try {
+                            val url = ApiClient.BASE_URL.trimEnd('/') + "/watch/" + v.id
+                            val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(android.content.Intent.EXTRA_TEXT, "${v.title} $url")
+                            }
+                            context.startActivity(android.content.Intent.createChooser(send, "Share"))
+                        } catch (e: Exception) {
+                            AppErrors.log(e, "share")
+                        }
+                    }) {
+                        Icon(
+                            painterResource(R.drawable.ic_open_in_new),
+                            contentDescription = "Share ${v.title}"
+                        )
+                    }
                 }
                 if (!v.description.isNullOrEmpty()) {
                     var descExpanded by remember(v.id) { mutableStateOf(false) }
@@ -335,38 +365,43 @@ fun WatchScreen(
                     style = MaterialTheme.typography.titleSmall,
                     modifier = Modifier.padding(top = 8.dp),
                 )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = draft,
+                        onValueChange = { draft = it },
+                        placeholder = { Text("Add a comment…") },
+                        singleLine = false,
+                        maxLines = 3,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = {
+                        val body = draft.trim()
+                        if (body.isEmpty() || posting) return@IconButton
+                        posting = true
+                        scope.launch {
+                            try {
+                                ApiClient.api.comment(v.id, mapOf("body" to body))
+                                draft = ""
+                                reloadComments()
+                            } catch (e: Exception) {
+                                AppErrors.log(e, "comment")
+                                error = httpErrorMessage(e)
+                            } finally {
+                                posting = false
+                            }
+                        }
+                    }) {
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Post comment")
+                    }
+                }
             }
         }
         items(comments, key = { it.id }) { c ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
-                    .animateItem(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                if (c.avatar != null) {
-                    AsyncImage(
-                        model = ApiClient.fullUrl(c.avatar),
-                        contentDescription = c.username,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.size(32.dp).clip(CircleShape),
-                    )
-                } else {
-                    Icon(
-                        painterResource(R.drawable.ic_person),
-                        contentDescription = null,
-                    )
-                }
-                Column {
-                    Text(
-                        "@${c.username} • ${fmtAge(c.created_at)}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(c.body, style = MaterialTheme.typography.bodyMedium)
-                }
-            }
+            CommentRow(comment = c, modifier = Modifier.animateItem())
         }
 
         item { Spacer(modifier = Modifier.height(104.dp)) }
@@ -396,7 +431,7 @@ fun MiniPlayerBar(
         ) {
             AsyncImage(
                 model = ApiClient.fullUrl(video.thumbnail),
-                contentDescription = null,
+                contentDescription = video.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .size(width = 96.dp, height = 54.dp)

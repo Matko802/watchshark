@@ -44,6 +44,10 @@ object ApiClient {
         }
         val client = OkHttpClient.Builder()
             .cookieJar(cookieJar)
+            .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+            .writeTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
             .build()
         val base = BASE_URL.trimEnd('/') + "/"
         api = Retrofit.Builder()
@@ -75,18 +79,21 @@ object ApiClient {
 
 
     fun buildPlayer(ctx: Context): ExoPlayer {
+        val appCtx = ctx.applicationContext
         val props = mutableMapOf<String, String>()
         authCookie()?.let { props["Cookie"] = it }
         val dataSource = DefaultHttpDataSource.Factory()
             .setDefaultRequestProperties(props)
+            .setConnectTimeoutMs(15000)
+            .setReadTimeoutMs(30000)
         try {
             val meter = androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
-                .getSingletonInstance(ctx)
+                .getSingletonInstance(appCtx)
             dataSource.setTransferListener(meter)
             AutoQuality.bind(meter)
         } catch (_: Exception) {
         }
-        return ExoPlayer.Builder(ctx)
+        return ExoPlayer.Builder(appCtx)
             .setMediaSourceFactory(DefaultMediaSourceFactory(dataSource))
             .build()
     }

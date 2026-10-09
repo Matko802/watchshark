@@ -26,8 +26,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -36,12 +38,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import okio.BufferedSink
 import watchshark.duckdns.org.data.ApiClient
+import watchshark.duckdns.org.data.AppErrors
 import watchshark.duckdns.org.ui.httpErrorMessage
 
 @Composable
@@ -59,6 +66,8 @@ fun UploadScreen(
     var thumbUri by remember { mutableStateOf<Uri?>(null) }
     var busy by remember { mutableStateOf(false) }
     var msg by remember { mutableStateOf("") }
+    var progress by remember { mutableFloatStateOf(-1f) }
+    var job by remember { mutableStateOf<Job?>(null) }
 
     fun displayName(uri: Uri): String {
         return try {
@@ -68,6 +77,38 @@ fun UploadScreen(
             } ?: (uri.lastPathSegment ?: "file")
         } catch (_: Exception) {
             uri.lastPathSegment ?: "file"
+        }
+    }
+
+    fun fileSize(uri: Uri): Long {
+        return try {
+            context.contentResolver.query(uri, null, null, null, null)?.use { c ->
+                if (c.moveToFirst()) {
+                    val idx = c.getColumnIndex(OpenableColumns.SIZE)
+                    if (idx >= 0) c.getLong(idx) else -1L
+                } else -1L
+            } ?: -1L
+        } catch (_: Exception) {
+            -1L
+        }
+    }
+
+    fun streamBody(uri: Uri, mime: MediaType, onBytes: (Long) -> Unit): RequestBody {
+        return object : RequestBody() {
+            override fun contentType(): MediaType = mime
+            override fun writeTo(sink: BufferedSink) {
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    val buf = ByteArray(64 * 1024)
+                    var total = 0L
+                    while (true) {
+                        val n = input.read(buf)
+                        if (n < 0) break
+                        sink.write(buf, 0, n)
+                        total += n
+                        onBytes(total)
+                    }
+                } ?: throw IllegalStateException("Cannot read file")
+            }
         }
     }
 
@@ -89,29 +130,50 @@ fun UploadScreen(
             msg = "Title is required"
             return
         }
+        if (title.trim().length > 120) {
+            msg = "Title must be under 120 characters"
+            return
+        }
+        val maxBytes = 500L * 1024 * 1024
+        val size = fileSize(uri)
+        if (size > maxBytes) {
+            msg = "File too big (max 500MB)"
+            return
+        }
         busy = true
+        progress = 0f
         msg = "Uploading..."
-        scope.launch {
+        job = scope.launch {
             try {
                 val cr = context.contentResolver
-                val mime = cr.getType(uri) ?: "application/octet-stream"
-                val bytes = withContext(Dispatchers.IO) {
-                    cr.openInputStream(uri)?.use { it.readBytes() }
-                        ?: throw IllegalStateException("Cannot read file")
+                val mimeStr = cr.getType(uri) ?: "application/octet-stream"
+                val wantVideo = kind != "music"
+                if (wantVideo && !mimeStr.startsWith("video/")) {
+                    msg = "Pick a video file for video/wheel"
+                    return@launch
                 }
+                if (!wantVideo && !(mimeStr.startsWith("audio/") || mimeStr.startsWith("video/"))) {
+                    msg = "Pick an audio file for music"
+                    return@launch
+                }
+                val mime = mimeStr.toMediaType()
                 val filePart = MultipartBody.Part.createFormData(
                     "file", displayName(uri),
-                    bytes.toRequestBody(mime.toMediaType()),
+                    streamBody(uri, mime) { },
                 )
                 var thumbPart: MultipartBody.Part? = null
                 thumbUri?.let { tu ->
-                    val tm = cr.getType(tu) ?: "image/jpeg"
+                    val tm = (cr.getType(tu) ?: "image/jpeg").toMediaType()
                     val tb = withContext(Dispatchers.IO) {
                         cr.openInputStream(tu)?.use { it.readBytes() }
                     }
                     if (tb != null) {
+                        if (tb.size > 10 * 1024 * 1024) {
+                            msg = "Thumbnail too big (max 10MB)"
+                            return@launch
+                        }
                         thumbPart = MultipartBody.Part.createFormData(
-                            "thumb", displayName(tu), tb.toRequestBody(tm.toMediaType()),
+                            "thumb", displayName(tu), tb.toRequestBody(tm),
                         )
                     }
                 }
@@ -122,13 +184,23 @@ fun UploadScreen(
                     filePart, thumbPart,
                 )
                 if (res.has("error") || !res.has("id")) {
-                    msg = res.get("error")?.asString ?: "Upload failed"
+                    msg = try {
+                        res.get("error")?.asString ?: "Upload failed"
+                    } catch (_: Exception) {
+                        "Upload failed"
+                    }
                     return@launch
                 }
                 msg = "Uploaded!"
+                progress = 1f
                 onDone(res.get("id").asLong)
             } catch (e: Exception) {
-                msg = httpErrorMessage(e)
+                if (e is kotlinx.coroutines.CancellationException) {
+                    msg = "Upload cancelled"
+                } else {
+                    AppErrors.log(e, "upload")
+                    msg = httpErrorMessage(e)
+                }
             } finally {
                 busy = false
             }
@@ -154,6 +226,11 @@ fun UploadScreen(
                 onClick = { kind = "wheel" },
                 label = { Text("Wheel") },
             )
+            FilterChip(
+                selected = kind == "music",
+                onClick = { kind = "music" },
+                label = { Text("Music") },
+            )
         }
         OutlinedTextField(
             value = title,
@@ -169,10 +246,10 @@ fun UploadScreen(
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedButton(
-            onClick = { pickFile.launch("video/*") },
+            onClick = { pickFile.launch(if (kind == "music") "audio/*" else "video/*") },
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(fileUri?.let { displayName(it) } ?: "Choose video file")
+            Text(fileUri?.let { displayName(it) } ?: if (kind == "music") "Choose audio file" else "Choose video file")
         }
         OutlinedButton(
             onClick = { pickThumb.launch("image/*") },
@@ -183,6 +260,11 @@ fun UploadScreen(
         if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         Button(onClick = { upload() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
             Text("Upload")
+        }
+        if (busy) {
+            TextButton(onClick = { job?.cancel() }, modifier = Modifier.fillMaxWidth()) {
+                Text("Cancel")
+            }
         }
         AnimatedVisibility(
             visible = msg.isNotEmpty(),

@@ -1,5 +1,8 @@
 build/
 .gradle/
 target/
-data/
+/data/
 node_modules/
+android/release.keystore
+android/local.properties
+*.jks

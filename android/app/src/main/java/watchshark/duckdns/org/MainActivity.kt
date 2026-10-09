@@ -56,6 +56,9 @@ class MainActivity : AppCompatActivity() {
             "watchshark.duckdns.org.action.WHEELS" -> {
                 AppNavigator.goTab("wheels")
             }
+            "watchshark.duckdns.org.action.MUSIC" -> {
+                AppNavigator.goTab("music")
+            }
             "watchshark.duckdns.org.action.MESSAGES" -> {
                 AppNavigator.goTab("messages")
             }

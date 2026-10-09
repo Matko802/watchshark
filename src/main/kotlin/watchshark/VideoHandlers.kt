@@ -22,7 +22,8 @@ object VideoHandlers {
         if (limit > 24) limit = 24
         val off = (page - 1) * limit
         val mine = ctx.queryParam("mine") == "1"
-        val kind = "video"
+        val rawKind = (ctx.queryParam("kind") ?: "video").lowercase()
+        val kind = if (rawKind == "music") "music" else "video"
         if (mine && viewer < 0) {
             HttpUtil.writeErr(ctx, 401, "Login required")
             return
@@ -33,20 +34,22 @@ object VideoHandlers {
             if (mine) {
                 val like = "%${HttpUtil.escapeLike(search)}%"
                 Db.conn.prepareStatement(
-                    "SELECT v.id FROM videos v JOIN users u ON u.id=v.user_id WHERE v.user_id=? AND COALESCE(v.kind,'video')!='music' AND (?='' OR v.title LIKE ? ESCAPE '\\' OR v.description LIKE ? ESCAPE '\\' OR u.username LIKE ? ESCAPE '\\') ORDER BY $order LIMIT ? OFFSET ?"
+                    "SELECT v.id FROM videos v JOIN users u ON u.id=v.user_id WHERE v.user_id=? AND COALESCE(v.kind,'video')=? AND (?='' OR v.title LIKE ? ESCAPE '\\' OR v.description LIKE ? ESCAPE '\\' OR u.username LIKE ? ESCAPE '\\') ORDER BY $order LIMIT ? OFFSET ?"
                 ).use { ps ->
                     ps.setLong(1, viewer)
-                    ps.setString(2, search)
-                    ps.setString(3, like); ps.setString(4, like); ps.setString(5, like)
-                    ps.setLong(6, limit); ps.setLong(7, off)
+                    ps.setString(2, kind)
+                    ps.setString(3, search)
+                    ps.setString(4, like); ps.setString(5, like); ps.setString(6, like)
+                    ps.setLong(7, limit); ps.setLong(8, off)
                     ps.executeQuery().use { rs -> while (rs.next()) ids.add(rs.getLong(1)) }
                 }
                 Db.conn.prepareStatement(
-                    "SELECT COUNT(*) FROM videos v JOIN users u ON u.id=v.user_id WHERE v.user_id=? AND COALESCE(v.kind,'video')!='music' AND (?='' OR v.title LIKE ? ESCAPE '\\' OR v.description LIKE ? ESCAPE '\\' OR u.username LIKE ? ESCAPE '\\')"
+                    "SELECT COUNT(*) FROM videos v JOIN users u ON u.id=v.user_id WHERE v.user_id=? AND COALESCE(v.kind,'video')=? AND (?='' OR v.title LIKE ? ESCAPE '\\' OR v.description LIKE ? ESCAPE '\\' OR u.username LIKE ? ESCAPE '\\')"
                 ).use { ps ->
                     ps.setLong(1, viewer)
-                    ps.setString(2, search)
-                    ps.setString(3, like); ps.setString(4, like); ps.setString(5, like)
+                    ps.setString(2, kind)
+                    ps.setString(3, search)
+                    ps.setString(4, like); ps.setString(5, like); ps.setString(6, like)
                     ps.executeQuery().use { rs -> if (rs.next()) total = rs.getLong(1) }
                 }
             } else if (search.isEmpty()) {
@@ -455,8 +458,6 @@ object VideoHandlers {
             sb.append(seen.joinToString(",") { "?" })
             sb.append(")")
         }
-        // Batch mode (?limit=N): one round-trip returns up to N videos.
-        // Single mode (no limit param): legacy shape {"video": ...} / 404 when empty.
         val batch = ctx.queryParam("limit") != null
         var limit = ctx.queryParam("limit")?.toIntOrNull() ?: 1
         if (limit < 1) limit = 1
@@ -512,8 +513,8 @@ object VideoHandlers {
         }
         var title = HttpUtil.truncateRunes(ctx.formParam("title") ?: "", 120)
         var desc = HttpUtil.truncateRunes(ctx.formParam("description") ?: "", 2000)
-        var kind = HttpUtil.truncateRunes(ctx.formParam("kind") ?: "", 16)
-        if (kind != "video" && kind != "wheel") kind = "video"
+        var kind = HttpUtil.truncateRunes(ctx.formParam("kind") ?: "", 16).lowercase()
+        if (kind != "video" && kind != "wheel" && kind != "music") kind = "video"
 
         val fileParts = try { ctx.uploadedFiles("file") } catch (_: Exception) {
             HttpUtil.writeErr(ctx, 400, "Bad multipart")
@@ -529,8 +530,6 @@ object VideoHandlers {
         val uname = Db.usernameOf(uid) ?: "u"
         val partPath = File(Config.userVideosDir(uname), "$stem.part")
         val thumbTmp = File(Config.userThumbsDir(uname), "$stem.ctmp")
-
-        // save main file with limit
         try {
             partPath.outputStream().use { out ->
                 val inp = fileParts[0].content()
@@ -562,7 +561,6 @@ object VideoHandlers {
         }
         val savedSize = partPath.length()
 
-        // optional thumb
         var thumbSaved = false
         try {
             val thumbs = ctx.uploadedFiles("thumb")
@@ -586,7 +584,14 @@ object VideoHandlers {
             HttpUtil.writeErr(ctx, 507, "Server storage full (50GB limit reached)")
             return
         }
-        if (!Media.probeHasVideo(partPath.absolutePath)) {
+        if (kind == "music") {
+            if (!Media.probeHasAudio(partPath.absolutePath)) {
+                partPath.delete()
+                if (thumbSaved) thumbTmp.delete()
+                HttpUtil.writeErr(ctx, 400, "Not an audio file")
+                return
+            }
+        } else if (!Media.probeHasVideo(partPath.absolutePath)) {
             partPath.delete()
             if (thumbSaved) thumbTmp.delete()
             HttpUtil.writeErr(ctx, 400, "Not a video file")
@@ -618,7 +623,11 @@ object VideoHandlers {
         val customThumb = if (thumbSaved) thumbTmp.absolutePath else ""
         val fid = id
         val fkind = kind
-        Media.bg.submit { Media.processUpload(fid, uid, partPath.absolutePath, stem, customThumb) }
+        if (fkind == "music") {
+            Media.bg.submit { Media.processMusic(fid, uid, partPath.absolutePath, stem, customThumb) }
+        } else {
+            Media.bg.submit { Media.processUpload(fid, uid, partPath.absolutePath, stem, customThumb) }
+        }
         HttpUtil.writeJson(ctx, 200, mapOf("ok" to true, "id" to fid, "kind" to fkind))
     }
 

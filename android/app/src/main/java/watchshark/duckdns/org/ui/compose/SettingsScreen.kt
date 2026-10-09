@@ -156,7 +156,7 @@ fun SettingsScreen(
                         {
                             SettingsCategoryRow(
                                 title = "Appearance",
-                                subtitle = "System, grey, AMOLED",
+                                subtitle = "System, light, dark, grey, AMOLED",
                                 icon = Icons.Rounded.Palette,
                                 onClick = { open(SET_APPEARANCE) },
                             )
@@ -272,6 +272,8 @@ fun SettingsScreen(
             SettingsDetail(title = "Appearance", onBack = ::back) {
                 val options = listOf(
                     ThemePrefs.MODE_SYSTEM to "System default",
+                    ThemePrefs.MODE_LIGHT to "Light",
+                    ThemePrefs.MODE_DARK to "Dark",
                     ThemePrefs.MODE_GREY to "Grey",
                     ThemePrefs.MODE_AMOLED to "AMOLED black",
                 )

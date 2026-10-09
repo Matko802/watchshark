@@ -15,10 +15,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import kotlinx.coroutines.launch
@@ -49,6 +55,15 @@ fun AuthScreen(
     var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var err by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var showPw by remember { mutableStateOf(false) }
+
+    fun validEmail(v: String): Boolean {
+        return Regex("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$").matches(v.trim())
+    }
+    fun validHandle(v: String): Boolean {
+        return Regex("^[A-Za-z0-9_]{3,30}$").matches(v.trim())
+    }
 
     fun afterAuth() {
         scope.launch {
@@ -82,9 +97,16 @@ fun AuthScreen(
     }
 
     fun doLogin() {
+        if (busy) return
+        if (login.trim().isEmpty() || password.isEmpty()) {
+            err = "Enter email and password"
+            return
+        }
+        busy = true
+        err = ""
         scope.launch {
             try {
-                val res = ApiClient.api.login(mapOf("login" to login, "password" to password))
+                val res = ApiClient.api.login(mapOf("login" to login.trim(), "password" to password))
                 if (res.has("error")) {
                     err = res.get("error").asString
                     return@launch
@@ -92,28 +114,47 @@ fun AuthScreen(
                 afterAuth()
             } catch (e: Exception) {
                 err = httpErrorMessage(e)
+            } finally {
+                busy = false
             }
         }
     }
 
     fun doSignup() {
+        if (busy) return
+        if (!validHandle(username)) {
+            err = "Handle needs 3-30 letters, numbers or _"
+            return
+        }
+        if (!validEmail(email)) {
+            err = "Enter a valid email"
+            return
+        }
+        if (password.length < 6) {
+            err = "Password needs 6+ characters"
+            return
+        }
+        busy = true
+        err = ""
         scope.launch {
             try {
                 val res = ApiClient.api.signup(
-                    mapOf("username" to username, "email" to email, "password" to password),
+                    mapOf("username" to username.trim(), "email" to email.trim().lowercase(), "password" to password),
                 )
                 if (res.has("error")) {
                     err = res.get("error").asString
                     return@launch
                 }
                 if (res.has("verify")) {
-                    err = "Account created — waiting for admin approval."
+                    err = "Account created, waiting for admin approval."
                     modeLogin = true
                 } else {
                     afterAuth()
                 }
             } catch (e: Exception) {
                 err = apiErrorMessage(e)
+            } finally {
+                busy = false
             }
         }
     }
@@ -150,12 +191,22 @@ fun AuthScreen(
         OutlinedTextField(
             value = if (loginMode) login else password,
             onValueChange = { if (loginMode) login = it else password = it },
-            label = { Text(if (loginMode) "Email" else "Password (6+ chars)") },
+            label = { Text(if (loginMode) "Email or handle" else "Password (6+ chars)") },
             singleLine = true,
-            visualTransformation = if (loginMode) {
-                androidx.compose.ui.text.input.VisualTransformation.None
+            visualTransformation = if (loginMode || showPw) {
+                VisualTransformation.None
             } else {
                 PasswordVisualTransformation()
+            },
+            trailingIcon = {
+                if (!loginMode) {
+                    IconButton(onClick = { showPw = !showPw }) {
+                        Icon(
+                            if (showPw) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                            contentDescription = if (showPw) "Hide password" else "Show password"
+                        )
+                    }
+                }
             },
             modifier = Modifier.fillMaxWidth(),
         )
@@ -165,7 +216,15 @@ fun AuthScreen(
                 onValueChange = { password = it },
                 label = { Text("Password") },
                 singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (showPw) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { showPw = !showPw }) {
+                        Icon(
+                            if (showPw) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                            contentDescription = if (showPw) "Hide password" else "Show password"
+                        )
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -179,9 +238,10 @@ fun AuthScreen(
         }
         Button(
             onClick = { if (loginMode) doLogin() else doSignup() },
+            enabled = !busy,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(if (loginMode) "Log in" else "Create account")
+            Text(if (busy) "Please wait…" else if (loginMode) "Log in" else "Create account")
         }
         TextButton(onClick = { modeLogin = !modeLogin; err = "" }) {
             Text(if (loginMode) "Create account" else "Log in")

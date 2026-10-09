@@ -25,6 +25,19 @@ jobs:
           java-version: '17'
           cache: gradle
 
+      - name: Restore release keystore
+        run: |
+          if [ -n "${{ secrets.RELEASE_KEYSTORE_B64 }}" ]; then
+            echo "${{ secrets.RELEASE_KEYSTORE_B64 }}" | base64 -d > release.keystore
+            echo "RELEASE_STORE_FILE=$PWD/release.keystore" >> "$GITHUB_ENV"
+            echo "RELEASE_STORE_PASSWORD=${{ secrets.RELEASE_STORE_PASSWORD }}" >> "$GITHUB_ENV"
+            echo "RELEASE_KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS }}" >> "$GITHUB_ENV"
+            echo "RELEASE_KEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD }}" >> "$GITHUB_ENV"
+            echo "Using release keystore from secrets"
+          else
+            echo "No release keystore secret, falling back to debug.keystore (old 1.8.x key)"
+          fi
+
       - name: Build APKs
         run: |
           chmod +x gradlew
@@ -130,5 +143,6 @@ jobs:
           prerelease: false
           generate_release_notes: true
           body: |
-            M3 Expressive Compose UI (dynamic color, NavigationBar + NavigationRail, SearchBar, YouTube-proper tabs).
+            WatchShark 1.9.0: Music tab, Watch comments, streaming uploads, hardened player, targetSdk 35, media3 1.7.3.
+            WARNING: 1.9.0 uses a new signing key. Uninstall 1.8.x first, then install. Account and videos stay on server.
             Built from main. In-app updater looks for WatchShark-<version>.apk.

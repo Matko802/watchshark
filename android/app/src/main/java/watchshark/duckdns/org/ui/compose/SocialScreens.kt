@@ -30,7 +30,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.material3.Button
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,9 +48,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.ApiClient
+import watchshark.duckdns.org.data.AppErrors
 import watchshark.duckdns.org.data.DmConversation
 import watchshark.duckdns.org.data.DmMessage
 import watchshark.duckdns.org.ui.fmtAge
@@ -59,20 +65,59 @@ fun MessagesScreen(
 ) {
     var conversations by remember { mutableStateOf<List<DmConversation>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
-    LaunchedEffect(Unit) {
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    suspend fun load() {
+        loading = true
+        error = null
         try {
             conversations = ApiClient.api.dmConversations().conversations.orEmpty()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppErrors.log(e, "messages")
+            error = AppErrors.message(e)
         } finally {
             loading = false
         }
     }
-    if (loading) {
+    LaunchedEffect(Unit) {
+        load()
+        while (isActive) {
+            delay(15000)
+            try {
+                conversations = ApiClient.api.dmConversations().conversations.orEmpty()
+            } catch (_: Exception) {
+            }
+        }
+    }
+    if (loading && conversations.isEmpty()) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
         return
     }
+    if (error != null && conversations.isEmpty()) {
+        Column(
+            modifier.fillMaxSize().padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("Could not load messages", style = MaterialTheme.typography.titleMedium)
+            Text(
+                error ?: "",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Button(onClick = { scope.launch { load() } }) { Text("Retry") }
+        }
+        return
+    }
+    val pullState = rememberPullToRefreshState()
+    PullToRefreshBox(
+        isRefreshing = loading,
+        onRefresh = { scope.launch { load() } },
+        state = pullState,
+        modifier = modifier.fillMaxSize()
+    ) {
     LazyColumn(
         modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 104.dp),
@@ -89,12 +134,13 @@ fun MessagesScreen(
                         )
                         if (c.unread > 0) {
                             Text(
-                                "${c.unread}",
+                                if (c.unread > 99) "99+" else "${c.unread}",
                                 color = MaterialTheme.colorScheme.onPrimary,
                                 style = MaterialTheme.typography.labelSmall,
                                 modifier = Modifier
                                     .clip(CircleShape)
-                                    .padding(2.dp),
+                                    .background(MaterialTheme.colorScheme.primary)
+                                    .padding(horizontal = 7.dp, vertical = 2.dp),
                             )
                         }
                     }
@@ -103,11 +149,11 @@ fun MessagesScreen(
                     if (c.avatar != null) {
                         AsyncImage(
                             model = ApiClient.fullUrl(c.avatar),
-                            contentDescription = null,
+                            contentDescription = c.username,
                             modifier = Modifier.size(40.dp).clip(CircleShape),
                         )
                     } else {
-                        Icon(Icons.Filled.Person, contentDescription = null)
+                        Icon(Icons.Filled.Person, contentDescription = c.username)
                     }
                 },
                 modifier = Modifier
@@ -115,6 +161,7 @@ fun MessagesScreen(
                     .animateItem(),
             )
         }
+    }
     }
 }
 
@@ -129,6 +176,8 @@ fun ChatScreen(
     var meId by remember { mutableStateOf(0L) }
     var draft by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(true) }
+    var sendError by remember { mutableStateOf<String?>(null) }
+    var sending by remember { mutableStateOf(false) }
 
     suspend fun reload() {
         try {
@@ -139,10 +188,12 @@ fun ChatScreen(
             if (lastId != null) {
                 try {
                     ApiClient.api.dmRead(mapOf("user" to username, "after_id" to lastId))
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    AppErrors.log(e, "dmRead")
                 }
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppErrors.log(e, "dmThread")
         } finally {
             loading = false
         }
@@ -150,8 +201,17 @@ fun ChatScreen(
     LaunchedEffect(username) {
         loading = true
         reload()
+        while (isActive) {
+            delay(10000)
+            try {
+                val res = ApiClient.api.dmThread(username, null, null, 50)
+                messages = res.messages.orEmpty()
+                meId = res.me
+            } catch (_: Exception) {
+            }
+        }
     }
-    Column(modifier.fillMaxSize()) {
+    Column(modifier.fillMaxSize().imePadding()) {
         if (loading && messages.isEmpty()) {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
@@ -195,25 +255,41 @@ fun ChatScreen(
         ) {
             OutlinedTextField(
                 value = draft,
-                onValueChange = { draft = it },
+                onValueChange = { draft = it; sendError = null },
                 modifier = Modifier.weight(1f),
                 placeholder = { Text("Message @$username") },
-                singleLine = true,
+                singleLine = false,
+                maxLines = 4,
             )
             IconButton(onClick = {
                 val body = draft.trim()
-                if (body.isEmpty()) return@IconButton
+                if (body.isEmpty() || sending) return@IconButton
                 draft = ""
+                sendError = null
+                sending = true
                 scope.launch {
                     try {
-                        ApiClient.api.dmSend(mapOf("user" to username, "body" to body))
+                        ApiClient.api.dmSend(mapOf("to" to username, "user" to username, "body" to body))
                         reload()
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
+                        AppErrors.log(e, "dmSend")
+                        sendError = AppErrors.message(e)
+                        draft = body
+                    } finally {
+                        sending = false
                     }
                 }
             }) {
-                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
+                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send message to $username")
             }
+        }
+        if (sendError != null) {
+            Text(
+                sendError ?: "",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
         }
     }
 }
@@ -225,18 +301,36 @@ fun NotificationsScreen(
 ) {
     var items by remember { mutableStateOf(emptyList<watchshark.duckdns.org.data.Notif>()) }
     var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    LaunchedEffect(Unit) {
+    suspend fun load() {
+        loading = true
+        error = null
         try {
             items = ApiClient.api.notifications().notifications.orEmpty()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppErrors.log(e, "notifications")
+            error = AppErrors.message(e)
         } finally {
             loading = false
         }
     }
-    if (loading) {
+    LaunchedEffect(Unit) { load() }
+    if (loading && items.isEmpty()) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
+        }
+        return
+    }
+    if (error != null && items.isEmpty()) {
+        Column(
+            modifier.fillMaxSize().padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("Could not load notifications", style = MaterialTheme.typography.titleMedium)
+            Text(error ?: "", style = MaterialTheme.typography.bodySmall)
+            Button(onClick = { scope.launch { load() } }) { Text("Retry") }
         }
         return
     }
@@ -249,10 +343,29 @@ fun NotificationsScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Button(onClick = { scope.launch { load() } }, modifier = Modifier.padding(top = 12.dp)) {
+                    Text("Refresh")
+                }
             }
         }
         return
     }
+    Column(modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.End
+        ) {
+            Button(onClick = {
+                items = items.map { it.copy(read = true) }
+                scope.launch {
+                    try {
+                        ApiClient.api.notifRead(mapOf("id" to null))
+                    } catch (e: Exception) {
+                        AppErrors.log(e, "notifReadAll")
+                    }
+                }
+            }) { Text("Mark all read") }
+        }
     LazyColumn(
         modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 104.dp),
@@ -302,7 +415,7 @@ fun NotificationsScreen(
                                     if (n.videoId != null) R.drawable.ic_play
                                     else R.drawable.ic_notifications,
                                 ),
-                                contentDescription = null,
+                                contentDescription = n.title,
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                 modifier = Modifier.size(26.dp),
                             )
@@ -319,7 +432,7 @@ fun NotificationsScreen(
                         } else {
                             Icon(
                                 painterResource(R.drawable.ic_arrow_back),
-                                contentDescription = null,
+                                contentDescription = "Open notification",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.graphicsLayer { rotationZ = 180f },
                             )
@@ -336,7 +449,8 @@ fun NotificationsScreen(
                             scope.launch {
                                 try {
                                     ApiClient.api.notifRead(mapOf("id" to n.id))
-                                } catch (_: Exception) {
+                                } catch (e: Exception) {
+                                    AppErrors.log(e, "notifRead")
                                 }
                             }
                             n.videoId?.let { onOpenVideo(it) }
@@ -345,5 +459,6 @@ fun NotificationsScreen(
                 )
             }
         }
+    }
     }
 }
