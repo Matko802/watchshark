@@ -175,18 +175,26 @@ fun WatchSharkApp(
         }
 
         fun goSection(route: String) {
-            Haptics.tick(appCtx)
+            try {
+                Haptics.tick(appCtx)
+            } catch (_: Exception) {
+            }
             try {
                 nav.navigate(route) {
                     popUpTo(nav.graph.startDestinationId) { saveState = true }
                     launchSingleTop = true
                     restoreState = true
                 }
+                return
             } catch (_: Exception) {
-                try {
-                    nav.navigate(route) { launchSingleTop = true }
-                } catch (_: Exception) {
-                }
+            }
+            try {
+                if (nav.popBackStack(route, inclusive = false)) return
+            } catch (_: Exception) {
+            }
+            try {
+                nav.navigate(route) { launchSingleTop = true }
+            } catch (_: Exception) {
             }
         }
 
@@ -208,9 +216,21 @@ fun WatchSharkApp(
 
 
         fun goScreen(route: String) {
-            Haptics.tick(appCtx)
+            try {
+                Haptics.tick(appCtx)
+            } catch (_: Exception) {
+            }
             try {
                 nav.navigate(route) { launchSingleTop = true }
+                return
+            } catch (_: Exception) {
+            }
+            try {
+                if (nav.popBackStack(route, inclusive = false)) return
+            } catch (_: Exception) {
+            }
+            try {
+                nav.navigate(route)
             } catch (_: Exception) {
             }
         }
