@@ -329,7 +329,7 @@ fun WatchSharkApp(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 16.dp)
-                                    .padding(bottom = 17.dp),
+                                    .padding(bottom = 19.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Surface(
@@ -674,7 +674,6 @@ private fun androidx.compose.foundation.layout.RowScope.PillTab(
                 text = label,
                 fontSize = 11.sp,
                 color = if (selected) selectedColor else idleColor,
-                modifier = Modifier.padding(top = 1.dp),
             )
         }
     }
