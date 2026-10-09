@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -42,6 +43,9 @@ fun SectionTabs(
                     selected = selectedIndex == index,
                     onClick = { onSelect(index) },
                     shape = SegmentedButtonDefaults.itemShape(index, tabs.size),
+                    colors = SegmentedButtonDefaults.colors(
+                        inactiveContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    ),
                     icon = {
                         when {
                             tab.iconRes != null -> Icon(
