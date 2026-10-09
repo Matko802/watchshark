@@ -186,26 +186,29 @@ fun WatchSharkApp(
         fun enterHome() {
             query = ""
             searchExpanded = false
+            var ok = false
             try {
                 nav.navigate(ROUTE_HOME) {
                     popUpTo("auth") { inclusive = true }
                     launchSingleTop = true
                 }
+                ok = true
             } catch (_: Exception) {
             }
+            if (!ok) goTab(ROUTE_HOME)
             scope.launch { refreshBadges() }
         }
 
         fun handleAuthComplete(loggedIn: Boolean) {
             scope.launch { refreshBadges() }
+            enterHome()
             if (loggedIn) {
-                enterHome()
                 AppNavigator.afterLogin?.let { pending ->
                     AppNavigator.afterLogin = null
                     goScreen(pending)
                 }
             } else {
-                goTab(ROUTE_HOME)
+                AppNavigator.afterLogin = null
             }
         }
 
@@ -213,6 +216,27 @@ fun WatchSharkApp(
             AppNavigator.tabHandler = { goTab(it) }
             AppNavigator.screenHandler = { goScreen(it) }
             AppNavigator.flushPending()
+        }
+
+        fun openYou() {
+            val name = meName
+            if (name != null) {
+                goScreen("channel/$name")
+                return
+            }
+            if (!ApiClient.sessionToken().isNullOrEmpty()) {
+                scope.launch {
+                    try {
+                        meName = ApiClient.api.me().user?.username
+                    } catch (_: Exception) {
+                    }
+                    val fresh = meName
+                    if (fresh != null) goScreen("channel/$fresh")
+                    else goScreen("auth")
+                }
+                return
+            }
+            goScreen("auth")
         }
 
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -250,11 +274,7 @@ fun WatchSharkApp(
                             label = "You",
                             selected = selectedTab == ROUTE_YOU,
                             iconRes = R.drawable.ic_person,
-                            onClick = {
-                                val name = meName
-                                if (name != null) goScreen("channel/$name")
-                                else goScreen("auth")
-                            },
+                            onClick = { openYou() },
                         )
                     }
                 }
@@ -448,11 +468,7 @@ fun WatchSharkApp(
                                         }
                                         PillTab(
                                             selected = selectedTab == ROUTE_YOU,
-                                            onClick = {
-                                                val name = meName
-                                                if (name != null) goScreen("channel/$name")
-                                                else goScreen("auth")
-                                            },
+                                            onClick = { openYou() },
                                             label = "You",
                                             selectedColor = selectedTabColor,
                                             idleColor = idleTabColor,
