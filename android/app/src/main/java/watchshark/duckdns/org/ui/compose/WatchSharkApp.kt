@@ -36,6 +36,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -49,6 +51,7 @@ import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -218,27 +221,6 @@ fun WatchSharkApp(
             AppNavigator.flushPending()
         }
 
-        fun openYou() {
-            val name = meName
-            if (name != null) {
-                goScreen("channel/$name")
-                return
-            }
-            if (!ApiClient.sessionToken().isNullOrEmpty()) {
-                scope.launch {
-                    try {
-                        meName = ApiClient.api.me().user?.username
-                    } catch (_: Exception) {
-                    }
-                    val fresh = meName
-                    if (fresh != null) goScreen("channel/$fresh")
-                    else goScreen("auth")
-                }
-                return
-            }
-            goScreen("auth")
-        }
-
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val wide = maxWidth >= 600.dp
             Row(modifier = Modifier.fillMaxSize()) {
@@ -274,7 +256,7 @@ fun WatchSharkApp(
                             label = "You",
                             selected = selectedTab == ROUTE_YOU,
                             iconRes = R.drawable.ic_person,
-                            onClick = { openYou() },
+                            onClick = { goTab(ROUTE_YOU) },
                         )
                     }
                 }
@@ -468,7 +450,7 @@ fun WatchSharkApp(
                                         }
                                         PillTab(
                                             selected = selectedTab == ROUTE_YOU,
-                                            onClick = { openYou() },
+                                            onClick = { goTab(ROUTE_YOU) },
                                             label = "You",
                                             selectedColor = selectedTabColor,
                                             idleColor = idleTabColor,
@@ -517,6 +499,56 @@ fun WatchSharkApp(
                         ) { entry ->
                             val name = entry.arguments?.getString("username") ?: return@composable
                             ChatScreen(username = name)
+                        }
+                        composable(ROUTE_YOU) {
+                            val name = meName
+                            if (name != null) {
+                                ChannelScreen(
+                                    username = name,
+                                    onOpenVideo = { v -> goScreen("watch/${v.id}") },
+                                )
+                            } else if (!ApiClient.sessionToken().isNullOrEmpty()) {
+                                var failed by remember { mutableStateOf(false) }
+                                var attempt by remember { mutableIntStateOf(0) }
+                                LaunchedEffect(attempt) {
+                                    try {
+                                        meName = ApiClient.api.me().user?.username
+                                        if (meName == null) failed = true
+                                    } catch (_: Exception) {
+                                        failed = true
+                                    }
+                                }
+                                if (!failed) {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        CircularProgressIndicator()
+                                    }
+                                } else {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(24.dp),
+                                        verticalArrangement = Arrangement.Center,
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                    ) {
+                                        Text(
+                                            "Couldn't load your profile",
+                                            style = MaterialTheme.typography.titleMedium,
+                                        )
+                                        Button(onClick = {
+                                            failed = false
+                                            attempt++
+                                        }) { Text("Retry") }
+                                        TextButton(onClick = { goTab(ROUTE_HOME) }) {
+                                            Text("Back home")
+                                        }
+                                    }
+                                }
+                            } else {
+                                AuthScreen(onAuthComplete = { handleAuthComplete(it) })
+                            }
                         }
                         composable(
                             "watch/{id}",
