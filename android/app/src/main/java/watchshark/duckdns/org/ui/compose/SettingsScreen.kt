@@ -1,59 +1,82 @@
 package watchshark.duckdns.org.ui.compose
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AccountCircle
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.ApiClient
 import watchshark.duckdns.org.data.CrashLog
+import watchshark.duckdns.org.data.Haptics
 import watchshark.duckdns.org.data.MeUser
 import watchshark.duckdns.org.data.ThemePrefs
-import watchshark.duckdns.org.data.Updater
 import watchshark.duckdns.org.data.UpdateCheck
+import watchshark.duckdns.org.data.Updater
 import watchshark.duckdns.org.data.UploadAlerts
 import watchshark.duckdns.org.ui.compose.theme.AppMotion
 import watchshark.duckdns.org.ui.httpErrorMessage
 
+private const val SET_MAIN = "set_main"
+private const val SET_ACCOUNT = "set_account"
+private const val SET_APPEARANCE = "set_appearance"
+private const val SET_NOTIFICATIONS = "set_notifications"
+private const val SET_HAPTICS = "set_haptics"
+private const val SET_ABOUT = "set_about"
+
+/**
+ * Settings hub in the SpatialFlow style: one grouped card of icon rows
+ * (title + subtitle + chevron) opening dedicated sub-pages with
+ * slide transitions, instead of tab switching.
+ */
 @Composable
 fun SettingsScreen(
     themeMode: Int,
@@ -72,8 +95,8 @@ fun SettingsScreen(
     var notifOn by remember { mutableStateOf(false) }
     var msg by remember { mutableStateOf("") }
     var showCrash by remember { mutableStateOf(false) }
-    // Accordion: tapping a section force-opens it and closes the other one.
-    var openSection by remember { mutableIntStateOf(0) }
+    var vibOn by remember { mutableStateOf(Haptics.isOn(context)) }
+    var vibStr by remember { mutableFloatStateOf(Haptics.strength(context)) }
 
     LaunchedEffect(Unit) {
         try {
@@ -85,262 +108,417 @@ fun SettingsScreen(
         showCrash = CrashLog.lastCrash(context) != null
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+    val sub = rememberNavController()
+    fun open(route: String) {
+        try {
+            sub.navigate(route) { launchSingleTop = true }
+        } catch (_: Exception) {
+        }
+    }
+    fun back() {
+        try {
+            sub.popBackStack()
+        } catch (_: Exception) {
+        }
+    }
+
+    NavHost(
+        navController = sub,
+        startDestination = SET_MAIN,
+        enterTransition = { AppMotion.screenEnter },
+        exitTransition = { AppMotion.screenExit },
+        popEnterTransition = { AppMotion.screenPopEnter },
+        popExitTransition = { AppMotion.screenPopExit },
+        modifier = modifier.fillMaxSize(),
     ) {
-        Text("Settings", style = MaterialTheme.typography.headlineSmall)
-        SettingsSection(
-            title = "Account",
-            iconRes = R.drawable.ic_person,
-            open = openSection == 0,
-            onOpen = { openSection = 0 },
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("New handle") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Button(onClick = {
-                scope.launch {
-                    try {
-                        ApiClient.api.rename(mapOf("username" to name.trim()))
-                        msg = "Name saved!"
-                    } catch (e: Exception) {
-                        msg = httpErrorMessage(e)
-                    }
-                }
-            }) { Text("Save name") }
-            Text(
-                "Password",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-            OutlinedTextField(
-                value = curPw,
-                onValueChange = { curPw = it },
-                label = { Text("Current password") },
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = newPw,
-                onValueChange = { newPw = it },
-                label = { Text("New password (6+ chars)") },
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Button(onClick = {
-                scope.launch {
-                    try {
-                        ApiClient.api.changePw(mapOf("current" to curPw, "password" to newPw))
-                        curPw = ""
-                        newPw = ""
-                        msg = "Password changed."
-                    } catch (e: Exception) {
-                        msg = httpErrorMessage(e)
-                    }
-                }
-            }) { Text("Save password") }
-            if (me?.admin == true) {
-                OutlinedButton(onClick = onOpenAdmin, modifier = Modifier.fillMaxWidth()) {
-                    Text("Admin")
-                }
+        composable(SET_MAIN) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+            ) {
+                Text(
+                    "Settings",
+                    style = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
+                )
+                SettingsGroup(
+                    items = listOf(
+                        {
+                            SettingsCategoryRow(
+                                title = "Account",
+                                subtitle = "Handle, password, sign out",
+                                icon = Icons.Rounded.AccountCircle,
+                                onClick = { open(SET_ACCOUNT) },
+                            )
+                        },
+                        {
+                            SettingsCategoryRow(
+                                title = "Appearance",
+                                subtitle = "System, grey, AMOLED",
+                                icon = Icons.Rounded.Palette,
+                                onClick = { open(SET_APPEARANCE) },
+                            )
+                        },
+                        {
+                            SettingsCategoryRow(
+                                title = "Notifications",
+                                subtitle = "Upload alerts",
+                                icon = Icons.Rounded.Notifications,
+                                onClick = { open(SET_NOTIFICATIONS) },
+                            )
+                        },
+                        {
+                            SettingsCategoryRow(
+                                title = "Haptics",
+                                subtitle = "Button vibration",
+                                icon = Icons.Rounded.Vibration,
+                                onClick = { open(SET_HAPTICS) },
+                            )
+                        },
+                        {
+                            SettingsCategoryRow(
+                                title = "About",
+                                subtitle = "Version, updates",
+                                icon = Icons.Rounded.Info,
+                                onClick = { open(SET_ABOUT) },
+                            )
+                        },
+                    ),
+                )
             }
-            OutlinedButton(
-                onClick = {
+        }
+
+        composable(SET_ACCOUNT) {
+            SettingsDetail(title = "Account", onBack = ::back) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("New handle") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Button(onClick = {
                     scope.launch {
                         try {
-                            ApiClient.api.logout()
-                        } catch (_: Exception) {
+                            ApiClient.api.rename(mapOf("username" to name.trim()))
+                            msg = "Name saved!"
+                        } catch (e: Exception) {
+                            msg = httpErrorMessage(e)
                         }
-                        ApiClient.clearSession()
-                        UploadAlerts.cancel(context)
-                        onSignedOut()
                     }
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text("Sign out") }
-            }
-        }
-        SettingsSection(
-            title = "Notifications",
-            iconRes = R.drawable.ic_notifications,
-            open = openSection == 1,
-            onOpen = { openSection = 1 },
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Switch(
-                    checked = notifOn,
-                    onCheckedChange = { on ->
-                        notifOn = on
-                        scope.launch {
-                            try {
-                                ApiClient.api.notifSet(mapOf("uploads" to on))
-                                msg = "Saved!"
-                            } catch (e: Exception) {
-                                msg = httpErrorMessage(e)
-                            }
-                        }
-                    },
-                )
-                Text("Upload alerts from followed channels")
-            }
-            }
-        }
-        SettingsSection(
-            title = "App",
-            iconRes = R.drawable.ic_settings,
-            open = openSection == 2,
-            onOpen = { openSection = 2 },
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                }) { Text("Save name") }
                 Text(
-                    "Appearance",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            val options = listOf(
-                ThemePrefs.MODE_SYSTEM to "System default",
-                ThemePrefs.MODE_GREY to "Grey",
-                ThemePrefs.MODE_AMOLED to "AMOLED black",
-            )
-            options.forEach { (mode, label) ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    RadioButton(
-                        selected = themeMode == mode,
-                        onClick = { onThemeMode(mode) },
-                    )
-                    Text(label)
-                }
-            }
-
-                Text(
-                    "App",
+                    "Password",
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp),
                 )
-            Text(
-                "Version ${Updater.currentVersion(context)}",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            OutlinedButton(
-                onClick = {
-                    msg = "Checking…"
+                OutlinedTextField(
+                    value = curPw,
+                    onValueChange = { curPw = it },
+                    label = { Text("Current password") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = newPw,
+                    onValueChange = { newPw = it },
+                    label = { Text("New password (6+ chars)") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Button(onClick = {
                     scope.launch {
-                        when (val result = Updater.checkForUpdate()) {
-                            is UpdateCheck.Available -> {
-                                Updater.pending = result.update
-                                onUpdateAvailable()
-                            }
-                            UpdateCheck.UpToDate -> msg = "Already on the latest version"
-                            is UpdateCheck.Failed -> msg = result.reason
+                        try {
+                            ApiClient.api.changePw(mapOf("current" to curPw, "password" to newPw))
+                            curPw = ""
+                            newPw = ""
+                            msg = "Password changed."
+                        } catch (e: Exception) {
+                            msg = httpErrorMessage(e)
                         }
                     }
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text("Check for updates") }
-            if (showCrash) {
+                }) { Text("Save password") }
+                if (me?.admin == true) {
+                    OutlinedButton(onClick = onOpenAdmin, modifier = Modifier.fillMaxWidth()) {
+                        Text("Admin")
+                    }
+                }
                 OutlinedButton(
-                    onClick = { CrashLog.showNow(context) },
+                    onClick = {
+                        scope.launch {
+                            try {
+                                ApiClient.api.logout()
+                            } catch (_: Exception) {
+                            }
+                            ApiClient.clearSession()
+                            UploadAlerts.cancel(context)
+                            onSignedOut()
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("Copy crash report") }
-            }
+                ) { Text("Sign out") }
+                if (msg.isNotEmpty()) {
+                    Text(msg, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
-        AnimatedVisibility(
-            visible = msg.isNotEmpty(),
-            enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut(),
-            label = "settingsMsg",
-        ) {
-            Text(msg, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+        composable(SET_APPEARANCE) {
+            SettingsDetail(title = "Appearance", onBack = ::back) {
+                val options = listOf(
+                    ThemePrefs.MODE_SYSTEM to "System default",
+                    ThemePrefs.MODE_GREY to "Grey",
+                    ThemePrefs.MODE_AMOLED to "AMOLED black",
+                )
+                options.forEach { (mode, label) ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        RadioButton(
+                            selected = themeMode == mode,
+                            onClick = { onThemeMode(mode) },
+                        )
+                        Text(label)
+                    }
+                }
+            }
+        }
+
+        composable(SET_NOTIFICATIONS) {
+            SettingsDetail(title = "Notifications", onBack = ::back) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Switch(
+                        checked = notifOn,
+                        onCheckedChange = { on ->
+                            notifOn = on
+                            scope.launch {
+                                try {
+                                    ApiClient.api.notifSet(mapOf("uploads" to on))
+                                    msg = "Saved!"
+                                } catch (e: Exception) {
+                                    msg = httpErrorMessage(e)
+                                }
+                            }
+                        },
+                    )
+                    Text("Upload alerts from followed channels")
+                }
+                if (msg.isNotEmpty()) {
+                    Text(msg, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+
+        composable(SET_HAPTICS) {
+            SettingsDetail(title = "Haptics", onBack = ::back) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Switch(
+                        checked = vibOn,
+                        onCheckedChange = { on ->
+                            vibOn = on
+                            Haptics.setOn(context, on)
+                        },
+                    )
+                    Text("Button vibration")
+                }
+                Text(
+                    "Strength",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Slider(
+                        value = vibStr,
+                        onValueChange = {
+                            vibStr = it
+                            Haptics.setStrength(context, it)
+                        },
+                        valueRange = 0f..100f,
+                        enabled = vibOn,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text("${vibStr.toInt()}%")
+                }
+            }
+        }
+
+        composable(SET_ABOUT) {
+            SettingsDetail(title = "About", onBack = ::back) {
+                Text(
+                    "Version ${Updater.currentVersion(context)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                OutlinedButton(
+                    onClick = {
+                        msg = "Checking…"
+                        scope.launch {
+                            when (val result = Updater.checkForUpdate()) {
+                                is UpdateCheck.Available -> {
+                                    Updater.pending = result.update
+                                    onUpdateAvailable()
+                                }
+                                UpdateCheck.UpToDate -> msg = "Already on the latest version"
+                                is UpdateCheck.Failed -> msg = result.reason
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Check for updates") }
+                if (showCrash) {
+                    OutlinedButton(
+                        onClick = { CrashLog.showNow(context) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Copy crash report") }
+                }
+                if (msg.isNotEmpty()) {
+                    Text(msg, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
         }
     }
 }
 
-/**
- * One accordion section: tapping the header force-opens it (and the
- * open one closes), arrow rotates, body expands with a spring.
- * No highlight ripple — motion is the feedback.
- */
+/** Segmented group card: 32dp outer corners, 4dp inner joints. */
 @Composable
-private fun SettingsSection(
+private fun SettingsGroup(items: List<@Composable () -> Unit>) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        items.forEachIndexed { index, item ->
+            val outer = 28.dp
+            val inner = 4.dp
+            val shape = when {
+                items.size <= 1 -> RoundedCornerShape(outer)
+                index == 0 -> RoundedCornerShape(
+                    topStart = outer, topEnd = outer,
+                    bottomStart = inner, bottomEnd = inner,
+                )
+                index == items.size - 1 -> RoundedCornerShape(
+                    topStart = inner, topEnd = inner,
+                    bottomStart = outer, bottomEnd = outer,
+                )
+                else -> RoundedCornerShape(inner)
+            }
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = shape,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            ) {
+                item()
+            }
+        }
+    }
+}
+
+/** Hub row: 48dp tinted icon circle, title + subtitle, chevron. No highlight. */
+@Composable
+private fun SettingsCategoryRow(
     title: String,
-    iconRes: Int,
-    open: Boolean,
-    onOpen: () -> Unit,
+    subtitle: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+) {
+    ListItem(
+        headlineContent = { Text(title, style = MaterialTheme.typography.titleMedium) },
+        supportingContent = {
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        leadingContent = {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(26.dp),
+                )
+            }
+        },
+        trailingContent = {
+            Icon(
+                painterResource(R.drawable.ic_arrow_back),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.graphicsLayer { rotationZ = 180f },
+            )
+        },
+        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        modifier = Modifier.clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            onClick = onClick,
+        ),
+    )
+}
+
+/** Detail sub-page: back header + scrolling content. */
+@Composable
+private fun SettingsDetail(
+    title: String,
+    onBack: () -> Unit,
     content: @Composable () -> Unit,
 ) {
-    val arrow by animateFloatAsState(
-        targetValue = if (open) 180f else 0f,
-        animationSpec = AppMotion.fastSpatial,
-        label = "sectionArrow",
-    )
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
-    ) {
-        Column {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 4.dp, top = 8.dp, end = 20.dp, bottom = 8.dp),
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .size(48.dp)
+                    .clip(CircleShape)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
-                        onClick = onOpen,
-                    )
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                        onClick = onBack,
+                    ),
             ) {
                 Icon(
-                    painterResource(iconRes),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f),
-                )
-                Icon(
-                    painterResource(R.drawable.ic_expand_more),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.graphicsLayer { rotationZ = arrow },
+                    painterResource(R.drawable.ic_arrow_back),
+                    contentDescription = "Back",
                 )
             }
-            AnimatedVisibility(
-                visible = open,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut(),
-                label = "sectionBody",
-            ) {
-                Column(
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                ) {
-                    content()
-                }
-            }
+            Text(title, style = MaterialTheme.typography.headlineSmall)
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            content()
         }
     }
 }

@@ -26,10 +26,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import watchshark.duckdns.org.data.ApiClient
+import watchshark.duckdns.org.data.Haptics
 import watchshark.duckdns.org.data.Video
 import watchshark.duckdns.org.ui.compose.theme.AppMotion
 import watchshark.duckdns.org.ui.fmtAge
@@ -43,6 +45,7 @@ fun VideoCard(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
+    val buzzCtx = LocalContext.current
     val scale by animateFloatAsState(
         targetValue = if (pressed) 0.98f else 1f,
         animationSpec = AppMotion.pressSpring,
@@ -64,7 +67,10 @@ fun VideoCard(
             .clickable(
                 interactionSource = interaction,
                 indication = null,
-            ) { onOpen(video) }
+            ) {
+                Haptics.tick(buzzCtx)
+                onOpen(video)
+            }
             .padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {

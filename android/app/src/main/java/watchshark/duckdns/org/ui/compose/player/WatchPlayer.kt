@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -50,6 +51,7 @@ import androidx.media3.common.Player
 import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
 import watchshark.duckdns.org.R
+import watchshark.duckdns.org.data.Haptics
 
 /**
  * Themed watch-page player, 1:1 with web (watch.html):
@@ -304,6 +306,7 @@ fun PlayerIconButton(
     description: String,
     icon: @Composable () -> Unit,
 ) {
+    val buzzCtx = LocalContext.current
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
@@ -312,7 +315,10 @@ fun PlayerIconButton(
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
-                onClick = onClick,
+                onClick = {
+                    Haptics.tick(buzzCtx)
+                    onClick()
+                },
             ),
     ) {
         CompositionLocalProvider(

@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -37,6 +38,7 @@ import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import watchshark.duckdns.org.R
+import watchshark.duckdns.org.data.Haptics
 import watchshark.duckdns.org.ui.compose.theme.AppMotion
 
 /** Snapshot of player state for Compose controls. */
@@ -134,6 +136,7 @@ fun CenterPlayButton(
         modifier = modifier,
         label = "centerPlay",
     ) {
+        val buzzCtx = LocalContext.current
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
@@ -143,7 +146,10 @@ fun CenterPlayButton(
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
-                    onClick = onToggle,
+                    onClick = {
+                        Haptics.tick(buzzCtx)
+                        onToggle()
+                    },
                 ),
         ) {
             CompositionLocalProvider(

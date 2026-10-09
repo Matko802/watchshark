@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -42,6 +43,7 @@ import kotlinx.coroutines.launch
 import watchshark.duckdns.org.data.ApiClient
 import watchshark.duckdns.org.data.ChannelUser
 import watchshark.duckdns.org.R
+import watchshark.duckdns.org.data.Haptics
 import watchshark.duckdns.org.data.Video
 import watchshark.duckdns.org.ui.fmtNum
 
@@ -52,6 +54,7 @@ fun ChannelScreen(
     onOpenVideo: (Video) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var user by remember { mutableStateOf<ChannelUser?>(null) }
     var videos by remember { mutableStateOf<List<Video>>(emptyList()) }
@@ -109,6 +112,7 @@ fun ChannelScreen(
                 if (following) {
                     OutlinedButton(onClick = {
                         val cur = user ?: return@OutlinedButton
+                        Haptics.tick(context)
                         user = cur.copy(following = false, followers = (cur.followers - 1).coerceAtLeast(0))
                         scope.launch {
                             try {
@@ -121,6 +125,7 @@ fun ChannelScreen(
                 } else {
                     Button(onClick = {
                         val cur = user ?: return@Button
+                        Haptics.tick(context)
                         user = cur.copy(following = true, followers = cur.followers + 1)
                         scope.launch {
                             try {

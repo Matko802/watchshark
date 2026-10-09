@@ -85,6 +85,7 @@ import coil.decode.VideoFrameDecoder
 import kotlinx.coroutines.launch
 import watchshark.duckdns.org.data.ApiClient
 import watchshark.duckdns.org.R
+import watchshark.duckdns.org.data.Haptics
 import watchshark.duckdns.org.data.ThemePrefs
 import watchshark.duckdns.org.ui.compose.theme.AppMotion
 import watchshark.duckdns.org.ui.compose.theme.WatchSharkTheme
@@ -156,6 +157,7 @@ fun WatchSharkApp(
             route == "settings" || route == "admin" || route == "notifications"
 
         fun goTab(tab: String) {
+            Haptics.tick(appCtx)
             query = ""
             searchExpanded = false
             try {
@@ -180,6 +182,7 @@ fun WatchSharkApp(
         // watch, chat, admin, update): no duplicate stacking, taps can
         // never die from a navigation throw.
         fun goScreen(route: String) {
+            Haptics.tick(appCtx)
             try {
                 nav.navigate(route) { launchSingleTop = true }
             } catch (_: Exception) {
@@ -393,7 +396,10 @@ fun WatchSharkApp(
                                                     interactionSource = remember { MutableInteractionSource() },
                                                     indication = null,
                                                     role = Role.Button,
-                                                    onClick = { showCreateSheet = true },
+                                                    onClick = {
+                                                        Haptics.tick(appCtx)
+                                                        showCreateSheet = true
+                                                    },
                                                 ),
                                         ) {
                                             Icon(

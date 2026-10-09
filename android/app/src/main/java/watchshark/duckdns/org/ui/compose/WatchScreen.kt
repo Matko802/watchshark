@@ -43,6 +43,7 @@ import watchshark.duckdns.org.data.ApiClient
 import watchshark.duckdns.org.data.Comment
 import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.Video
+import watchshark.duckdns.org.data.Haptics
 import watchshark.duckdns.org.ui.compose.player.WatchPlayer
 import watchshark.duckdns.org.ui.fmtAge
 import watchshark.duckdns.org.ui.fmtNum
@@ -165,6 +166,7 @@ fun WatchScreen(
                         OutlinedButton(
                             onClick = {
                                 val cur = video ?: return@OutlinedButton
+                                Haptics.tick(context)
                                 video = cur.copy(
                                     following = !cur.following,
                                     followers = (cur.followers + if (cur.following) -1 else 1).coerceAtLeast(0),
@@ -192,6 +194,7 @@ fun WatchScreen(
                         selected = v.liked,
                         onClick = {
                             val cur = video ?: return@FilterChip
+                            Haptics.tick(context)
                             video = cur.copy(
                                 liked = !cur.liked,
                                 likes = (cur.likes + if (cur.liked) -1 else 1).coerceAtLeast(0),

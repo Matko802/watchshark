@@ -75,6 +75,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import watchshark.duckdns.org.data.ApiClient
 import watchshark.duckdns.org.data.AutoQuality
+import watchshark.duckdns.org.data.Haptics
 import watchshark.duckdns.org.data.PlayerCache
 import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.Video
@@ -699,6 +700,7 @@ private fun RailPillButton(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
+    val buzzCtx = LocalContext.current
     val bgAlpha by animateFloatAsState(
         targetValue = if (pressed) 0.78f else 0.55f,
         animationSpec = tween(150, easing = FastOutSlowInEasing),
@@ -723,7 +725,10 @@ private fun RailPillButton(
                 interactionSource = interaction,
                 indication = null,
                 role = Role.Button,
-                onClick = onClick,
+                onClick = {
+                    Haptics.tick(buzzCtx)
+                    onClick()
+                },
             ),
     ) {
         CompositionLocalProvider(LocalContentColor provides Color.White) {
