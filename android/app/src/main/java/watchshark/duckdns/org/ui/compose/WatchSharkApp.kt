@@ -175,6 +175,17 @@ fun WatchSharkApp(
             scope.launch { refreshBadges() }
         }
 
+        // Same guarded single-top navigation the tabs use, for every
+        // menu destination (settings, notifications, upload, channels,
+        // watch, chat, admin, update): no duplicate stacking, taps can
+        // never die from a navigation throw.
+        fun goScreen(route: String) {
+            try {
+                nav.navigate(route) { launchSingleTop = true }
+            } catch (_: Exception) {
+            }
+        }
+
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val wide = maxWidth >= 600.dp
             Row(modifier = Modifier.fillMaxSize()) {
@@ -212,8 +223,8 @@ fun WatchSharkApp(
                             iconRes = R.drawable.ic_person,
                             onClick = {
                                 val name = meName
-                                if (name != null) nav.navigate("channel/$name")
-                                else nav.navigate("auth")
+                                if (name != null) goScreen("channel/$name")
+                                else goScreen("auth")
                             },
                         )
                     }
@@ -275,7 +286,7 @@ fun WatchSharkApp(
                                     }
                                 },
                                 actions = {
-                                    IconButton(onClick = { nav.navigate("notifications") }) {
+                                    IconButton(onClick = { goScreen("notifications") }) {
                                         BadgedBox(
                                             badge = {
                                                 if (unread > 0) Badge { Text(if (unread > 9) "9+" else "$unread") }
@@ -287,7 +298,7 @@ fun WatchSharkApp(
                                             )
                                         }
                                     }
-                                    IconButton(onClick = { nav.navigate("settings") }) {
+                                    IconButton(onClick = { goScreen("settings") }) {
                                         Icon(
                                             painterResource(R.drawable.ic_settings),
                                             contentDescription = "Settings",
@@ -410,8 +421,8 @@ fun WatchSharkApp(
                                             selected = selectedTab == ROUTE_YOU,
                                             onClick = {
                                                 val name = meName
-                                                if (name != null) nav.navigate("channel/$name")
-                                                else nav.navigate("auth")
+                                                if (name != null) goScreen("channel/$name")
+                                                else goScreen("auth")
                                             },
                                             label = "You",
                                             selectedColor = selectedTabColor,
@@ -440,18 +451,18 @@ fun WatchSharkApp(
                         composable(ROUTE_HOME) {
                             HomeScreen(
                                 query = query,
-                                onOpenVideo = { v -> nav.navigate("watch/${v.id}") },
-                                onOpenChannel = { name -> nav.navigate("channel/$name") },
+                                onOpenVideo = { v -> goScreen("watch/${v.id}") },
+                                onOpenChannel = { name -> goScreen("channel/$name") },
                             )
                         }
                         composable(ROUTE_WHEELS) {
                             WheelsScreen(
-                                onOpenVideo = { id -> nav.navigate("watch/$id") },
-                                onOpenChannel = { name -> nav.navigate("channel/$name") },
+                                onOpenVideo = { id -> goScreen("watch/$id") },
+                                onOpenChannel = { name -> goScreen("channel/$name") },
                             )
                         }
                         composable(ROUTE_MESSAGES) {
-                            MessagesScreen(onOpenThread = { name -> nav.navigate("chat/$name") })
+                            MessagesScreen(onOpenThread = { name -> goScreen("chat/$name") })
                         }
                         composable(
                             "chat/{username}",
@@ -465,7 +476,7 @@ fun WatchSharkApp(
                             if (name != null) {
                                 ChannelScreen(
                                     username = name,
-                                    onOpenVideo = { v -> nav.navigate("watch/${v.id}") },
+                                    onOpenVideo = { v -> goScreen("watch/${v.id}") },
                                 )
                             } else {
                                 AuthScreen(onAuthComplete = {
@@ -481,7 +492,7 @@ fun WatchSharkApp(
                             val id = entry.arguments?.getLong("id") ?: return@composable
                             WatchScreen(
                                 videoId = id,
-                                onOpenChannel = { name -> nav.navigate("channel/$name") },
+                                onOpenChannel = { name -> goScreen("channel/$name") },
                             )
                         }
                         composable(
@@ -491,14 +502,14 @@ fun WatchSharkApp(
                             val name = entry.arguments?.getString("username") ?: return@composable
                             ChannelScreen(
                                 username = name,
-                                onOpenVideo = { v -> nav.navigate("watch/${v.id}") },
+                                onOpenVideo = { v -> goScreen("watch/${v.id}") },
                             )
                         }
                         composable("upload") {
-                            UploadScreen(onDone = { id -> nav.navigate("watch/$id") })
+                            UploadScreen(onDone = { id -> goScreen("watch/$id") })
                         }
                         composable("notifications") {
-                            NotificationsScreen(onOpenVideo = { id -> nav.navigate("watch/$id") })
+                            NotificationsScreen(onOpenVideo = { id -> goScreen("watch/$id") })
                         }
                         composable("settings") {
                             SettingsScreen(
@@ -507,20 +518,28 @@ fun WatchSharkApp(
                                 onSignedOut = {
                                     scope.launch { refreshBadges() }
                                     meName = null
-                                    nav.navigate("auth") {
-                                        popUpTo(nav.graph.startDestinationId) { inclusive = true }
+                                    try {
+                                        nav.navigate("auth") {
+                                            popUpTo(nav.graph.startDestinationId) { inclusive = true }
+                                        }
+                                    } catch (_: Exception) {
                                     }
                                 },
-                                onOpenAdmin = { nav.navigate("admin") },
-                                onUpdateAvailable = { nav.navigate("update") },
+                                onOpenAdmin = { goScreen("admin") },
+                                onUpdateAvailable = { goScreen("update") },
                             )
                         }
                         composable("update") {
-                            UpdateScreen(onDone = { nav.popBackStack() })
+                            UpdateScreen(onDone = {
+                                try {
+                                    nav.popBackStack()
+                                } catch (_: Exception) {
+                                }
+                            })
                         }
                         composable("admin") {
                             AdminScreen(
-                                onOpenChannel = { name -> nav.navigate("channel/$name") },
+                                onOpenChannel = { name -> goScreen("channel/$name") },
                             )
                         }
                         composable("auth") {
@@ -545,7 +564,7 @@ fun WatchSharkApp(
                         },
                         modifier = Modifier.clickable {
                             showCreateSheet = false
-                            nav.navigate("upload")
+                            goScreen("upload")
                         },
                     )
                 }
