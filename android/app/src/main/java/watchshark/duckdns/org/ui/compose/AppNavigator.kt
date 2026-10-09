@@ -58,9 +58,22 @@ object AppNavigator {
             return
         }
         try {
+            val stackRoutes = try {
+                c.currentBackStack.value.mapNotNull { entry ->
+                    try {
+                        entry.destination.route
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+            } catch (_: Exception) {
+                emptyList()
+            }
+            val anchor = listOf("home", "wheels", "messages", "you", "settings", "notifications")
+                .firstOrNull { section -> stackRoutes.any { it == section } }
             c.navigate(tab) {
-                popUpTo(c.graph.startDestinationId) {
-                    saveState = true
+                if (anchor != null) {
+                    popUpTo(anchor) { saveState = true }
                 }
                 launchSingleTop = true
                 restoreState = true

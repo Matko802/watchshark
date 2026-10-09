@@ -180,8 +180,25 @@ fun WatchSharkApp(
             } catch (_: Exception) {
             }
             try {
+                val stackRoutes = try {
+                    nav.currentBackStack.value.mapNotNull { entry ->
+                        try {
+                            entry.destination.route
+                        } catch (_: Exception) {
+                            null
+                        }
+                    }
+                } catch (_: Exception) {
+                    emptyList()
+                }
+                val anchor = listOf(
+                    ROUTE_HOME, ROUTE_WHEELS, ROUTE_MESSAGES, ROUTE_YOU,
+                    "settings", "notifications",
+                ).firstOrNull { section -> stackRoutes.any { it == section } }
                 nav.navigate(route) {
-                    popUpTo(nav.graph.startDestinationId) { saveState = true }
+                    if (anchor != null) {
+                        popUpTo(anchor) { saveState = true }
+                    }
                     launchSingleTop = true
                     restoreState = true
                 }
@@ -241,7 +258,7 @@ fun WatchSharkApp(
             var ok = false
             try {
                 nav.navigate(ROUTE_HOME) {
-                    popUpTo("auth") { inclusive = true }
+                    popUpTo(0) { inclusive = true }
                     launchSingleTop = true
                 }
                 ok = true
@@ -656,7 +673,7 @@ fun WatchSharkApp(
                                     meAvatar = null
                                     try {
                                         nav.navigate("auth") {
-                                            popUpTo(nav.graph.startDestinationId) { inclusive = true }
+                                            popUpTo(0) { inclusive = true }
                                         }
                                     } catch (_: Exception) {
                                     }
