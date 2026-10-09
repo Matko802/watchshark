@@ -66,7 +66,7 @@ fun SettingsScreen(
     var msg by remember { mutableStateOf("") }
     var showCrash by remember { mutableStateOf(false) }
     var pane by remember { mutableIntStateOf(0) }
-    val panes = listOf("Account", "Security", "Notifications", "App")
+    val panes = listOf("Account", "Notifications", "App")
 
     LaunchedEffect(Unit) {
         try {
@@ -115,28 +115,12 @@ fun SettingsScreen(
                     }
                 }
             }) { Text("Save name") }
-            if (me?.admin == true) {
-                OutlinedButton(onClick = onOpenAdmin, modifier = Modifier.fillMaxWidth()) {
-                    Text("Admin")
-                }
-            }
-            OutlinedButton(
-                onClick = {
-                    scope.launch {
-                        try {
-                            ApiClient.api.logout()
-                        } catch (_: Exception) {
-                        }
-                        ApiClient.clearSession()
-                        UploadAlerts.cancel(context)
-                        onSignedOut()
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text("Sign out") }
-            }
-
-            1 -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                "Password",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp),
+            )
             OutlinedTextField(
                 value = curPw,
                 onValueChange = { curPw = it },
@@ -165,9 +149,28 @@ fun SettingsScreen(
                     }
                 }
             }) { Text("Save password") }
-        }
+            if (me?.admin == true) {
+                OutlinedButton(onClick = onOpenAdmin, modifier = Modifier.fillMaxWidth()) {
+                    Text("Admin")
+                }
+            }
+            OutlinedButton(
+                onClick = {
+                    scope.launch {
+                        try {
+                            ApiClient.api.logout()
+                        } catch (_: Exception) {
+                        }
+                        ApiClient.clearSession()
+                        UploadAlerts.cancel(context)
+                        onSignedOut()
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Sign out") }
+            }
 
-            2 -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            1 -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -190,7 +193,7 @@ fun SettingsScreen(
             }
         }
 
-            3 -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            2 -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     "Appearance",
                     style = MaterialTheme.typography.titleSmall,

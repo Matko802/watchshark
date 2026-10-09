@@ -320,7 +320,7 @@ fun WatchSharkApp(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 16.dp)
-                                    .padding(bottom = 12.dp),
+                                    .padding(bottom = 14.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Surface(
@@ -579,7 +579,7 @@ private fun androidx.compose.foundation.layout.RowScope.PillTab(
     val tabInteraction = remember { MutableInteractionSource() }
     Column(
         modifier = Modifier
-            .width(64.dp)
+            .width(72.dp)
             .defaultMinSize(minHeight = 48.dp)
             .clip(RoundedCornerShape(16.dp))
             .clickable(

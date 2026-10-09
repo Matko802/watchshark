@@ -150,7 +150,7 @@ fun AuthScreen(
         OutlinedTextField(
             value = if (loginMode) login else password,
             onValueChange = { if (loginMode) login = it else password = it },
-            label = { Text(if (loginMode) "Handle or email" else "Password (6+ chars)") },
+            label = { Text(if (loginMode) "Email" else "Password (6+ chars)") },
             singleLine = true,
             visualTransformation = if (loginMode) {
                 androidx.compose.ui.text.input.VisualTransformation.None
