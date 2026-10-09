@@ -2,14 +2,41 @@ package watchshark.duckdns.org.ui.compose
 
 import androidx.navigation.NavHostController
 
-
 object AppNavigator {
     @Volatile
     var controller: NavHostController? = null
 
+    @Volatile
+    var tabHandler: ((String) -> Unit)? = null
+
+    @Volatile
+    var screenHandler: ((String) -> Unit)? = null
+
+    @Volatile
+    private var pendingRoute: String? = null
+
+    @Volatile
+    private var pendingIsTab: Boolean = false
+
+    @Volatile
+    var afterLogin: String? = null
+
     fun navigate(route: String) {
+        screenHandler?.let {
+            try {
+                it(route)
+            } catch (_: Exception) {
+            }
+            return
+        }
+        val c = controller
+        if (c == null) {
+            pendingRoute = route
+            pendingIsTab = false
+            return
+        }
         try {
-            controller?.navigate(route) {
+            c.navigate(route) {
                 launchSingleTop = true
             }
         } catch (_: Exception) {
@@ -17,9 +44,22 @@ object AppNavigator {
     }
 
     fun goTab(tab: String) {
+        tabHandler?.let {
+            try {
+                it(tab)
+            } catch (_: Exception) {
+            }
+            return
+        }
+        val c = controller
+        if (c == null) {
+            pendingRoute = tab
+            pendingIsTab = true
+            return
+        }
         try {
-            controller?.navigate(tab) {
-                popUpTo(controller?.graph?.startDestinationId ?: 0) {
+            c.navigate(tab) {
+                popUpTo(c.graph.startDestinationId) {
                     saveState = true
                 }
                 launchSingleTop = true
@@ -27,5 +67,11 @@ object AppNavigator {
             }
         } catch (_: Exception) {
         }
+    }
+
+    fun flushPending() {
+        val route = pendingRoute ?: return
+        pendingRoute = null
+        if (pendingIsTab) goTab(route) else navigate(route)
     }
 }

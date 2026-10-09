@@ -76,8 +76,14 @@ class MainActivity : AppCompatActivity() {
                     } catch (_: Exception) {
                     }
                 }
-                if (vid > 0) AppNavigator.navigate("watch/$vid")
-                else AppNavigator.goTab("home")
+                if (vid <= 0) {
+                    AppNavigator.goTab("home")
+                } else if (ApiClient.sessionToken().isNullOrEmpty()) {
+                    AppNavigator.afterLogin = "watch/$vid"
+                    AppNavigator.navigate("auth")
+                } else {
+                    AppNavigator.navigate("watch/$vid")
+                }
             }
             else -> return false
         }

@@ -38,7 +38,7 @@ import watchshark.duckdns.org.ui.httpErrorMessage
 
 @Composable
 fun AuthScreen(
-    onAuthComplete: () -> Unit,
+    onAuthComplete: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -74,7 +74,7 @@ fun AuthScreen(
                 (context as? android.app.Activity)?.let {
                     UploadAlerts.ensureScheduled(it)
                 }
-                onAuthComplete()
+                onAuthComplete(true)
             } catch (e: Exception) {
                 err = httpErrorMessage(e)
             }
@@ -202,7 +202,7 @@ fun AuthScreen(
                 Text("Forgot password?")
             }
         }
-        TextButton(onClick = onAuthComplete) {
+        TextButton(onClick = { onAuthComplete(false) }) {
             Text("Continue as guest")
         }
         }

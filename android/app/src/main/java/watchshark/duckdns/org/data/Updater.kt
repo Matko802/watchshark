@@ -186,32 +186,33 @@ object Updater {
                 if (resumeFrom > 0) header("Range", "bytes=$resumeFrom-")
             }.build()
             client().newCall(req).execute().use { resp ->
-                if (resumeFrom > 0 && resp.code != 206) {
+                val resumeRefused = resumeFrom > 0 && resp.code != 206
+                if (resumeRefused) {
                     file.delete()
                     if (attempt >= 2) throw IllegalStateException("Server refused resume, try again")
-                    return@use
-                }
-                if (!resp.isSuccessful) throw IllegalStateException("HTTP ${resp.code}")
-                val bodyLen = resp.body?.contentLength() ?: -1L
-                val total = if (bodyLen < 0) expected ?: -1L else bodyLen + resumeFrom
-                var received = resumeFrom
-                onProgress(received, total)
-                resp.body!!.byteStream().use { input ->
-                    FileOutputStream(file, resumeFrom > 0).use { out ->
-                        val buf = ByteArray(64 * 1024)
-                        while (true) {
-                            val n = input.read(buf)
-                            if (n < 0) break
-                            out.write(buf, 0, n)
-                            received += n
-                            onProgress(received, total)
+                } else {
+                    if (!resp.isSuccessful) throw IllegalStateException("HTTP ${resp.code}")
+                    val bodyLen = resp.body?.contentLength() ?: -1L
+                    val total = if (bodyLen < 0) expected ?: -1L else bodyLen + resumeFrom
+                    var received = resumeFrom
+                    onProgress(received, total)
+                    resp.body!!.byteStream().use { input ->
+                        FileOutputStream(file, resumeFrom > 0).use { out ->
+                            val buf = ByteArray(64 * 1024)
+                            while (true) {
+                                val n = input.read(buf)
+                                if (n < 0) break
+                                out.write(buf, 0, n)
+                                received += n
+                                onProgress(received, total)
+                            }
                         }
                     }
+                    if (total > 0 && file.length() != total) {
+                        throw IllegalStateException("Download incomplete, try again")
+                    }
+                    return@withContext file
                 }
-                if (total > 0 && file.length() != total) {
-                    throw IllegalStateException("Download incomplete, try again")
-                }
-                return@withContext file
             }
         }
     }

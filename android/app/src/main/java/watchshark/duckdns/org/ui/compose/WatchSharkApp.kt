@@ -152,9 +152,6 @@ fun WatchSharkApp(
             route.startsWith(ROUTE_YOU) || route.startsWith("channel") -> ROUTE_YOU
             else -> null
         }
-        val onDetail = route.startsWith("watch") || route.startsWith("chat") ||
-            route.startsWith("channel") || route == "upload" ||
-            route == "settings" || route == "admin" || route == "notifications"
 
         fun goTab(tab: String) {
             Haptics.tick(appCtx)
@@ -184,6 +181,38 @@ fun WatchSharkApp(
                 nav.navigate(route) { launchSingleTop = true }
             } catch (_: Exception) {
             }
+        }
+
+        fun enterHome() {
+            query = ""
+            searchExpanded = false
+            try {
+                nav.navigate(ROUTE_HOME) {
+                    popUpTo("auth") { inclusive = true }
+                    launchSingleTop = true
+                }
+            } catch (_: Exception) {
+            }
+            scope.launch { refreshBadges() }
+        }
+
+        fun handleAuthComplete(loggedIn: Boolean) {
+            scope.launch { refreshBadges() }
+            if (loggedIn) {
+                enterHome()
+                AppNavigator.afterLogin?.let { pending ->
+                    AppNavigator.afterLogin = null
+                    goScreen(pending)
+                }
+            } else {
+                goTab(ROUTE_HOME)
+            }
+        }
+
+        LaunchedEffect(nav) {
+            AppNavigator.tabHandler = { goTab(it) }
+            AppNavigator.screenHandler = { goScreen(it) }
+            AppNavigator.flushPending()
         }
 
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -242,10 +271,7 @@ fun WatchSharkApp(
                                     if (expanded) {
                                         TextField(
                                             value = query,
-                                            onValueChange = {
-                                                query = it
-                                                if (selectedTab != ROUTE_HOME) goTab(ROUTE_HOME)
-                                            },
+                                            onValueChange = { query = it },
                                             placeholder = { Text("Search") },
                                             singleLine = true,
                                             modifier = Modifier,
@@ -276,6 +302,8 @@ fun WatchSharkApp(
                                 },
                                 navigationIcon = {
                                     IconButton(onClick = {
+                                        Haptics.tick(appCtx)
+                                        if (!searchExpanded && selectedTab == null) goTab(ROUTE_HOME)
                                         searchExpanded = !searchExpanded
                                         if (!searchExpanded) query = ""
                                     }) {
@@ -474,20 +502,6 @@ fun WatchSharkApp(
                             val name = entry.arguments?.getString("username") ?: return@composable
                             ChatScreen(username = name)
                         }
-                        composable(ROUTE_YOU) {
-                            val name = meName
-                            if (name != null) {
-                                ChannelScreen(
-                                    username = name,
-                                    onOpenVideo = { v -> goScreen("watch/${v.id}") },
-                                )
-                            } else {
-                                AuthScreen(onAuthComplete = {
-                                    scope.launch { refreshBadges() }
-                                    goTab(ROUTE_HOME)
-                                })
-                            }
-                        }
                         composable(
                             "watch/{id}",
                             arguments = listOf(navArgument("id") { type = NavType.LongType }),
@@ -509,7 +523,16 @@ fun WatchSharkApp(
                             )
                         }
                         composable("upload") {
-                            UploadScreen(onDone = { id -> goScreen("watch/$id") })
+                            UploadScreen(onDone = { id ->
+                                Haptics.tick(appCtx)
+                                try {
+                                    nav.navigate("watch/$id") {
+                                        popUpTo("upload") { inclusive = true }
+                                        launchSingleTop = true
+                                    }
+                                } catch (_: Exception) {
+                                }
+                            })
                         }
                         composable("notifications") {
                             NotificationsScreen(onOpenVideo = { id -> goScreen("watch/$id") })
@@ -546,10 +569,7 @@ fun WatchSharkApp(
                             )
                         }
                         composable("auth") {
-                            AuthScreen(onAuthComplete = {
-                                scope.launch { refreshBadges() }
-                                goTab(ROUTE_HOME)
-                            })
+                            AuthScreen(onAuthComplete = { handleAuthComplete(it) })
                         }
                     }
                 }
@@ -579,8 +599,6 @@ fun WatchSharkApp(
             searchExpanded = false
             query = ""
         }
-        @Suppress("UNUSED_VARIABLE")
-        val unusedDetail = onDetail
         }
     }
 }
