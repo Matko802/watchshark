@@ -56,9 +56,7 @@ dependencies {
     // Compose M3 Expressive + adaptive navigation (YT-like proper)
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.foundation:foundation")
-    // Pinned past the BOM for the M3 Expressive flower indicators
-    // (CircularWavyProgressIndicator, ExperimentalMaterial3ExpressiveApi).
-    implementation("androidx.compose.material3:material3:1.5.0-beta01")
+    implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material3:material3-window-size-class")
     implementation("androidx.compose.material:material-icons-core")
     implementation("androidx.compose.material:material-icons-extended")

@@ -5,14 +5,18 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.CircularWavyProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -26,17 +30,22 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import watchshark.duckdns.org.data.Updater
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 /**
  * Fullscreen update page (follows the system theme like everything
- * else): M3 Expressive flower wheel, percent, size readout, cancel.
+ * else): expressive flower wheel, percent, size readout, cancel.
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun UpdateScreen(
     onDone: () -> Unit,
@@ -109,12 +118,11 @@ fun UpdateScreen(
             label = "updateProgress",
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            // Genuine M3 Expressive flower wheel, driven by download progress.
-            CircularWavyProgressIndicator(
-                progress = { progress },
-                modifier = Modifier
-                    .padding(top = 24.dp)
-                    .size(72.dp),
+            // Expressive flower wheel (M3 wavy style): a rippling ring
+            // whose lit arc follows download progress.
+            FlowerProgressWheel(
+                progress = progress,
+                modifier = Modifier.padding(top = 24.dp),
             )
             Text(
                 status,
@@ -132,5 +140,55 @@ fun UpdateScreen(
                 .fillMaxWidth()
                 .padding(top = 24.dp),
         ) { Text(if (error != null) "Back" else "Cancel") }
+    }
+}
+
+/**
+ * Expressive flower wheel in the M3 wavy style: a sine-rippled ring
+ * with a travelling wave phase; the lit arc tracks [progress].
+ */
+@Composable
+private fun FlowerProgressWheel(
+    progress: Float,
+    modifier: Modifier = Modifier,
+) {
+    val wave = rememberInfiniteTransition(label = "flowerWave")
+    val phase by wave.animateFloat(
+        initialValue = 0f,
+        targetValue = (2 * PI).toFloat(),
+        animationSpec = infiniteRepeatable(animation = tween(2200)),
+        label = "flowerPhase",
+    )
+    val color = MaterialTheme.colorScheme.primary
+    val trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f)
+    Canvas(modifier = modifier.size(76.dp)) {
+        val stroke = size.minDimension / 13f
+        val baseR = size.minDimension / 2f - stroke
+        val amp = size.minDimension * 0.035f
+        val ripples = 10
+        val steps = 140
+        fun ringPath(fraction: Float): Path {
+            val path = Path()
+            val sweep = (2 * PI * fraction.coerceIn(0.004f, 1f)).toFloat()
+            for (i in 0..steps) {
+                val t = i.toFloat() / steps
+                val a = -PI.toFloat() / 2f + t * sweep
+                val r = baseR + amp * sin(ripples * a + phase)
+                val x = size.width / 2f + r * cos(a)
+                val y = size.height / 2f + r * sin(a)
+                if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            }
+            return path
+        }
+        drawPath(
+            path = ringPath(1f),
+            color = trackColor,
+            style = Stroke(width = stroke, cap = StrokeCap.Round),
+        )
+        drawPath(
+            path = ringPath(progress),
+            color = color,
+            style = Stroke(width = stroke, cap = StrokeCap.Round),
+        )
     }
 }
