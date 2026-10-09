@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -143,21 +144,31 @@ fun ChannelScreen(
                 }
             }
         }
-        SectionTabs(
-            tabs = listOf(
-                SectionTab("Videos", iconRes = R.drawable.ic_play),
-                SectionTab("Wheels", iconRes = R.drawable.ic_movie),
-            ),
-            selectedIndex = tab,
-            onSelect = { tab = it },
-        )
         val shown = if (tab == 0) videos.filter { it.kind != "wheel" } else videos.filter { it.kind == "wheel" }
+        val gridState = rememberLazyGridState()
+        LaunchedEffect(tab) {
+            try {
+                gridState.scrollToItem(0)
+            } catch (_: Exception) {
+            }
+        }
         AnimatedContent(targetState = tab, label = "channelTab") { _ ->
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = 320.dp),
+            state = gridState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 4.dp, top = 4.dp, end = 4.dp, bottom = 104.dp),
+            contentPadding = PaddingValues(start = 4.dp, end = 4.dp, bottom = 104.dp),
         ) {
+            stickyHeader {
+                SectionTabs(
+                    tabs = listOf(
+                        SectionTab("Videos", iconRes = R.drawable.ic_play),
+                        SectionTab("Wheels", iconRes = R.drawable.ic_movie),
+                    ),
+                    selectedIndex = tab,
+                    onSelect = { tab = it },
+                )
+            }
             items(shown, key = { it.id }) { v ->
                 VideoCard(video = v, onOpen = onOpenVideo, modifier = Modifier.animateItem())
             }
