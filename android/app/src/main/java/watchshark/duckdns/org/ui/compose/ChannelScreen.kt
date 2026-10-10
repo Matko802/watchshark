@@ -61,7 +61,6 @@ fun ChannelScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var meId by remember { mutableStateOf<Long?>(null) }
     var tab by remember { mutableIntStateOf(0) }
-    val scope = rememberCoroutineScope()
     suspend fun load() {
         loading = true
         error = null
