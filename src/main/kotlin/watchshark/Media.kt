@@ -307,39 +307,6 @@ object Media {
         }
     }
 
-    fun processMusic(id: Long, author: Long, tmp: String, stem: String, customThumb: String) {
-        val tmpF = File(tmp)
-        val out = File(tmpF.parent, "$stem.ogg").absolutePath
-        val ok = runFFmpeg(
-            listOf("-y", "-i", tmp, "-map", "0:a?", "-c:a", "libopus", "-b:a", "128k", "-f", "ogg", out),
-            java.time.Duration.ofHours(1)
-        )
-        tmpF.delete()
-        if (!ok || fileSize(out) <= 0) {
-            File(out).delete()
-            markFailed(id)
-            return
-        }
-        var thumb: String? = null
-        if (customThumb.isNotEmpty()) {
-            val (name, good) = convertThumb(customThumb, stem, Config.thumbsForVideoDir(File(tmp).parentFile ?: File(Config.videosDir)))
-            if (good) thumb = name
-            File(customThumb).delete()
-        }
-        synchronized(Db.lock) {
-            Db.conn.prepareStatement("UPDATE videos SET filename=?, size=?, thumbnail=?, mimetype=?, orientation=?, status='ready' WHERE id=?").use { ps ->
-                ps.setString(1, "$stem.ogg")
-                ps.setLong(2, fileSize(out))
-                if (thumb == null) ps.setNull(3, java.sql.Types.VARCHAR) else ps.setString(3, thumb)
-                ps.setString(4, "audio/ogg")
-                ps.setString(5, "h")
-                ps.setLong(6, id)
-                ps.executeUpdate()
-            }
-        }
-        notifyFollowers(id, author)
-    }
-
     fun processUpload(id: Long, author: Long, tmp: String, stem: String, customThumb: String) {
         var out = ""
         val th = java.io.File(Config.thumbsForVideoDir(java.io.File(tmp).parentFile ?: java.io.File(Config.videosDir)), "$stem.webp").absolutePath

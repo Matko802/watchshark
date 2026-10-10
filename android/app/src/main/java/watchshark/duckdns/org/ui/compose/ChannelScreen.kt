@@ -162,11 +162,7 @@ fun ChannelScreen(
                 }
             }
         }
-        val shown = when (tab) {
-            0 -> videos.filter { it.kind != "wheel" && it.kind != "music" }
-            1 -> videos.filter { it.kind == "wheel" }
-            else -> videos.filter { it.kind == "music" }
-        }
+        val shown = if (tab == 0) videos.filter { it.kind != "wheel" } else videos.filter { it.kind == "wheel" }
         val gridState = rememberLazyGridState()
         LaunchedEffect(tab) {
             try {
@@ -186,7 +182,6 @@ fun ChannelScreen(
                     tabs = listOf(
                         SectionTab("Videos", iconRes = R.drawable.ic_play),
                         SectionTab("Wheels", iconRes = R.drawable.ic_movie),
-                        SectionTab("Music", iconRes = R.drawable.ic_music_note),
                     ),
                     selectedIndex = tab,
                     onSelect = { tab = it },

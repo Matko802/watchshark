@@ -54,15 +54,11 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel(),
     query: String = "",
     reselectTick: Int = 0,
-    kind: String = "video",
 ) {
     val state by viewModel.state.collectAsState()
 
     LaunchedEffect(query) {
         viewModel.setQuery(query)
-    }
-    LaunchedEffect(kind) {
-        viewModel.setKind(kind)
     }
 
     val gridState = rememberLazyGridState()

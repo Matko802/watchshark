@@ -59,7 +59,7 @@ fun UploadScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var kind by remember(kind0) { mutableStateOf(kind0) }
+    var kind by remember(kind0) { mutableStateOf(if (kind0 == "wheel") "wheel" else "video") }
     var title by remember { mutableStateOf("") }
     var desc by remember { mutableStateOf("") }
     var fileUri by remember { mutableStateOf<Uri?>(null) }
@@ -147,13 +147,8 @@ fun UploadScreen(
             try {
                 val cr = context.contentResolver
                 val mimeStr = cr.getType(uri) ?: "application/octet-stream"
-                val wantVideo = kind != "music"
-                if (wantVideo && !mimeStr.startsWith("video/")) {
+                if (!mimeStr.startsWith("video/")) {
                     msg = "Pick a video file for video/wheel"
-                    return@launch
-                }
-                if (!wantVideo && !(mimeStr.startsWith("audio/") || mimeStr.startsWith("video/"))) {
-                    msg = "Pick an audio file for music"
                     return@launch
                 }
                 val mime = mimeStr.toMediaType()
@@ -226,11 +221,6 @@ fun UploadScreen(
                 onClick = { kind = "wheel" },
                 label = { Text("Wheel") },
             )
-            FilterChip(
-                selected = kind == "music",
-                onClick = { kind = "music" },
-                label = { Text("Music") },
-            )
         }
         OutlinedTextField(
             value = title,
@@ -246,10 +236,10 @@ fun UploadScreen(
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedButton(
-            onClick = { pickFile.launch(if (kind == "music") "audio/*" else "video/*") },
+            onClick = { pickFile.launch("video/*") },
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(fileUri?.let { displayName(it) } ?: if (kind == "music") "Choose audio file" else "Choose video file")
+            Text(fileUri?.let { displayName(it) } ?: "Choose video file")
         }
         OutlinedButton(
             onClick = { pickThumb.launch("image/*") },

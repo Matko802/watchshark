@@ -59,11 +59,6 @@ object Config {
 
     fun siteBase(): String = appUrl.trimEnd('/')
 
-    /**
-     * Per-user storage: data/users/<user>/videos|thumbs|avatars.
-     * Legacy flat files (data/videos, kind subdirs, ...) keep working
-     * through the resolvers below — no migration needed.
-     */
     fun safeUserDir(username: String): String {
         val s = username.lowercase().replace(Regex("[^a-z0-9_]"), "_").take(32)
         if (s.isEmpty()) return "u"
@@ -79,7 +74,6 @@ object Config {
     fun userThumbsDir(username: String): java.io.File =
         java.io.File(userDir(username), "thumbs").apply { mkdirs() }
 
-    /** Thumbs dir matching a video dir (per-user layout or legacy flat). */
     fun thumbsForVideoDir(vdir: java.io.File): java.io.File {
         val p = vdir.parentFile
         if (vdir.name == "videos" && p != null && p.parentFile?.name == "users") {
@@ -102,18 +96,11 @@ object Config {
         return null
     }
 
-    /** Kind-separated storage: videos/ wheels/ music/ under videosDir. */
     fun videoKindDir(kind: String?): String = when (kind) {
         "wheel" -> "wheels"
-        "music" -> "music"
         else -> "videos"
     }
 
-    /**
-     * Resolve a stored video filename to its file. New uploads live in
-     * kind subdirs; legacy files sit flat in videosDir — try subdirs
-     * first, then the root, so old links keep working.
-     */
     fun resolveVideo(name: String, kind: String? = null): java.io.File {
         val clean = name.substringAfterLast('/').substringAfterLast('\\')
         searchUserFiles("videos", clean)?.let { return it }

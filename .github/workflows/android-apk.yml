@@ -143,6 +143,5 @@ jobs:
           prerelease: false
           generate_release_notes: true
           body: |
-            WatchShark 1.9.0: Music tab, Watch comments, streaming uploads, hardened player, targetSdk 35, media3 1.7.3.
-            WARNING: 1.9.0 uses a new signing key. Uninstall 1.8.x first, then install. Account and videos stay on server.
+            WatchShark 1.9.1: Music removed. Watch comments, streaming uploads, hardened player, targetSdk 35.
             Built from main. In-app updater looks for WatchShark-<version>.apk.

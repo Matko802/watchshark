@@ -1060,7 +1060,7 @@ func videoJSON(id, viewer int64) (map[string]any, bool) {
 		oriStr = "v"
 	}
 	kindStr := "video"
-	if kk.Valid && (kk.String == "wheel" || kk.String == "music") {
+	if kk.Valid && kk.String == "wheel" {
 		kindStr = kk.String
 	}
 	av := any(nil)
@@ -1115,10 +1115,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	}
 	off := (page - 1) * limit
 	mine := q.Get("mine") == "1"
-	kind := q.Get("kind")
-	if kind != "music" {
-		kind = "video"
-	}
+	kind := "video"
 	if mine && viewer < 0 {
 		writeErr(w, 401, "Login required")
 		return
@@ -1380,7 +1377,7 @@ func handleEditVideo(w http.ResponseWriter, r *http.Request, id int64) {
 	}
 	kindRaw := strings.ToLower(truncateRunes(r.FormValue("kind"), 16))
 	kind := ""
-	if kindRaw == "video" || kindRaw == "wheel" || kindRaw == "music" {
+	if kindRaw == "video" || kindRaw == "wheel" {
 		kind = kindRaw
 	}
 	thumbName := ""
@@ -1628,7 +1625,7 @@ func handleUpload(w http.ResponseWriter, r *http.Request, uid int64) {
 				desc = truncateRunes(string(b), 2000)
 			} else {
 				k := truncateRunes(string(b), 16)
-				if k == "video" || k == "wheel" || k == "music" {
+				if k == "video" || k == "wheel" {
 					kind = k
 				}
 			}
@@ -1703,13 +1700,7 @@ func handleUpload(w http.ResponseWriter, r *http.Request, uid int64) {
 		writeErr(w, 507, "Server storage full (50GB limit reached)")
 		return
 	}
-	if kind == "music" {
-		if !probeHasAudio(partPath) {
-			os.Remove(partPath)
-			writeErr(w, 400, "Not an audio file")
-			return
-		}
-	} else if !probeHasVideo(partPath) {
+	if !probeHasVideo(partPath) {
 		os.Remove(partPath)
 		writeErr(w, 400, "Not a video file")
 		return
@@ -1732,11 +1723,7 @@ func handleUpload(w http.ResponseWriter, r *http.Request, uid int64) {
 	if thumbSaved {
 		customThumb = thumbTmp
 	}
-	if kind == "music" {
-		go processMusic(id, uid, partPath, stem, customThumb)
-	} else {
-		go processUpload(id, uid, partPath, stem, customThumb)
-	}
+	go processUpload(id, uid, partPath, stem, customThumb)
 	writeJSON(w, 200, map[string]any{"ok": true, "id": id, "kind": kind})
 }
 
@@ -1942,10 +1929,9 @@ func handleChannel(w http.ResponseWriter, r *http.Request, name string, viewer i
 	var followers, nvideos, views int64
 	_ = db.QueryRow("SELECT COUNT(*) FROM follows WHERE followed_id=?", uid).Scan(&followers)
 	_ = db.QueryRow("SELECT COUNT(*),COALESCE(SUM(views),0) FROM videos WHERE user_id=?", uid).Scan(&nvideos, &views)
-	var nV, nW, nM int64
+	var nV, nW int64
 	_ = db.QueryRow("SELECT COUNT(*) FROM videos WHERE user_id=? AND COALESCE(kind,'video')='video'", uid).Scan(&nV)
 	_ = db.QueryRow("SELECT COUNT(*) FROM videos WHERE user_id=? AND COALESCE(kind,'video')='wheel'", uid).Scan(&nW)
-	_ = db.QueryRow("SELECT COUNT(*) FROM videos WHERE user_id=? AND COALESCE(kind,'video')='music'", uid).Scan(&nM)
 	following := false
 	if viewer >= 0 && viewer != uid {
 		var one int
@@ -1969,7 +1955,7 @@ func handleChannel(w http.ResponseWriter, r *http.Request, name string, viewer i
 	if av.Valid {
 		avatar = "/a/" + av.String
 	}
-	user := map[string]any{"id": uid, "username": un, "avatar": avatar, "created_at": ca, "followers": followers, "videos": nvideos, "views": views, "following": following, "counts": map[string]any{"video": nV, "wheel": nW, "music": nM}}
+	user := map[string]any{"id": uid, "username": un, "avatar": avatar, "created_at": ca, "followers": followers, "videos": nvideos, "views": views, "following": following, "counts": map[string]any{"video": nV, "wheel": nW}}
 	videos := []any{}
 	for _, id := range ids {
 		if v, ok := videoJSON(id, viewer); ok {
@@ -2621,11 +2607,7 @@ func recoverJobs() {
 		}
 		stem := r.fn[:len(r.fn)-5]
 		id, author := r.id, r.author
-		if r.kind.Valid && r.kind.String == "music" {
-			go processMusic(id, author, tmp, stem, "")
-		} else {
-			go processUpload(id, author, tmp, stem, "")
-		}
+		go processUpload(id, author, tmp, stem, "")
 	}
 	entries, err := os.ReadDir(videosDir)
 	if err != nil {
@@ -2829,44 +2811,6 @@ func processUpload(id, author int64, tmp, stem, customThumb string) {
 	}
 }
 
-func processMusic(id, author int64, tmp, stem, customThumb string) {
-	out := filepath.Join(videosDir, stem+".ogg")
-	th := filepath.Join(thumbsDir, stem+".webp")
-	thname := stem + ".webp"
-	if fi, err := os.Stat(tmp); err != nil || fi.Size() == 0 {
-		os.Remove(tmp)
-		markFailed(id)
-		return
-	}
-	if !probeHasAudio(tmp) {
-		os.Remove(tmp)
-		markFailed(id)
-		return
-	}
-	ok := runFFmpeg([]string{"-y", "-i", tmp, "-map", "0:a", "-c:a", "libopus", "-b:a", "128k", out}, 30*time.Minute)
-	os.Remove(tmp)
-	size := fileSize(out)
-	if !ok || size <= 0 || size > 100*1024*1024 {
-		os.Remove(out)
-		markFailed(id)
-		return
-	}
-	var thumb *string
-	if customThumb != "" {
-		if name, ok := convertThumb(customThumb, stem); ok {
-			thumb = &name
-		}
-		os.Remove(customThumb)
-	}
-	if thumb == nil && runFFmpeg([]string{"-y", "-i", out, "-filter_complex", "showwavespic=s=640x360", "-frames:v", "1", "-c:v", "libwebp", "-q:v", "80", th}, 120*time.Second) && fileSize(th) > 0 {
-		thumb = &thname
-	}
-	dbMu.Lock()
-	_, _ = db.Exec("UPDATE videos SET filename=?, size=?, thumbnail=?, mimetype=?, orientation=?, status='ready' WHERE id=?", stem+".ogg", size, thumb, "audio/ogg", "h", id)
-	dbMu.Unlock()
-	notifyFollowers(id, author)
-}
-
 var attrEsc = strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", "\"", "&quot;")
 
 func siteBase() string {
@@ -2935,7 +2879,6 @@ func watchMeta(id int64) string {
 			desc = title
 		}
 	}
-	kind := str("kind")
 	src := str("src")
 	thumb, _ := v["thumbnail"].(string)
 	var sb strings.Builder
@@ -2944,19 +2887,6 @@ func watchMeta(id int64) string {
 	sb.WriteString(metaTag("og:url", siteBase()+"/watch?id="+strconv.FormatInt(id, 10)))
 	sb.WriteString(metaTag("og:title", title))
 	sb.WriteString(metaTag("og:description", desc))
-	if kind == "music" {
-		sb.WriteString(metaTag("og:type", "music.song"))
-		if src != "" {
-			sb.WriteString(metaTag("og:audio", siteBase()+src))
-			sb.WriteString(metaTag("og:audio:type", "audio/ogg"))
-		}
-		if thumb != "" {
-			sb.WriteString(metaTag("og:image", siteBase()+thumb))
-		} else {
-			sb.WriteString(metaTag("og:image", siteBase()+"/watchshark.webp"))
-		}
-		return sb.String()
-	}
 	sb.WriteString(metaTag("og:type", "video.other"))
 	if thumb != "" {
 		sb.WriteString(metaTag("og:image", siteBase()+thumb))
@@ -3053,7 +2983,6 @@ func route(w http.ResponseWriter, r *http.Request) {
 		"/watch": "watch.html",
 		"/channel": "channel.html",
 		"/wheels": "wheels.html",
-		"/music": "music.html",
 		"/messages": "messages.html",
 		"/upload": "upload.html",
 		"/settings": "settings.html",
