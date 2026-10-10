@@ -427,11 +427,13 @@ fun WatchSharkApp(
                                             )
                                         }
                                     }
-                                    IconButton(onClick = { goSection("settings") }) {
-                                        Icon(
-                                            painterResource(R.drawable.ic_settings),
-                                            contentDescription = "Settings",
-                                        )
+                                    if (!route.startsWith("settings")) {
+                                        IconButton(onClick = { goSection("settings") }) {
+                                            Icon(
+                                                painterResource(R.drawable.ic_settings),
+                                                contentDescription = "Settings",
+                                            )
+                                        }
                                     }
                                 },
                                 colors = TopAppBarDefaults.topAppBarColors(

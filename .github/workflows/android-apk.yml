@@ -143,5 +143,5 @@ jobs:
           prerelease: false
           generate_release_notes: true
           body: |
-            WatchShark 1.9.2: Grey theme removed, slide-down-to-minimize gesture and mini player removed.
+            WatchShark 1.9.3: Settings button hidden while in Settings.
             Built from main. In-app updater looks for WatchShark-<version>.apk.
