@@ -9,20 +9,19 @@ object ThemePrefs {
     const val MODE_LIGHT = 1
     const val MODE_DARK = 2
     const val MODE_AMOLED = 3
-    const val MODE_GREY = 4
 
     private const val PREFS = "watchshark_theme"
     private const val KEY_MODE = "theme_mode"
 
     fun getMode(ctx: Context): Int {
         return ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getInt(KEY_MODE, MODE_SYSTEM).coerceIn(MODE_SYSTEM, MODE_GREY)
+            .getInt(KEY_MODE, MODE_SYSTEM).coerceIn(MODE_SYSTEM, MODE_AMOLED)
     }
 
     fun setMode(ctx: Context, mode: Int) {
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
-            .putInt(KEY_MODE, mode.coerceIn(MODE_SYSTEM, MODE_GREY))
+            .putInt(KEY_MODE, mode.coerceIn(MODE_SYSTEM, MODE_AMOLED))
             .apply()
     }
 
@@ -36,7 +35,7 @@ object ThemePrefs {
 
     fun toDarkOverride(mode: Int): Boolean? = when (mode) {
         MODE_LIGHT -> false
-        MODE_DARK, MODE_AMOLED, MODE_GREY -> true
+        MODE_DARK, MODE_AMOLED -> true
         else -> null
     }
 }

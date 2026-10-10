@@ -58,30 +58,6 @@ private val AmoledDark = darkColorScheme(
 )
 
 
-private val GreyDark = darkColorScheme(
-    primary = Color.White,
-    onPrimary = Color.Black,
-    primaryContainer = Color(0xFF3A3A3A),
-    onPrimaryContainer = Color.White,
-    secondary = Color(0xFFB0B0B0),
-    onSecondary = Color.Black,
-    secondaryContainer = Color(0xFF3A3A3A),
-    onSecondaryContainer = Color.White,
-    tertiary = Color(0xFFDDDDDD),
-    surface = Color(0xFF141414),
-    onSurface = Color.White,
-    surfaceVariant = Color(0xFF1F1F1F),
-    onSurfaceVariant = Color(0xFFA8A8A8),
-    surfaceContainerLowest = Color(0xFF0F0F0F),
-    surfaceContainerLow = Color(0xFF141414),
-    surfaceContainer = Color(0xFF1D1D1D),
-    surfaceContainerHigh = Color(0xFF242424),
-    surfaceContainerHighest = Color(0xFF2E2E2E),
-    outline = Color(0xFF8A8A8A),
-    outlineVariant = Color(0xFF3D3D3D),
-    error = Color(0xFFF2B8B5),
-)
-
 private val FallbackLight = lightColorScheme(
     primary = Color(0xFF0F0F0F),
     onPrimary = Color.White,
@@ -108,7 +84,6 @@ fun WatchSharkTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
     amoled: Boolean = false,
-    grey: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -131,7 +106,6 @@ fun WatchSharkTheme(
             )
         }
         darkTheme && amoled -> AmoledDark
-        darkTheme && grey -> GreyDark
         useDynamic -> {
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }

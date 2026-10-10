@@ -143,5 +143,5 @@ jobs:
           prerelease: false
           generate_release_notes: true
           body: |
-            WatchShark 1.9.1: Music removed. Watch comments, streaming uploads, hardened player, targetSdk 35.
+            WatchShark 1.9.2: Grey theme removed, slide-down-to-minimize gesture and mini player removed.
             Built from main. In-app updater looks for WatchShark-<version>.apk.

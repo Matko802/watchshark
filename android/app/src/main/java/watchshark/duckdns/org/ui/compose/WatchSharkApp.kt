@@ -100,11 +100,8 @@ import watchshark.duckdns.org.data.PlayerManager
 import watchshark.duckdns.org.data.ThemePrefs
 import watchshark.duckdns.org.data.UpdateCheck
 import watchshark.duckdns.org.data.Updater
-import watchshark.duckdns.org.data.Video
 import watchshark.duckdns.org.ui.compose.theme.AppMotion
 import watchshark.duckdns.org.ui.compose.theme.WatchSharkTheme
-import watchshark.duckdns.org.ui.compose.player.VideoPlaying
-import watchshark.duckdns.org.ui.compose.player.rememberPlayerUiState
 
 private const val ROUTE_HOME = "home"
 private const val ROUTE_WHEELS = "wheels"
@@ -134,7 +131,6 @@ fun WatchSharkApp(
     WatchSharkTheme(
         darkTheme = ThemePrefs.toDarkOverride(themeMode) ?: isSystemInDarkTheme(),
         amoled = themeMode == ThemePrefs.MODE_AMOLED,
-        grey = themeMode == ThemePrefs.MODE_GREY,
     ) {
         CompositionLocalProvider(LocalImageLoader provides videoLoader) {
         val nav = rememberNavController()
@@ -151,7 +147,6 @@ fun WatchSharkApp(
         var wheelsReselect by remember { mutableIntStateOf(0) }
         val appCtxSafe = appCtx.applicationContext
         val appPlayer = remember(appCtxSafe) { PlayerManager.get(appCtxSafe) }
-        var miniVideo by remember { mutableStateOf<Video?>(null) }
         DisposableEffect(Unit) {
             onDispose {
                 try {
@@ -159,16 +154,6 @@ fun WatchSharkApp(
                 } catch (_: Exception) {
                 }
             }
-        }
-
-        fun closeMini() {
-            try {
-                appPlayer.stop()
-                appPlayer.clearMediaItems()
-            } catch (_: Exception) {
-            }
-            miniVideo = null
-            VideoPlaying.setPlaying(false)
         }
 
         suspend fun refreshBadges() {
@@ -199,10 +184,6 @@ fun WatchSharkApp(
             route.startsWith(ROUTE_MESSAGES) || route.startsWith("chat") -> ROUTE_MESSAGES
             route.startsWith(ROUTE_YOU) || route.startsWith("channel") -> ROUTE_YOU
             else -> null
-        }
-
-        LaunchedEffect(route) {
-            if (route.startsWith(ROUTE_WHEELS) && miniVideo != null) closeMini()
         }
 
         fun goSection(route: String) {
@@ -688,12 +669,6 @@ fun WatchSharkApp(
                             WatchScreen(
                                 videoId = id,
                                 player = appPlayer,
-                                miniVideo = miniVideo,
-                                onMinimize = { v ->
-                                    miniVideo = v
-                                    goTab(ROUTE_HOME)
-                                },
-                                onExpand = { miniVideo = null },
                                 onOpenChannel = { name -> goScreen("channel/$name") },
                                 onClose = { goBack() },
                             )
@@ -816,35 +791,6 @@ fun WatchSharkApp(
                             ) { Text("Update later") }
                         }
                     }
-                }
-            }
-
-            miniVideo?.let { v ->
-                if (route.startsWith("watch")) return@let
-                val miniUi = rememberPlayerUiState(appPlayer)
-                LaunchedEffect(miniUi.isPlaying) {
-                    VideoPlaying.setPlaying(miniUi.isPlaying)
-                }
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.BottomCenter,
-                ) {
-                    MiniPlayerBar(
-                        video = v,
-                        playing = miniUi.isPlaying,
-                        onExpand = {
-                            miniVideo = null
-                            goScreen("watch/${v.id}")
-                        },
-                        onToggle = {
-                            if (miniUi.isPlaying) appPlayer.pause() else appPlayer.play()
-                        },
-                        onClose = { closeMini() },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .padding(bottom = 100.dp),
-                    )
                 }
             }
         }
