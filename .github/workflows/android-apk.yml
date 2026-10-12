@@ -143,5 +143,5 @@ jobs:
           prerelease: false
           generate_release_notes: true
           body: |
-            WatchShark 1.9.11: side rail now hides on the Watch screen in landscape, like the bottom pill does in portrait.
+            WatchShark 1.9.12: Wheels comments button now shows the comment count, refreshed after posting.
             Built from main. In-app updater looks for WatchShark-<version>.apk.

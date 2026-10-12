@@ -156,6 +156,18 @@ fun WheelsScreen(
     var qualityFor by remember { mutableStateOf<Video?>(null) }
     var meId by remember { mutableStateOf<Long?>(null) }
     var commentsFor by remember { mutableStateOf<Video?>(null) }
+    val commentCounts = remember { mutableStateMapOf<Long, Int>() }
+    var lastCommentsId by remember { mutableStateOf(0L) }
+
+    fun loadCommentCount(id: Long, force: Boolean = false) {
+        if (!force && commentCounts.containsKey(id)) return
+        scope.launch {
+            try {
+                commentCounts[id] = ApiClient.api.videoDetail(id).comments.orEmpty().size
+            } catch (_: Exception) {
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         try {
@@ -344,6 +356,7 @@ fun WheelsScreen(
             player.playWhenReady = true
             autoUpgradeCurrent(currentPage)
         }
+        videos.getOrNull(currentPage)?.let { loadCommentCount(it.id) }
         if (currentPage >= videos.size - 3) loadMore()
     }
 
@@ -576,6 +589,11 @@ fun WheelsScreen(
                         contentDescription = "Comments",
                     )
                 }
+                Text(
+                    fmtNum((commentCounts[vid.id] ?: 0).toLong()),
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelSmall,
+                )
 
                 RailPillButton(onClick = { qualityFor = vid }, description = "Quality") {
                     Icon(
@@ -648,7 +666,16 @@ fun WheelsScreen(
     }
 
     BackHandler(enabled = commentsFor != null) { commentsFor = null }
-    LaunchedEffect(commentsFor) { onOverlayChange(commentsFor != null) }
+    LaunchedEffect(commentsFor) {
+        onOverlayChange(commentsFor != null)
+        val open = commentsFor
+        if (open != null) {
+            lastCommentsId = open.id
+            loadCommentCount(open.id)
+        } else if (lastCommentsId > 0L) {
+            loadCommentCount(lastCommentsId, force = true)
+        }
+    }
     AnimatedVisibility(
         visible = commentsFor != null,
         enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
