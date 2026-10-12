@@ -23,7 +23,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -232,31 +231,54 @@ fun WatchScreen(
 
 
                     if (meId != null && meId != v.userId) {
-                        OutlinedButton(
-                            onClick = {
-                                val cur = video ?: return@OutlinedButton
-                                Haptics.tick(context)
-                                video = cur.copy(
-                                    following = !cur.following,
-                                    followers = (cur.followers + if (cur.following) -1 else 1).coerceAtLeast(0),
-                                )
-                                scope.launch {
-                                    try {
-                                        ApiClient.api.follow(cur.userId)
-                                    } catch (_: Exception) {
-                                        video = cur
-                                    }
-                                }
-                            },
+                        Surface(
+                            shape = CircleShape,
+                            color = if (v.following) MaterialTheme.colorScheme.surfaceContainerHigh
+                            else MaterialTheme.colorScheme.secondaryContainer,
+                            tonalElevation = 1.dp,
+                            modifier = Modifier
+                                .height(48.dp)
+                                .clip(CircleShape)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = {
+                                        val cur = video ?: return@clickable
+                                        Haptics.tick(context)
+                                        video = cur.copy(
+                                            following = !cur.following,
+                                            followers = (cur.followers + if (cur.following) -1 else 1).coerceAtLeast(0),
+                                        )
+                                        scope.launch {
+                                            try {
+                                                ApiClient.api.follow(cur.userId)
+                                            } catch (_: Exception) {
+                                                video = cur
+                                            }
+                                        }
+                                    },
+                                ),
                         ) {
-                            if (!v.following) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            ) {
                                 Icon(
-                                    painterResource(R.drawable.ic_person_add),
-                                    contentDescription = "Follow ${v.username}",
-                                    modifier = Modifier.size(18.dp),
+                                    painterResource(
+                                        if (v.following) R.drawable.ic_check
+                                        else R.drawable.ic_person_add,
+                                    ),
+                                    contentDescription = if (v.following) "Following ${v.username}" else "Follow ${v.username}",
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                                Text(
+                                    if (v.following) "Following" else "Follow",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
                                 )
                             }
-                            Text(if (v.following) "Following" else "Follow")
                         }
                     }
                     Column(
