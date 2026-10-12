@@ -115,6 +115,7 @@ fun WatchSharkApp(
     val appCtx = LocalContext.current
     var themeMode by remember { mutableIntStateOf(ThemePrefs.getMode(appCtx)) }
     var showLabels by remember { mutableStateOf(NavPrefs.showLabels(appCtx)) }
+    var wheelsOverlayOpen by remember { mutableStateOf(false) }
     val appIcon = remember { appCtx.applicationInfo.loadIcon(appCtx.packageManager) }
     fun applyThemeMode(mode: Int) {
         ThemePrefs.setMode(appCtx, mode)
@@ -455,7 +456,7 @@ fun WatchSharkApp(
 
                         val showPill = !wide && !route.startsWith("auth") &&
                             !route.startsWith("chat") && route != "update" &&
-                            !route.startsWith("watch")
+                            !route.startsWith("watch") && !wheelsOverlayOpen
                         AnimatedVisibility(
                             visible = showPill,
                             enter = slideInVertically { it } + fadeIn(),
@@ -613,6 +614,7 @@ fun WatchSharkApp(
                                 reselectTick = wheelsReselect,
                                 onOpenVideo = { id -> goScreen("watch/$id") },
                                 onOpenChannel = { name -> goScreen("channel/$name") },
+                                onOverlayChange = { wheelsOverlayOpen = it },
                             )
                         }
                         composable(ROUTE_MESSAGES) {

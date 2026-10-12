@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.VerticalPager
@@ -137,6 +139,7 @@ fun WheelsScreen(
     onOpenChannel: (String) -> Unit,
     modifier: Modifier = Modifier,
     reselectTick: Int = 0,
+    onOverlayChange: (Boolean) -> Unit = {},
 ) {
     val context = LocalContext.current
     val appCtx = remember(context) { context.applicationContext }
@@ -645,6 +648,7 @@ fun WheelsScreen(
     }
 
     BackHandler(enabled = commentsFor != null) { commentsFor = null }
+    LaunchedEffect(commentsFor) { onOverlayChange(commentsFor != null) }
     AnimatedVisibility(
         visible = commentsFor != null,
         enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
@@ -769,7 +773,12 @@ private fun WheelCommentsPanel(
         tonalElevation = 3.dp,
         modifier = modifier,
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .navigationBarsPadding()
+                .imePadding()
+        ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier

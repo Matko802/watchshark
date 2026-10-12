@@ -143,5 +143,5 @@ jobs:
           prerelease: false
           generate_release_notes: true
           body: |
-            WatchShark 1.9.9: navigation labels back everywhere by default (pill + wide-screen rail), still toggleable in Settings > Appearance.
+            WatchShark 1.9.10: Wheels comments fixed (keyboard lifts the text box, pill hides while open), Watch comments also keyboard-safe.
             Built from main. In-app updater looks for WatchShark-<version>.apk.
