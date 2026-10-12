@@ -1,8 +1,15 @@
 package watchshark.duckdns.org.ui.compose
 
-import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,10 +47,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -212,24 +221,64 @@ fun WatchScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                var headerExpanded by remember(v.id) { mutableStateOf(false) }
+                val chevronDeg by animateFloatAsState(
+                    targetValue = if (headerExpanded) 180f else 0f,
+                    label = "headerChevron",
+                )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    AsyncImage(
-                        model = ApiClient.fullUrl(v.avatar),
-                        contentDescription = v.username,
-                        contentScale = ContentScale.Crop,
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape),
-                    )
-                    TextButton(onClick = { onOpenChannel(v.username) }) {
-                        Text("@${v.username}")
+                            .weight(1f)
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = {
+                                    Haptics.tick(context)
+                                    headerExpanded = !headerExpanded
+                                },
+                            )
+                            .padding(vertical = 4.dp),
+                    ) {
+                        AsyncImage(
+                            model = ApiClient.fullUrl(v.avatar),
+                            contentDescription = v.username,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape),
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "@${v.username}",
+                                style = MaterialTheme.typography.titleSmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                "${fmtNum(v.followers)} followers",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        Icon(
+                            painterResource(R.drawable.ic_expand_more),
+                            contentDescription = if (headerExpanded) "Collapse channel info" else "Expand channel info",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .size(24.dp)
+                                .graphicsLayer { rotationZ = chevronDeg },
+                        )
                     }
-
-
                     if (meId != null && meId != v.userId) {
                         Surface(
                             shape = CircleShape,
@@ -281,6 +330,39 @@ fun WatchScreen(
                             }
                         }
                     }
+                }
+                AnimatedVisibility(
+                    visible = headerExpanded,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut(),
+                    label = "headerBio",
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            "${fmtNum(v.views)} views • ${fmtAge(v.created_at)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            v.description?.takeIf { it.isNotBlank() } ?: "No description yet.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        TextButton(onClick = { onOpenChannel(v.username) }) {
+                            Text("Visit channel")
+                        }
+                    }
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.clickable(
@@ -353,21 +435,6 @@ fun WatchScreen(
                             contentDescription = "Share ${v.title}"
                         )
                     }
-                }
-                if (!v.description.isNullOrEmpty()) {
-                    var descExpanded by remember(v.id) { mutableStateOf(false) }
-                    Text(
-                        v.description!!,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = if (descExpanded) Int.MAX_VALUE else 2,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { descExpanded = !descExpanded }
-                            .animateContentSize()
-                            .padding(top = 4.dp),
-                    )
                 }
                 Text(
                     "Comments (${comments.size})",
