@@ -143,5 +143,5 @@ jobs:
           prerelease: false
           generate_release_notes: true
           body: |
-            WatchShark 1.9.18: YouTube-style expandable channel header on Watch, action row scrolls so Share never goes offscreen.
+            WatchShark 1.9.19: like + share merged into one action pill on Watch.
             Built from main. In-app updater looks for WatchShark-<version>.apk.

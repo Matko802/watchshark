@@ -6,6 +6,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -363,40 +365,43 @@ fun WatchScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {
-                                val cur = video ?: return@clickable
-                                Haptics.tick(context)
-                                video = cur.copy(
-                                    liked = !cur.liked,
-                                    likes = (cur.likes + if (cur.liked) -1 else 1).coerceAtLeast(0),
-                                )
-                                scope.launch {
-                                    try {
-                                        ApiClient.api.like(cur.id)
-                                    } catch (e: Exception) {
-                                        AppErrors.log(e, "like")
-                                        video = cur
-                                    }
-                                }
-                            },
-                        ),
+                    Surface(
+                        shape = CircleShape,
+                        color = if (v.liked) Color(0xFFFF5C5C).copy(alpha = 0.12f)
+                        else MaterialTheme.colorScheme.secondaryContainer,
+                        tonalElevation = 1.dp,
+                        modifier = Modifier.height(48.dp),
                     ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = if (v.liked) Color(0xFFFF5C5C).copy(alpha = 0.16f)
-                            else MaterialTheme.colorScheme.secondaryContainer,
-                            tonalElevation = 1.dp,
-                            modifier = Modifier.height(48.dp),
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 4.dp),
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = {
+                                            val cur = video ?: return@clickable
+                                            Haptics.tick(context)
+                                            video = cur.copy(
+                                                liked = !cur.liked,
+                                                likes = (cur.likes + if (cur.liked) -1 else 1).coerceAtLeast(0),
+                                            )
+                                            scope.launch {
+                                                try {
+                                                    ApiClient.api.like(cur.id)
+                                                } catch (e: Exception) {
+                                                    AppErrors.log(e, "like")
+                                                    video = cur
+                                                }
+                                            }
+                                        },
+                                    )
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
                             ) {
                                 Icon(
                                     painterResource(
@@ -415,25 +420,46 @@ fun WatchScreen(
                                     else MaterialTheme.colorScheme.onSecondaryContainer,
                                 )
                             }
-                        }
-                    }
-                    IconButton(onClick = {
-                        Haptics.tick(context)
-                        try {
-                            val url = ApiClient.BASE_URL.trimEnd('/') + "/watch/" + v.id
-                            val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(android.content.Intent.EXTRA_TEXT, "${v.title} $url")
+                            Box(
+                                modifier = Modifier
+                                    .width(1.dp)
+                                    .height(24.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.outlineVariant,
+                                        CircleShape,
+                                    ),
+                            )
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = {
+                                            Haptics.tick(context)
+                                            try {
+                                                val url = ApiClient.BASE_URL.trimEnd('/') + "/watch/" + v.id
+                                                val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                                    type = "text/plain"
+                                                    putExtra(android.content.Intent.EXTRA_TEXT, "${v.title} $url")
+                                                }
+                                                context.startActivity(android.content.Intent.createChooser(send, "Share"))
+                                            } catch (e: Exception) {
+                                                AppErrors.log(e, "share")
+                                            }
+                                        },
+                                    ),
+                            ) {
+                                Icon(
+                                    painterResource(R.drawable.ic_open_in_new),
+                                    contentDescription = "Share ${v.title}",
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.size(22.dp),
+                                )
                             }
-                            context.startActivity(android.content.Intent.createChooser(send, "Share"))
-                        } catch (e: Exception) {
-                            AppErrors.log(e, "share")
                         }
-                    }) {
-                        Icon(
-                            painterResource(R.drawable.ic_open_in_new),
-                            contentDescription = "Share ${v.title}"
-                        )
                     }
                 }
                 Text(
