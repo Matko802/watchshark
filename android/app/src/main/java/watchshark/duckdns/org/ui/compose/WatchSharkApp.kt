@@ -93,6 +93,7 @@ import watchshark.duckdns.org.data.ApiClient
 import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.AppUpdate
 import watchshark.duckdns.org.data.Haptics
+import watchshark.duckdns.org.data.NavPrefs
 import watchshark.duckdns.org.data.PlayerManager
 import watchshark.duckdns.org.data.ThemePrefs
 import watchshark.duckdns.org.data.UpdateCheck
@@ -112,11 +113,16 @@ fun WatchSharkApp(
 ) {
     val appCtx = LocalContext.current
     var themeMode by remember { mutableIntStateOf(ThemePrefs.getMode(appCtx)) }
+    var showLabels by remember { mutableStateOf(NavPrefs.showLabels(appCtx)) }
     val appIcon = remember { appCtx.applicationInfo.loadIcon(appCtx.packageManager) }
     fun applyThemeMode(mode: Int) {
         ThemePrefs.setMode(appCtx, mode)
         themeMode = mode
         androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(ThemePrefs.toNightMode(mode))
+    }
+    fun applyShowLabels(show: Boolean) {
+        NavPrefs.setShowLabels(appCtx, show)
+        showLabels = show
     }
 
     val videoLoader = remember(appCtx) {
@@ -483,6 +489,8 @@ fun WatchSharkApp(
                                         PillTab(
                                             selected = selectedTab == ROUTE_HOME,
                                             onClick = { goTab(ROUTE_HOME) },
+                                            label = "Home",
+                                            showLabel = showLabels,
                                             selectedColor = selectedTabColor,
                                             idleColor = idleTabColor,
                                         ) {
@@ -494,6 +502,8 @@ fun WatchSharkApp(
                                         PillTab(
                                             selected = selectedTab == ROUTE_WHEELS,
                                             onClick = { goTab(ROUTE_WHEELS) },
+                                            label = "Wheels",
+                                            showLabel = showLabels,
                                             selectedColor = selectedTabColor,
                                             idleColor = idleTabColor,
                                         ) {
@@ -542,6 +552,8 @@ fun WatchSharkApp(
                                         PillTab(
                                             selected = selectedTab == ROUTE_MESSAGES,
                                             onClick = { goTab(ROUTE_MESSAGES) },
+                                            label = "Messages",
+                                            showLabel = showLabels,
                                             selectedColor = selectedTabColor,
                                             idleColor = idleTabColor,
                                             badge = unread > 0,
@@ -555,6 +567,8 @@ fun WatchSharkApp(
                                         PillTab(
                                             selected = selectedTab == ROUTE_YOU,
                                             onClick = { goTab(ROUTE_YOU) },
+                                            label = "You",
+                                            showLabel = showLabels,
                                             selectedColor = selectedTabColor,
                                             idleColor = idleTabColor,
                                             avatarUrl = meAvatar,
@@ -697,6 +711,8 @@ fun WatchSharkApp(
                             SettingsScreen(
                                 themeMode = themeMode,
                                 onThemeMode = { applyThemeMode(it) },
+                                showLabels = showLabels,
+                                onShowLabels = { applyShowLabels(it) },
                                 onSignedOut = {
                                     scope.launch { refreshBadges() }
                                     meName = null
@@ -804,6 +820,8 @@ fun WatchSharkApp(
 private fun androidx.compose.foundation.layout.RowScope.PillTab(
     selected: Boolean,
     onClick: () -> Unit,
+    label: String,
+    showLabel: Boolean,
     selectedColor: Color,
     idleColor: Color,
     badge: Boolean = false,
@@ -824,7 +842,7 @@ private fun androidx.compose.foundation.layout.RowScope.PillTab(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .weight(1f)
-            .defaultMinSize(minHeight = 56.dp)
+            .defaultMinSize(minHeight = if (showLabel) 56.dp else 48.dp)
             .clip(RoundedCornerShape(16.dp))
             .clickable(
                 interactionSource = tabInteraction,
@@ -833,6 +851,11 @@ private fun androidx.compose.foundation.layout.RowScope.PillTab(
                 onClick = onClick,
             ),
     ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(vertical = if (showLabel) 2.dp else 0.dp),
+        ) {
         Box(contentAlignment = Alignment.Center) {
             val indicatorAlpha by animateFloatAsState(
                 targetValue = if (selected) 1f else 0f,
@@ -890,6 +913,15 @@ private fun androidx.compose.foundation.layout.RowScope.PillTab(
                         )
                     }
                 }
+            }
+        }
+            if (showLabel) {
+                Text(
+                    text = label,
+                    fontSize = 11.sp,
+                    color = if (selected) selectedColor else idleColor,
+                    modifier = Modifier.offset(y = (-2).dp),
+                )
             }
         }
     }

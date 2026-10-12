@@ -73,6 +73,8 @@ private const val SET_ABOUT = "set_about"
 fun SettingsScreen(
     themeMode: Int,
     onThemeMode: (Int) -> Unit,
+    showLabels: Boolean,
+    onShowLabels: (Boolean) -> Unit,
     onSignedOut: () -> Unit,
     onOpenAdmin: () -> Unit,
     onUpdateAvailable: () -> Unit,
@@ -280,6 +282,17 @@ fun SettingsScreen(
                         )
                         Text(label)
                     }
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.padding(top = 8.dp),
+                ) {
+                    Switch(
+                        checked = showLabels,
+                        onCheckedChange = { onShowLabels(it) },
+                    )
+                    Text("Bottom bar labels")
                 }
             }
         }

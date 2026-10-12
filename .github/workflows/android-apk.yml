@@ -143,5 +143,5 @@ jobs:
           prerelease: false
           generate_release_notes: true
           body: |
-            WatchShark 1.9.7: app icon framing fixed (shark back to original size, still razor-sharp 1024px source).
+            WatchShark 1.9.8: bottom bar labels are back by default and toggleable in Settings > Appearance.
             Built from main. In-app updater looks for WatchShark-<version>.apk.
