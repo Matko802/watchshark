@@ -143,5 +143,5 @@ jobs:
           prerelease: false
           generate_release_notes: true
           body: |
-            WatchShark 1.9.10: Wheels comments fixed (keyboard lifts the text box, pill hides while open), Watch comments also keyboard-safe.
+            WatchShark 1.9.11: side rail now hides on the Watch screen in landscape, like the bottom pill does in portrait.
             Built from main. In-app updater looks for WatchShark-<version>.apk.

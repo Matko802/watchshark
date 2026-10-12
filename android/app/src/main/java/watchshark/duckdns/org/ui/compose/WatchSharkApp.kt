@@ -319,7 +319,7 @@ fun WatchSharkApp(
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val wide = maxWidth >= 600.dp
             Row(modifier = Modifier.fillMaxSize()) {
-                if (wide) {
+                if (wide && !route.startsWith("watch")) {
 
 
                     NavigationRail {
