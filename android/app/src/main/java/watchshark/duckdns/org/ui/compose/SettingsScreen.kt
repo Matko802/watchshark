@@ -292,7 +292,7 @@ fun SettingsScreen(
                         checked = showLabels,
                         onCheckedChange = { onShowLabels(it) },
                     )
-                    Text("Bottom bar labels")
+                    Text("Navigation labels")
                 }
             }
         }

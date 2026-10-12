@@ -324,12 +324,14 @@ fun WatchSharkApp(
                     NavigationRail {
                         RailTab(
                             label = "Home",
+                            showLabel = showLabels,
                             selected = selectedTab == ROUTE_HOME,
                             iconRes = R.drawable.ic_home,
                             onClick = { goTab(ROUTE_HOME) },
                         )
                         RailTab(
                             label = "Wheels",
+                            showLabel = showLabels,
                             selected = selectedTab == ROUTE_WHEELS,
                             iconRes = R.drawable.ic_movie,
                             onClick = { goTab(ROUTE_WHEELS) },
@@ -342,12 +344,14 @@ fun WatchSharkApp(
                         }
                         RailTab(
                             label = "Messages",
+                            showLabel = showLabels,
                             selected = selectedTab == ROUTE_MESSAGES,
                             iconRes = R.drawable.ic_chat,
                             onClick = { goTab(ROUTE_MESSAGES) },
                         )
                         RailTab(
                             label = "You",
+                            showLabel = showLabels,
                             selected = selectedTab == ROUTE_YOU,
                             iconRes = R.drawable.ic_person,
                             avatarUrl = meAvatar,
@@ -931,6 +935,7 @@ private fun androidx.compose.foundation.layout.RowScope.PillTab(
 @Composable
 private fun androidx.compose.foundation.layout.ColumnScope.RailTab(
     label: String,
+    showLabel: Boolean,
     selected: Boolean,
     iconRes: Int,
     onClick: () -> Unit,
@@ -958,6 +963,10 @@ private fun androidx.compose.foundation.layout.ColumnScope.RailTab(
                 )
             }
         },
-        label = null,
+        label = if (showLabel) {
+            { Text(label) }
+        } else {
+            null
+        },
     )
 }
