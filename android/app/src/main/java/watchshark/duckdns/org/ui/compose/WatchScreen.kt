@@ -60,6 +60,8 @@ import watchshark.duckdns.org.data.QualityKit
 import watchshark.duckdns.org.data.Video
 import watchshark.duckdns.org.data.Haptics
 import watchshark.duckdns.org.ui.compose.common.CommentRow
+import watchshark.duckdns.org.ui.compose.common.ReplyTargetChip
+import watchshark.duckdns.org.ui.compose.common.SwipeToReply
 import watchshark.duckdns.org.ui.compose.player.WatchPlayer
 import watchshark.duckdns.org.ui.compose.player.VideoPlaying
 import watchshark.duckdns.org.ui.fmtAge
@@ -84,6 +86,7 @@ fun WatchScreen(
     var meId by remember { mutableStateOf<Long?>(null) }
     var draft by remember { mutableStateOf("") }
     var posting by remember { mutableStateOf(false) }
+    var replyTo by remember(videoId) { mutableStateOf<Comment?>(null) }
     val lifecycleOwner = LocalLifecycleOwner.current
 
     DisposableEffect(lifecycleOwner) {
@@ -322,6 +325,13 @@ fun WatchScreen(
                     style = MaterialTheme.typography.titleSmall,
                     modifier = Modifier.padding(top = 8.dp),
                 )
+                replyTo?.let { target ->
+                    ReplyTargetChip(
+                        username = target.username,
+                        onClear = { replyTo = null },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -330,9 +340,15 @@ fun WatchScreen(
                     OutlinedTextField(
                         value = draft,
                         onValueChange = { draft = it },
-                        placeholder = { Text("Add a comment…") },
+                        placeholder = {
+                            Text(
+                                replyTo?.let { "Reply to @${it.username}…" }
+                                    ?: "Add a comment…"
+                            )
+                        },
                         singleLine = false,
                         maxLines = 3,
+                        shape = CircleShape,
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = {
@@ -341,8 +357,13 @@ fun WatchScreen(
                         posting = true
                         scope.launch {
                             try {
-                                ApiClient.api.comment(v.id, mapOf("body" to body))
+                                val payload = buildMap<String, Any> {
+                                    put("body", body)
+                                    replyTo?.id?.let { put("parent_id", it) }
+                                }
+                                ApiClient.api.comment(v.id, payload)
                                 draft = ""
+                                replyTo = null
                                 reloadComments()
                             } catch (e: Exception) {
                                 AppErrors.log(e, "comment")
@@ -361,7 +382,12 @@ fun WatchScreen(
             }
         }
         items(comments, key = { it.id }) { c ->
-            CommentRow(comment = c, modifier = Modifier.animateItem())
+            SwipeToReply(
+                onReply = { replyTo = c },
+                modifier = Modifier.animateItem()
+            ) {
+                CommentRow(comment = c)
+            }
         }
 
         item { Spacer(modifier = Modifier.height(104.dp)) }

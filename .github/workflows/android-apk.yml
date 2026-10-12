@@ -143,5 +143,5 @@ jobs:
           prerelease: false
           generate_release_notes: true
           body: |
-            WatchShark 1.9.12: Wheels comments button now shows the comment count, refreshed after posting.
+            WatchShark 1.9.13: swipe any comment right to reply (Watch + Wheels), pill-shaped comment boxes.
             Built from main. In-app updater looks for WatchShark-<version>.apk.

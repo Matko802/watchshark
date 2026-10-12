@@ -87,6 +87,8 @@ import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.Video
 import watchshark.duckdns.org.ui.compose.player.BufferingSpinner
 import watchshark.duckdns.org.ui.compose.player.CenterPlayButton
+import watchshark.duckdns.org.ui.compose.common.ReplyTargetChip
+import watchshark.duckdns.org.ui.compose.common.SwipeToReply
 import watchshark.duckdns.org.ui.compose.player.dynRenditionUrl
 import watchshark.duckdns.org.ui.compose.player.fmtPlayerTime
 import watchshark.duckdns.org.ui.compose.player.rememberPlayerUiState
@@ -762,6 +764,7 @@ private fun WheelCommentsPanel(
     var failed by remember(video.id) { mutableStateOf(false) }
     var draft by remember(video.id) { mutableStateOf("") }
     var posting by remember(video.id) { mutableStateOf(false) }
+    var replyTo by remember(video.id) { mutableStateOf<Comment?>(null) }
 
     fun reload() {
         scope.launch {
@@ -784,8 +787,13 @@ private fun WheelCommentsPanel(
         posting = true
         scope.launch {
             try {
-                ApiClient.api.comment(video.id, mapOf("body" to body))
+                val payload = buildMap<String, Any> {
+                    put("body", body)
+                    replyTo?.id?.let { put("parent_id", it) }
+                }
+                ApiClient.api.comment(video.id, payload)
                 draft = ""
+                replyTo = null
                 reload()
             } catch (_: Exception) {
             } finally {
@@ -858,6 +866,10 @@ private fun WheelCommentsPanel(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     items(list, key = { it.id }) { c ->
+                        SwipeToReply(
+                            onReply = { replyTo = c },
+                            modifier = Modifier.animateItem()
+                        ) {
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.fillMaxWidth(),
@@ -885,8 +897,18 @@ private fun WheelCommentsPanel(
                                 Text(c.body, style = MaterialTheme.typography.bodyMedium)
                             }
                         }
+                        }
                     }
                 }
+            }
+            replyTo?.let { target ->
+                ReplyTargetChip(
+                    username = target.username,
+                    onClear = { replyTo = null },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp)
+                )
             }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -898,8 +920,14 @@ private fun WheelCommentsPanel(
                 OutlinedTextField(
                     value = draft,
                     onValueChange = { draft = it },
-                    placeholder = { Text("Add a comment…") },
+                    placeholder = {
+                        Text(
+                            replyTo?.let { "Reply to @${it.username}…" }
+                                ?: "Add a comment…"
+                        )
+                    },
                     maxLines = 3,
+                    shape = CircleShape,
                     modifier = Modifier.weight(1f),
                 )
                 Box(
