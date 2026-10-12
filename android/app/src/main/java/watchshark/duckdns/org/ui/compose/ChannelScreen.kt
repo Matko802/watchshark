@@ -180,7 +180,7 @@ fun ChannelScreen(
             stickyHeader {
                 SectionTabs(
                     tabs = listOf(
-                        SectionTab("Videos", iconRes = R.drawable.ic_play),
+                        SectionTab("Videos", iconRes = R.drawable.ic_play_circle),
                         SectionTab("Wheels", iconRes = R.drawable.ic_movie),
                     ),
                     selectedIndex = tab,

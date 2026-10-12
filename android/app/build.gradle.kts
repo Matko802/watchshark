@@ -14,8 +14,8 @@ android {
         applicationId = "watchshark.duckdns.org"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10903
-        versionName = "1.9.3"
+        versionCode = 10904
+        versionName = "1.9.4"
         buildConfigField("String", "APP_URL", "\"https://watchshark.duckdns.org\"")
     }
 
@@ -75,8 +75,6 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material3:material3-window-size-class")
-    implementation("androidx.compose.material:material-icons-core")
-    implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.activity:activity-compose:1.10.1")
     implementation("androidx.navigation:navigation-compose:2.9.3")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.2")

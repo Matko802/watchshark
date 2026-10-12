@@ -22,9 +22,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.NewReleases
-import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.Video
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -112,8 +110,8 @@ fun HomeScreen(
                 stickyHeader {
                     SectionTabs(
                         tabs = listOf(
-                            SectionTab("Latest", iconVector = Icons.Filled.NewReleases),
-                            SectionTab("Trending", iconVector = Icons.Filled.Whatshot),
+                            SectionTab("Latest", iconRes = R.drawable.ic_new_releases),
+                            SectionTab("Trending", iconRes = R.drawable.ic_local_fire_department),
                         ),
                         selectedIndex = if (viewModel.sort == "new") 0 else 1,
                         onSelect = { viewModel.setSort(if (it == 0) "new" else "popular") },

@@ -16,12 +16,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AccountCircle
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.rounded.Palette
-import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -46,7 +40,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -149,7 +142,7 @@ fun SettingsScreen(
                             SettingsCategoryRow(
                                 title = "Account",
                                 subtitle = "Handle, password, sign out",
-                                icon = Icons.Rounded.AccountCircle,
+                                iconRes = R.drawable.ic_person,
                                 onClick = { open(SET_ACCOUNT) },
                             )
                         },
@@ -157,7 +150,7 @@ fun SettingsScreen(
                             SettingsCategoryRow(
                                 title = "Appearance",
                                 subtitle = "System, light, dark, AMOLED",
-                                icon = Icons.Rounded.Palette,
+                                iconRes = R.drawable.ic_palette,
                                 onClick = { open(SET_APPEARANCE) },
                             )
                         },
@@ -165,7 +158,7 @@ fun SettingsScreen(
                             SettingsCategoryRow(
                                 title = "Notifications",
                                 subtitle = "Upload alerts",
-                                icon = Icons.Rounded.Notifications,
+                                iconRes = R.drawable.ic_notifications,
                                 onClick = { open(SET_NOTIFICATIONS) },
                             )
                         },
@@ -173,7 +166,7 @@ fun SettingsScreen(
                             SettingsCategoryRow(
                                 title = "Haptics",
                                 subtitle = "Button vibration",
-                                icon = Icons.Rounded.Vibration,
+                                iconRes = R.drawable.ic_vibration,
                                 onClick = { open(SET_HAPTICS) },
                             )
                         },
@@ -181,7 +174,7 @@ fun SettingsScreen(
                             SettingsCategoryRow(
                                 title = "About",
                                 subtitle = "Version, updates",
-                                icon = Icons.Rounded.Info,
+                                iconRes = R.drawable.ic_info,
                                 onClick = { open(SET_ABOUT) },
                             )
                         },
@@ -439,7 +432,7 @@ private fun SettingsGroup(items: List<@Composable () -> Unit>) {
 private fun SettingsCategoryRow(
     title: String,
     subtitle: String,
-    icon: ImageVector,
+    iconRes: Int,
     onClick: () -> Unit,
 ) {
     ListItem(
@@ -460,8 +453,8 @@ private fun SettingsCategoryRow(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = icon,
-                    contentDescription = null,
+                    painterResource(iconRes),
+                    contentDescription = title,
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.size(26.dp),
                 )

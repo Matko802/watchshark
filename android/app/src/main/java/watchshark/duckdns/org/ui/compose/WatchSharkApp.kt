@@ -84,8 +84,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Download
 import coil.ImageLoader
 import coil.compose.AsyncImage
 import coil.compose.LocalImageLoader
@@ -759,7 +757,7 @@ fun WatchSharkApp(
                             modifier = Modifier.padding(32.dp),
                         ) {
                             Icon(
-                                Icons.Filled.Download,
+                                painterResource(R.drawable.ic_download),
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(72.dp),

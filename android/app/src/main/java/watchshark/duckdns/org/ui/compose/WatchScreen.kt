@@ -17,8 +17,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -353,7 +351,10 @@ fun WatchScreen(
                             }
                         }
                     }) {
-                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Post comment")
+                        Icon(
+                            painterResource(R.drawable.ic_send),
+                            contentDescription = "Post comment"
+                        )
                     }
                 }
             }

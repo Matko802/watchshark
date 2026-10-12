@@ -21,9 +21,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,11 +29,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import kotlinx.coroutines.launch
+import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.ApiClient
 import watchshark.duckdns.org.data.UploadAlerts
 import watchshark.duckdns.org.ui.apiErrorMessage
@@ -202,7 +201,7 @@ fun AuthScreen(
                 if (!loginMode) {
                     IconButton(onClick = { showPw = !showPw }) {
                         Icon(
-                            if (showPw) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                            painterResource(if (showPw) R.drawable.ic_visibility_off else R.drawable.ic_visibility),
                             contentDescription = if (showPw) "Hide password" else "Show password"
                         )
                     }
@@ -220,7 +219,7 @@ fun AuthScreen(
                 trailingIcon = {
                     IconButton(onClick = { showPw = !showPw }) {
                         Icon(
-                            if (showPw) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                            painterResource(if (showPw) R.drawable.ic_visibility_off else R.drawable.ic_visibility),
                             contentDescription = if (showPw) "Hide password" else "Show password"
                         )
                     }

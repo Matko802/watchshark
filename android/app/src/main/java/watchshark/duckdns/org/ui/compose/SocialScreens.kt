@@ -17,9 +17,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -154,7 +151,10 @@ fun MessagesScreen(
                             modifier = Modifier.size(40.dp).clip(CircleShape),
                         )
                     } else {
-                        Icon(Icons.Filled.Person, contentDescription = c.username)
+                        Icon(
+                            painterResource(R.drawable.ic_person),
+                            contentDescription = c.username
+                        )
                     }
                 },
                 modifier = Modifier
@@ -281,7 +281,10 @@ fun ChatScreen(
                     }
                 }
             }) {
-                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send message to $username")
+                Icon(
+                    painterResource(R.drawable.ic_send),
+                    contentDescription = "Send message to $username"
+                )
             }
         }
         if (sendError != null) {
@@ -413,7 +416,7 @@ fun NotificationsScreen(
                         ) {
                             Icon(
                                 painterResource(
-                                    if (n.videoId != null) R.drawable.ic_play
+                                    if (n.videoId != null) R.drawable.ic_play_arrow
                                     else R.drawable.ic_notifications,
                                 ),
                                 contentDescription = n.title,

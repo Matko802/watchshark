@@ -7,6 +7,6 @@
         <path
             android:fillColor="#FFFFFF"
             android:fillType="evenOdd"
-            android:pathData="M466-362v-189h-56v-49h105v238h-49ZM280-80 120-240l160-160 42 44-86 86h464v-160h60v220H236l86 86-42 44Zm-80-450v-220h524l-86-86 42-44 160 160-160 160-42-44 86-86H260v160h-60Z" />
+            android:pathData="M460-360v-180h-60v-60h120v240h-60ZM280-80 120-240l160-160 56 58-62 62h406v-160h80v240H274l62 62-56 58Zm-80-440v-240h486l-62-62 56-58 160 160-160 160-56-58 62-62H280v160h-80Z" />
     </group>
 </vector>

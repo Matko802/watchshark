@@ -31,8 +31,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -487,7 +485,7 @@ fun WheelsScreen(
                 label = "heartBurst",
             ) {
                 Icon(
-                    Icons.Filled.Favorite,
+                    painterResource(R.drawable.ic_favorite_fill),
                     contentDescription = null,
                     tint = Color(0xFFFF5C5C),
                     modifier = Modifier.size(96.dp),
@@ -559,15 +557,15 @@ fun WheelsScreen(
 
                 val myId = meId
                 if (myId == null || myId != vid.userId) {
-                    RailPillButton(onClick = { doFollow() }, description = "Follow") {
-                        Icon(
-                            painterResource(
-                                if (vid.following) R.drawable.ic_person_fill
-                                else R.drawable.ic_person_add,
-                            ),
-                            contentDescription = "Follow",
-                        )
-                    }
+                RailPillButton(onClick = { doFollow() }, description = "Follow") {
+                    Icon(
+                        painterResource(
+                            if (vid.following) R.drawable.ic_how_to_reg
+                            else R.drawable.ic_person_add,
+                        ),
+                        contentDescription = "Follow",
+                    )
+                }
                 }
                 RailPillButton(onClick = { commentsFor = vid }, description = "Comments") {
                     Icon(
