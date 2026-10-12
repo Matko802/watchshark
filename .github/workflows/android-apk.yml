@@ -143,5 +143,5 @@ jobs:
           prerelease: false
           generate_release_notes: true
           body: |
-            WatchShark 1.9.4: all app icons now match the website (official Material Symbols, classic-style stragglers replaced).
+            WatchShark 1.9.5: razor-sharp shark logo everywhere (1024px source from the website, replaces the blurry 192px asset).
             Built from main. In-app updater looks for WatchShark-<version>.apk.
