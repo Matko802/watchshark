@@ -7,15 +7,21 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -114,6 +120,104 @@ object Dimens {
     val BottomBar = 100.dp
     val GridMin = 320.dp
     val PillMax = 360.dp
+}
+
+private sealed interface ThreadEntry {
+    data class Parent(val comment: Comment) : ThreadEntry
+    data class Reply(val comment: Comment) : ThreadEntry
+    data class More(val parentId: Long, val hidden: Int, val expanded: Boolean) : ThreadEntry
+}
+
+fun LazyListScope.threadedComments(
+    comments: List<Comment>,
+    expanded: MutableMap<Long, Boolean>,
+    onReply: (Comment) -> Unit,
+    previewCount: Int = 2
+) {
+    val ids = comments.map { it.id }.toSet()
+    val byParent = comments.filter { it.parentId != null }.groupBy { it.parentId }
+    val tops = comments
+        .filter { it.parentId == null || it.parentId !in ids }
+        .sortedByDescending { it.id }
+    val entries = buildList {
+        for (parent in tops) {
+            add(ThreadEntry.Parent(parent))
+            val reps = byParent[parent.id].orEmpty().sortedBy { it.id }
+            val showAll = expanded[parent.id] == true
+            val visible = if (showAll) reps else reps.take(previewCount)
+            for (reply in visible) add(ThreadEntry.Reply(reply))
+            if (reps.size > previewCount) {
+                add(ThreadEntry.More(parent.id, reps.size - previewCount, showAll))
+            }
+        }
+    }
+    items(
+        entries,
+        key = {
+            when (it) {
+                is ThreadEntry.Parent -> "p-${it.comment.id}"
+                is ThreadEntry.Reply -> "r-${it.comment.id}"
+                is ThreadEntry.More -> "m-${it.parentId}"
+            }
+        }
+    ) { entry ->
+        when (entry) {
+            is ThreadEntry.Parent -> SwipeToReply(
+                onReply = { onReply(entry.comment) },
+                modifier = Modifier.animateItem()
+            ) {
+                CommentRow(comment = entry.comment)
+            }
+            is ThreadEntry.Reply -> SwipeToReply(
+                onReply = { onReply(entry.comment) },
+                modifier = Modifier.animateItem()
+            ) {
+                NestedReplyRow(reply = entry.comment)
+            }
+            is ThreadEntry.More -> TextButton(
+                onClick = { expanded[entry.parentId] = !entry.expanded },
+                modifier = Modifier
+                    .animateItem()
+                    .padding(start = 48.dp, top = 0.dp, bottom = 4.dp)
+            ) {
+                Text(
+                    if (entry.expanded) "Hide replies"
+                    else "View ${entry.hidden} more ${if (entry.hidden == 1) "reply" else "replies"}"
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NestedReplyRow(
+    reply: Comment,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(start = 40.dp, end = 16.dp, top = 2.dp, bottom = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .width(2.dp)
+                .height(28.dp)
+                .clip(RoundedCornerShape(1.dp))
+                .background(MaterialTheme.colorScheme.primary)
+        )
+        AvatarImage(url = reply.avatar, label = reply.username, size = 24)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                "@${reply.username} • ${fmtAge(reply.created_at)}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(reply.body, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
 }
 
 @Composable

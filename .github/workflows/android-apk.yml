@@ -143,5 +143,5 @@ jobs:
           prerelease: false
           generate_release_notes: true
           body: |
-            WatchShark 1.9.13: swipe any comment right to reply (Watch + Wheels), pill-shaped comment boxes.
+            WatchShark 1.9.14: TikTok-style threaded replies (nested, collapsible) on Watch + Wheels, big round like button.
             Built from main. In-app updater looks for WatchShark-<version>.apk.

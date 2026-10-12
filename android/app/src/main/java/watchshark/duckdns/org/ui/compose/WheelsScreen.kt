@@ -30,7 +30,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -88,12 +87,11 @@ import watchshark.duckdns.org.data.Video
 import watchshark.duckdns.org.ui.compose.player.BufferingSpinner
 import watchshark.duckdns.org.ui.compose.player.CenterPlayButton
 import watchshark.duckdns.org.ui.compose.common.ReplyTargetChip
-import watchshark.duckdns.org.ui.compose.common.SwipeToReply
+import watchshark.duckdns.org.ui.compose.common.threadedComments
 import watchshark.duckdns.org.ui.compose.player.dynRenditionUrl
 import watchshark.duckdns.org.ui.compose.player.fmtPlayerTime
 import watchshark.duckdns.org.ui.compose.player.rememberPlayerUiState
 import watchshark.duckdns.org.ui.compose.theme.AppMotion
-import watchshark.duckdns.org.ui.fmtAge
 import watchshark.duckdns.org.ui.fmtNum
 import watchshark.duckdns.org.ui.httpErrorMessage
 
@@ -765,6 +763,7 @@ private fun WheelCommentsPanel(
     var draft by remember(video.id) { mutableStateOf("") }
     var posting by remember(video.id) { mutableStateOf(false) }
     var replyTo by remember(video.id) { mutableStateOf<Comment?>(null) }
+    val expandedThreads = remember { mutableStateMapOf<Long, Boolean>() }
 
     fun reload() {
         scope.launch {
@@ -862,43 +861,13 @@ private fun WheelCommentsPanel(
             } else {
                 LazyColumn(
                     modifier = Modifier.weight(1f).fillMaxWidth(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(bottom = 8.dp),
                 ) {
-                    items(list, key = { it.id }) { c ->
-                        SwipeToReply(
-                            onReply = { replyTo = c },
-                            modifier = Modifier.animateItem()
-                        ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            if (c.avatar != null) {
-                                AsyncImage(
-                                    model = ApiClient.fullUrl(c.avatar),
-                                    contentDescription = c.username,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.size(32.dp).clip(CircleShape),
-                                )
-                            } else {
-                                Icon(
-                                    painterResource(R.drawable.ic_person),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    "@${c.username} • ${fmtAge(c.created_at)}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Text(c.body, style = MaterialTheme.typography.bodyMedium)
-                            }
-                        }
-                        }
-                    }
+                    threadedComments(
+                        comments = list,
+                        expanded = expandedThreads,
+                        onReply = { replyTo = it }
+                    )
                 }
             }
             replyTo?.let { target ->

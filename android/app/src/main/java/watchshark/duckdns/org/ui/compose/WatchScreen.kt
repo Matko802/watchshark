@@ -2,6 +2,7 @@ package watchshark.duckdns.org.ui.compose
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,23 +16,23 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -39,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -59,9 +61,8 @@ import watchshark.duckdns.org.data.PlayerManager
 import watchshark.duckdns.org.data.QualityKit
 import watchshark.duckdns.org.data.Video
 import watchshark.duckdns.org.data.Haptics
-import watchshark.duckdns.org.ui.compose.common.CommentRow
 import watchshark.duckdns.org.ui.compose.common.ReplyTargetChip
-import watchshark.duckdns.org.ui.compose.common.SwipeToReply
+import watchshark.duckdns.org.ui.compose.common.threadedComments
 import watchshark.duckdns.org.ui.compose.player.WatchPlayer
 import watchshark.duckdns.org.ui.compose.player.VideoPlaying
 import watchshark.duckdns.org.ui.fmtAge
@@ -87,6 +88,7 @@ fun WatchScreen(
     var draft by remember { mutableStateOf("") }
     var posting by remember { mutableStateOf(false) }
     var replyTo by remember(videoId) { mutableStateOf<Comment?>(null) }
+    val expandedThreads = remember { mutableStateMapOf<Long, Boolean>() }
     val lifecycleOwner = LocalLifecycleOwner.current
 
     DisposableEffect(lifecycleOwner) {
@@ -257,35 +259,54 @@ fun WatchScreen(
                             Text(if (v.following) "Following" else "Follow")
                         }
                     }
-                    FilterChip(
-                        selected = v.liked,
-                        onClick = {
-                            val cur = video ?: return@FilterChip
-                            Haptics.tick(context)
-                            video = cur.copy(
-                                liked = !cur.liked,
-                                likes = (cur.likes + if (cur.liked) -1 else 1).coerceAtLeast(0),
-                            )
-                            scope.launch {
-                                try {
-                                    ApiClient.api.like(cur.id)
-                                } catch (e: Exception) {
-                                    AppErrors.log(e, "like")
-                                    video = cur
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                val cur = video ?: return@clickable
+                                Haptics.tick(context)
+                                video = cur.copy(
+                                    liked = !cur.liked,
+                                    likes = (cur.likes + if (cur.liked) -1 else 1).coerceAtLeast(0),
+                                )
+                                scope.launch {
+                                    try {
+                                        ApiClient.api.like(cur.id)
+                                    } catch (e: Exception) {
+                                        AppErrors.log(e, "like")
+                                        video = cur
+                                    }
                                 }
+                            },
+                        ),
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = if (v.liked) Color(0xFFFF5C5C).copy(alpha = 0.16f)
+                            else MaterialTheme.colorScheme.secondaryContainer,
+                            modifier = Modifier.size(56.dp),
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    painterResource(
+                                        if (v.liked) R.drawable.ic_favorite_fill
+                                        else R.drawable.ic_favorite_outline,
+                                    ),
+                                    contentDescription = if (v.liked) "Unlike" else "Like",
+                                    tint = if (v.liked) Color(0xFFFF5C5C)
+                                    else MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.size(28.dp),
+                                )
                             }
-                        },
-                        label = { Text("${fmtNum(v.likes)}") },
-                        leadingIcon = {
-                            Icon(
-                                painterResource(
-                                    if (v.liked) R.drawable.ic_favorite_fill
-                                    else R.drawable.ic_favorite_outline,
-                                ),
-                                contentDescription = if (v.liked) "Unlike" else "Like",
-                            )
-                        },
-                    )
+                        }
+                        Text(
+                            "${fmtNum(v.likes)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     IconButton(onClick = {
                         Haptics.tick(context)
                         try {
@@ -381,14 +402,11 @@ fun WatchScreen(
                 }
             }
         }
-        items(comments, key = { it.id }) { c ->
-            SwipeToReply(
-                onReply = { replyTo = c },
-                modifier = Modifier.animateItem()
-            ) {
-                CommentRow(comment = c)
-            }
-        }
+        threadedComments(
+            comments = comments,
+            expanded = expandedThreads,
+            onReply = { replyTo = it }
+        )
 
         item { Spacer(modifier = Modifier.height(104.dp)) }
     }
