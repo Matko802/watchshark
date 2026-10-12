@@ -143,5 +143,5 @@ jobs:
           prerelease: false
           generate_release_notes: true
           body: |
-            WatchShark 1.9.6: navigation pill and rail are now icon-only and centered (text labels removed).
+            WatchShark 1.9.7: app icon framing fixed (shark back to original size, still razor-sharp 1024px source).
             Built from main. In-app updater looks for WatchShark-<version>.apk.
