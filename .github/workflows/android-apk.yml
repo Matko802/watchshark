@@ -143,5 +143,5 @@ jobs:
           prerelease: false
           generate_release_notes: true
           body: |
-            WatchShark 1.9.14: TikTok-style threaded replies (nested, collapsible) on Watch + Wheels, big round like button.
+            WatchShark 1.9.15: landscape now uses the same pill nav as portrait, stood upright on the side.
             Built from main. In-app updater looks for WatchShark-<version>.apk.

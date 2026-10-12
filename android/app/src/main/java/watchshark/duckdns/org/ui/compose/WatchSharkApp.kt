@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
@@ -40,13 +41,10 @@ import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
@@ -320,44 +318,114 @@ fun WatchSharkApp(
             val wide = maxWidth >= 600.dp
             Row(modifier = Modifier.fillMaxSize()) {
                 if (wide && !route.startsWith("watch")) {
-
-
-                    NavigationRail {
-                        RailTab(
-                            label = "Home",
-                            showLabel = showLabels,
-                            selected = selectedTab == ROUTE_HOME,
-                            iconRes = R.drawable.ic_home,
-                            onClick = { goTab(ROUTE_HOME) },
-                        )
-                        RailTab(
-                            label = "Wheels",
-                            showLabel = showLabels,
-                            selected = selectedTab == ROUTE_WHEELS,
-                            iconRes = R.drawable.ic_movie,
-                            onClick = { goTab(ROUTE_WHEELS) },
-                        )
-                        FloatingActionButton(onClick = { goSection("upload") }) {
-                            Icon(
-                                painterResource(R.drawable.ic_add),
-                                contentDescription = "Create",
-                            )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .padding(start = 16.dp),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            tonalElevation = 3.dp,
+                            shadowElevation = 8.dp,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        ) {
+                            val selectedTabColor = MaterialTheme.colorScheme.onSurface
+                            val idleTabColor =
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            Column(
+                                modifier = Modifier.padding(
+                                    horizontal = 6.dp,
+                                    vertical = 6.dp,
+                                ),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                SidePillTab(
+                                    selected = selectedTab == ROUTE_HOME,
+                                    onClick = { goTab(ROUTE_HOME) },
+                                    selectedColor = selectedTabColor,
+                                    idleColor = idleTabColor,
+                                ) {
+                                    Icon(
+                                        painterResource(R.drawable.ic_home),
+                                        contentDescription = "Home",
+                                    )
+                                }
+                                SidePillTab(
+                                    selected = selectedTab == ROUTE_WHEELS,
+                                    onClick = { goTab(ROUTE_WHEELS) },
+                                    selectedColor = selectedTabColor,
+                                    idleColor = idleTabColor,
+                                ) {
+                                    Icon(
+                                        painterResource(R.drawable.ic_movie),
+                                        contentDescription = "Wheels",
+                                    )
+                                }
+                                val createInteraction = remember { MutableInteractionSource() }
+                                val createPressed by createInteraction.collectIsPressedAsState()
+                                val createScale by animateFloatAsState(
+                                    targetValue = if (createPressed) 0.8f else 1f,
+                                    animationSpec = AppMotion.fastSpatial,
+                                    label = "sideCreatePress",
+                                )
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .graphicsLayer {
+                                            scaleX = createScale
+                                            scaleY = createScale
+                                        }
+                                        .clip(CircleShape)
+                                        .border(
+                                            1.5.dp,
+                                            MaterialTheme.colorScheme.outline,
+                                            CircleShape,
+                                        )
+                                        .clickable(
+                                            interactionSource = createInteraction,
+                                            indication = null,
+                                            role = Role.Button,
+                                            onClick = { goSection("upload") },
+                                        ),
+                                ) {
+                                    Icon(
+                                        painterResource(R.drawable.ic_add),
+                                        contentDescription = "Create",
+                                        tint = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.size(24.dp),
+                                    )
+                                }
+                                SidePillTab(
+                                    selected = selectedTab == ROUTE_MESSAGES,
+                                    onClick = { goTab(ROUTE_MESSAGES) },
+                                    selectedColor = selectedTabColor,
+                                    idleColor = idleTabColor,
+                                    badge = unread > 0,
+                                    badgeText = if (unread > 9) "9+" else "$unread",
+                                ) {
+                                    Icon(
+                                        painterResource(R.drawable.ic_chat),
+                                        contentDescription = "Messages",
+                                    )
+                                }
+                                SidePillTab(
+                                    selected = selectedTab == ROUTE_YOU,
+                                    onClick = { goTab(ROUTE_YOU) },
+                                    selectedColor = selectedTabColor,
+                                    idleColor = idleTabColor,
+                                    avatarUrl = meAvatar,
+                                ) {
+                                    Icon(
+                                        painterResource(R.drawable.ic_person),
+                                        contentDescription = "You",
+                                    )
+                                }
+                            }
                         }
-                        RailTab(
-                            label = "Messages",
-                            showLabel = showLabels,
-                            selected = selectedTab == ROUTE_MESSAGES,
-                            iconRes = R.drawable.ic_chat,
-                            onClick = { goTab(ROUTE_MESSAGES) },
-                        )
-                        RailTab(
-                            label = "You",
-                            showLabel = showLabels,
-                            selected = selectedTab == ROUTE_YOU,
-                            iconRes = R.drawable.ic_person,
-                            avatarUrl = meAvatar,
-                            onClick = { goTab(ROUTE_YOU) },
-                        )
                     }
                 }
                 Scaffold(
@@ -935,40 +1003,90 @@ private fun androidx.compose.foundation.layout.RowScope.PillTab(
 }
 
 @Composable
-private fun androidx.compose.foundation.layout.ColumnScope.RailTab(
-    label: String,
-    showLabel: Boolean,
+private fun SidePillTab(
     selected: Boolean,
-    iconRes: Int,
     onClick: () -> Unit,
+    selectedColor: Color,
+    idleColor: Color,
+    badge: Boolean = false,
+    badgeText: String = "",
     avatarUrl: String? = null,
+    icon: @Composable () -> Unit,
 ) {
-    NavigationRailItem(
-        selected = selected,
-        onClick = onClick,
-        icon = {
+    val tabInteraction = remember { MutableInteractionSource() }
+    val pressed by tabInteraction.collectIsPressedAsState()
+    val glowAlpha by animateFloatAsState(
+        targetValue = if (pressed) 0.35f else 0f,
+        animationSpec = AppMotion.fastSpatial,
+        label = "sideGlow",
+    )
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .clickable(
+                interactionSource = tabInteraction,
+                indication = null,
+                role = Role.Tab,
+                onClick = onClick,
+            ),
+    ) {
+        val indicatorAlpha by animateFloatAsState(
+            targetValue = if (selected) 1f else 0f,
+            animationSpec = AppMotion.fastSpatial,
+            label = "sideAlpha",
+        )
+        val indicatorScale by animateFloatAsState(
+            targetValue = if (selected) 1f else 0.6f,
+            animationSpec = AppMotion.fastSpatial,
+            label = "sideScale",
+        )
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .graphicsLayer {
+                    alpha = indicatorAlpha
+                    scaleX = indicatorScale
+                    scaleY = indicatorScale
+                }
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.secondaryContainer),
+        )
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .graphicsLayer { alpha = glowAlpha }
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.onSurface),
+        )
+        Box {
             if (avatarUrl != null) {
                 AsyncImage(
                     model = avatarUrl,
-                    contentDescription = label,
+                    contentDescription = "You",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .size(24.dp)
                         .clip(CircleShape),
                 )
             } else {
-                Icon(
-                    painterResource(iconRes),
-                    contentDescription = label,
-                    tint = if (selected) MaterialTheme.colorScheme.onSurface
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                CompositionLocalProvider(
+                    LocalContentColor provides if (selected) selectedColor else idleColor,
+                ) {
+                    icon()
+                }
             }
-        },
-        label = if (showLabel) {
-            { Text(label) }
-        } else {
-            null
-        },
-    )
+            if (badge) {
+                Badge(
+                    modifier = Modifier.align(Alignment.TopEnd),
+                ) {
+                    Text(
+                        badgeText,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                }
+            }
+        }
+    }
 }
