@@ -28,7 +28,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -484,7 +483,6 @@ fun WatchSharkApp(
                                         PillTab(
                                             selected = selectedTab == ROUTE_HOME,
                                             onClick = { goTab(ROUTE_HOME) },
-                                            label = "Home",
                                             selectedColor = selectedTabColor,
                                             idleColor = idleTabColor,
                                         ) {
@@ -496,7 +494,6 @@ fun WatchSharkApp(
                                         PillTab(
                                             selected = selectedTab == ROUTE_WHEELS,
                                             onClick = { goTab(ROUTE_WHEELS) },
-                                            label = "Wheels",
                                             selectedColor = selectedTabColor,
                                             idleColor = idleTabColor,
                                         ) {
@@ -545,7 +542,6 @@ fun WatchSharkApp(
                                         PillTab(
                                             selected = selectedTab == ROUTE_MESSAGES,
                                             onClick = { goTab(ROUTE_MESSAGES) },
-                                            label = "Messages",
                                             selectedColor = selectedTabColor,
                                             idleColor = idleTabColor,
                                             badge = unread > 0,
@@ -559,7 +555,6 @@ fun WatchSharkApp(
                                         PillTab(
                                             selected = selectedTab == ROUTE_YOU,
                                             onClick = { goTab(ROUTE_YOU) },
-                                            label = "You",
                                             selectedColor = selectedTabColor,
                                             idleColor = idleTabColor,
                                             avatarUrl = meAvatar,
@@ -809,7 +804,6 @@ fun WatchSharkApp(
 private fun androidx.compose.foundation.layout.RowScope.PillTab(
     selected: Boolean,
     onClick: () -> Unit,
-    label: String,
     selectedColor: Color,
     idleColor: Color,
     badge: Boolean = false,
@@ -826,10 +820,11 @@ private fun androidx.compose.foundation.layout.RowScope.PillTab(
         animationSpec = AppMotion.fastSpatial,
         label = "pillGlow",
     )
-    Column(
+    Box(
+        contentAlignment = Alignment.Center,
         modifier = Modifier
             .weight(1f)
-            .defaultMinSize(minHeight = 48.dp)
+            .defaultMinSize(minHeight = 56.dp)
             .clip(RoundedCornerShape(16.dp))
             .clickable(
                 interactionSource = tabInteraction,
@@ -837,13 +832,7 @@ private fun androidx.compose.foundation.layout.RowScope.PillTab(
                 role = Role.Tab,
                 onClick = onClick,
             ),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
     ) {
-        Column(
-            modifier = Modifier.padding(vertical = 2.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
         Box(contentAlignment = Alignment.Center) {
             val indicatorAlpha by animateFloatAsState(
                 targetValue = if (selected) 1f else 0f,
@@ -903,13 +892,6 @@ private fun androidx.compose.foundation.layout.RowScope.PillTab(
                 }
             }
         }
-            Text(
-                text = label,
-                fontSize = 11.sp,
-                color = if (selected) selectedColor else idleColor,
-                modifier = Modifier.offset(y = (-2).dp),
-            )
-        }
     }
 }
 
@@ -943,6 +925,6 @@ private fun androidx.compose.foundation.layout.ColumnScope.RailTab(
                 )
             }
         },
-        label = { Text(label) },
+        label = null,
     )
 }

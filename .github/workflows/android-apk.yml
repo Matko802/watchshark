@@ -143,5 +143,5 @@ jobs:
           prerelease: false
           generate_release_notes: true
           body: |
-            WatchShark 1.9.5: razor-sharp shark logo everywhere (1024px source from the website, replaces the blurry 192px asset).
+            WatchShark 1.9.6: navigation pill and rail are now icon-only and centered (text labels removed).
             Built from main. In-app updater looks for WatchShark-<version>.apk.
