@@ -308,9 +308,14 @@ fun WatchScreen(
                             shape = CircleShape,
                             color = if (v.liked) Color(0xFFFF5C5C).copy(alpha = 0.16f)
                             else MaterialTheme.colorScheme.secondaryContainer,
-                            modifier = Modifier.size(56.dp),
+                            tonalElevation = 1.dp,
+                            modifier = Modifier.height(48.dp),
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            ) {
                                 Icon(
                                     painterResource(
                                         if (v.liked) R.drawable.ic_favorite_fill
@@ -319,15 +324,16 @@ fun WatchScreen(
                                     contentDescription = if (v.liked) "Unlike" else "Like",
                                     tint = if (v.liked) Color(0xFFFF5C5C)
                                     else MaterialTheme.colorScheme.onSecondaryContainer,
-                                    modifier = Modifier.size(28.dp),
+                                    modifier = Modifier.size(20.dp),
+                                )
+                                Text(
+                                    "${fmtNum(v.likes)}",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = if (v.liked) Color(0xFFFF5C5C)
+                                    else MaterialTheme.colorScheme.onSecondaryContainer,
                                 )
                             }
                         }
-                        Text(
-                            "${fmtNum(v.likes)}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
                     }
                     IconButton(onClick = {
                         Haptics.tick(context)

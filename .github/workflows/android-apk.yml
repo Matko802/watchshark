@@ -143,5 +143,5 @@ jobs:
           prerelease: false
           generate_release_notes: true
           body: |
-            WatchShark 1.9.16: Watch follow button is now a horizontal tonal pill matching the like button.
+            WatchShark 1.9.17: Watch like button is now a horizontal pill (heart + count) matching the follow button.
             Built from main. In-app updater looks for WatchShark-<version>.apk.
