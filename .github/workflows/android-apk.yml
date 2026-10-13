@@ -143,5 +143,5 @@ jobs:
           prerelease: false
           generate_release_notes: true
           body: |
-            WatchShark 1.9.22: scrubber rebuilt on the framework slider engine, guaranteed draggable on Watch and Wheels.
+            WatchShark 1.9.23: slim-only wavy scrubber (official M3 expressive wave), centered knob, gestures on the framework slider engine.
             Built from main. In-app updater looks for WatchShark-<version>.apk.

@@ -94,7 +94,6 @@ import watchshark.duckdns.org.data.AppUpdate
 import watchshark.duckdns.org.data.Haptics
 import watchshark.duckdns.org.data.NavPrefs
 import watchshark.duckdns.org.data.PlayerManager
-import watchshark.duckdns.org.data.PlayerPrefs
 import watchshark.duckdns.org.data.ThemePrefs
 import watchshark.duckdns.org.data.UpdateCheck
 import watchshark.duckdns.org.data.Updater
@@ -115,7 +114,6 @@ fun WatchSharkApp(
     var themeMode by remember { mutableIntStateOf(ThemePrefs.getMode(appCtx)) }
     var showLabels by remember { mutableStateOf(NavPrefs.showLabels(appCtx)) }
     var wheelsOverlayOpen by remember { mutableStateOf(false) }
-    var scrubStyle by remember { mutableStateOf(PlayerPrefs.scrubStyle(appCtx)) }
     val appIcon = remember { appCtx.applicationInfo.loadIcon(appCtx.packageManager) }
     fun applyThemeMode(mode: Int) {
         ThemePrefs.setMode(appCtx, mode)
@@ -125,10 +123,6 @@ fun WatchSharkApp(
     fun applyShowLabels(show: Boolean) {
         NavPrefs.setShowLabels(appCtx, show)
         showLabels = show
-    }
-    fun applyScrubStyle(style: Int) {
-        PlayerPrefs.setScrubStyle(appCtx, style)
-        scrubStyle = style
     }
 
     val videoLoader = remember(appCtx) {
@@ -794,8 +788,6 @@ fun WatchSharkApp(
                                 onThemeMode = { applyThemeMode(it) },
                                 showLabels = showLabels,
                                 onShowLabels = { applyShowLabels(it) },
-                                scrubStyle = scrubStyle,
-                                onScrubStyle = { applyScrubStyle(it) },
                                 onSignedOut = {
                                     scope.launch { refreshBadges() }
                                     meName = null

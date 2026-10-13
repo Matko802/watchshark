@@ -84,7 +84,6 @@ import watchshark.duckdns.org.data.Haptics
 import watchshark.duckdns.org.data.PlayerCache
 import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.Video
-import watchshark.duckdns.org.data.PlayerPrefs
 import watchshark.duckdns.org.ui.compose.player.BufferingSpinner
 import watchshark.duckdns.org.ui.compose.player.CenterPlayButton
 import watchshark.duckdns.org.ui.compose.player.ScrubBar
@@ -626,7 +625,6 @@ fun WheelsScreen(
                 ScrubBar(
                     fraction = wheelFraction,
                     bufferedFraction = wheelBuffered,
-                    baseHeight = PlayerPrefs.scrubBaseHeight(PlayerPrefs.scrubStyle(appCtx)),
                     controlsActive = false,
                     enabled = ui.durationMs > 0,
                     onScrub = {},

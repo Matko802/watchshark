@@ -51,7 +51,6 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
 import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.Haptics
-import watchshark.duckdns.org.data.PlayerPrefs
 
 
 @Composable
@@ -229,11 +228,9 @@ private fun PlayerChrome(
                 val bufferedFraction = if (ui.durationMs > 0) {
                     (ui.bufferedMs.toFloat() / ui.durationMs).coerceIn(0f, 1f)
                 } else 0f
-                val ctx = LocalContext.current
                 ScrubBar(
                     fraction = fraction,
                     bufferedFraction = bufferedFraction,
-                    baseHeight = PlayerPrefs.scrubBaseHeight(PlayerPrefs.scrubStyle(ctx)),
                     controlsActive = controlsVisible,
                     enabled = ui.durationMs > 0,
                     onScrub = { poke() },

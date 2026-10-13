@@ -17,9 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -38,11 +36,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.Player
 import androidx.media3.ui.PlayerView
@@ -228,7 +230,6 @@ object VideoPlaying {
 fun ScrubBar(
     fraction: Float,
     bufferedFraction: Float,
-    baseHeight: Dp,
     controlsActive: Boolean,
     enabled: Boolean,
     onScrub: () -> Unit,
@@ -240,14 +241,24 @@ fun ScrubBar(
     val shown = (if (scrubbing) scrubValue else fraction).coerceIn(0f, 1f)
     val buffered = bufferedFraction.coerceIn(0f, 1f)
     val active = scrubbing || controlsActive
-    val height by animateDpAsState(
-        targetValue = if (active) baseHeight + 2.dp else baseHeight,
-        label = "scrubHeight"
-    )
-    val knob by animateFloatAsState(
-        targetValue = if (active) 1f else 0f,
-        label = "scrubKnob"
-    )
+    var waveAmp by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(active) {
+        val target = if (active) 1f else 0f
+        val start = waveAmp
+        val steps = 12
+        repeat(steps) { i ->
+            waveAmp = start + (target - start) * (i + 1) / steps
+            delay(16)
+        }
+        waveAmp = target
+    }
+    var phase by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(active) {
+        while (active) {
+            delay(16)
+            phase = (phase + 0.118f) % (2f * Math.PI.toFloat())
+        }
+    }
     Slider(
         value = shown,
         onValueChange = {
@@ -266,9 +277,10 @@ fun ScrubBar(
                 modifier = Modifier
                     .size(12.dp)
                     .graphicsLayer {
-                        scaleX = knob
-                        scaleY = knob
-                        alpha = knob
+                        val s = if (active) 1f else 0f
+                        scaleX = s
+                        scaleY = s
+                        alpha = s
                     }
                     .clip(CircleShape)
                     .background(Color.White)
@@ -276,32 +288,63 @@ fun ScrubBar(
         },
         track = {
             BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(height)
-                        .clip(RoundedCornerShape(50))
-                        .background(Color.White.copy(alpha = 0.25f))
-                        .align(Alignment.Center)
-                )
-                if (buffered > 0.005f) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(buffered)
-                            .height(height)
-                            .clip(RoundedCornerShape(50))
-                            .background(Color.White.copy(alpha = 0.45f))
-                            .align(Alignment.CenterStart)
+                val w = maxWidth
+                Canvas(modifier = Modifier.fillMaxWidth().height(20.dp)) {
+                    val h = size.height
+                    val cy = h / 2f
+                    val thinPx = 2.dp.toPx()
+                    val wavePx = 4.dp.toPx()
+                    val maxAmpPx = 3.5.dp.toPx()
+                    val waveLenPx = 40.dp.toPx()
+                    drawLine(
+                        color = Color.White.copy(alpha = 0.25f),
+                        start = androidx.compose.ui.geometry.Offset(0f, cy),
+                        end = androidx.compose.ui.geometry.Offset(size.width, cy),
+                        strokeWidth = thinPx,
+                        cap = StrokeCap.Round
                     )
+                    if (buffered > 0.005f) {
+                        drawLine(
+                            color = Color.White.copy(alpha = 0.45f),
+                            start = androidx.compose.ui.geometry.Offset(0f, cy),
+                            end = androidx.compose.ui.geometry.Offset(size.width * buffered, cy),
+                            strokeWidth = thinPx,
+                            cap = StrokeCap.Round
+                        )
+                    }
+                    val progPx = size.width * shown
+                    if (progPx > 1f) {
+                        if (waveAmp > 0.02f) {
+                            val path = Path()
+                            val step = 2.dp.toPx().coerceAtLeast(1f)
+                            var x = 0f
+                            var first = true
+                            while (x <= progPx) {
+                                val y = cy + kotlin.math.sin((x / waveLenPx) * 2f * Math.PI.toFloat() + phase).toFloat() * maxAmpPx * waveAmp
+                                if (first) {
+                                    path.moveTo(x, y)
+                                    first = false
+                                } else {
+                                    path.lineTo(x, y)
+                                }
+                                x += step
+                            }
+                            drawPath(
+                                path = path,
+                                color = Color.White,
+                                style = Stroke(width = wavePx, cap = StrokeCap.Round)
+                            )
+                        } else {
+                            drawLine(
+                                color = Color.White,
+                                start = androidx.compose.ui.geometry.Offset(0f, cy),
+                                end = androidx.compose.ui.geometry.Offset(progPx, cy),
+                                strokeWidth = thinPx,
+                                cap = StrokeCap.Round
+                            )
+                        }
+                    }
                 }
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(shown)
-                        .height(height)
-                        .clip(RoundedCornerShape(50))
-                        .background(Color.White)
-                        .align(Alignment.CenterStart)
-                )
             }
         },
         modifier = modifier.fillMaxWidth()
