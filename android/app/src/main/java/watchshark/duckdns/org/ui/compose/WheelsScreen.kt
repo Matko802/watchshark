@@ -47,7 +47,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -161,8 +160,6 @@ fun WheelsScreen(
     var commentsFor by remember { mutableStateOf<Video?>(null) }
     val commentCounts = remember { mutableStateMapOf<Long, Int>() }
     var lastCommentsId by remember { mutableStateOf(0L) }
-    var wheelScrubbing by remember { mutableStateOf(false) }
-    var wheelScrubValue by remember { mutableFloatStateOf(0f) }
 
     fun loadCommentCount(id: Long, force: Boolean = false) {
         if (!force && commentCounts.containsKey(id)) return
@@ -627,24 +624,19 @@ fun WheelsScreen(
                     (ui.bufferedMs.toFloat() / ui.durationMs).coerceIn(0f, 1f)
                 } else 0f
                 ScrubBar(
-                    fraction = if (wheelScrubbing) wheelScrubValue else wheelFraction,
+                    fraction = wheelFraction,
                     bufferedFraction = wheelBuffered,
                     baseHeight = PlayerPrefs.scrubBaseHeight(PlayerPrefs.scrubStyle(appCtx)),
-                    active = wheelScrubbing,
+                    controlsActive = false,
                     enabled = ui.durationMs > 0,
-                    onScrubStart = {
-                        wheelScrubbing = true
-                        wheelScrubValue = it
-                    },
-                    onScrub = { wheelScrubValue = it },
-                    onScrubEnd = {
+                    onScrub = {},
+                    onSeek = {
                         if (ui.durationMs > 0) {
                             player.seekTo(
                                 player.currentMediaItemIndex,
                                 (it * ui.durationMs).toLong()
                             )
                         }
-                        wheelScrubbing = false
                     },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)

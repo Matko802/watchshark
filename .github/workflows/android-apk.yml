@@ -143,5 +143,5 @@ jobs:
           prerelease: false
           generate_release_notes: true
           body: |
-            WatchShark 1.9.21: Wheels gets the same wiggly scrub bar as Watch, scrub gestures hardened everywhere.
+            WatchShark 1.9.22: scrubber rebuilt on the framework slider engine, guaranteed draggable on Watch and Wheels.
             Built from main. In-app updater looks for WatchShark-<version>.apk.

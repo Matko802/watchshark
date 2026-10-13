@@ -30,7 +30,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -230,29 +229,18 @@ private fun PlayerChrome(
                 val bufferedFraction = if (ui.durationMs > 0) {
                     (ui.bufferedMs.toFloat() / ui.durationMs).coerceIn(0f, 1f)
                 } else 0f
-                var scrubbing by remember { mutableStateOf(false) }
-                var scrubValue by remember { mutableFloatStateOf(0f) }
                 val ctx = LocalContext.current
                 ScrubBar(
-                    fraction = if (scrubbing) scrubValue else fraction,
+                    fraction = fraction,
                     bufferedFraction = bufferedFraction,
                     baseHeight = PlayerPrefs.scrubBaseHeight(PlayerPrefs.scrubStyle(ctx)),
-                    active = scrubbing || controlsVisible,
+                    controlsActive = controlsVisible,
                     enabled = ui.durationMs > 0,
-                    onScrubStart = {
-                        scrubbing = true
-                        scrubValue = it
-                        poke()
-                    },
-                    onScrub = {
-                        scrubValue = it
-                        poke()
-                    },
-                    onScrubEnd = {
+                    onScrub = { poke() },
+                    onSeek = {
                         if (ui.durationMs > 0) {
                             player?.seekTo((it * ui.durationMs).toLong())
                         }
-                        scrubbing = false
                         poke()
                     },
                     modifier = Modifier

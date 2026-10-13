@@ -10,14 +10,11 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,11 +22,13 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,11 +38,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.Player
@@ -230,13 +227,17 @@ fun ScrubBar(
     fraction: Float,
     bufferedFraction: Float,
     baseHeight: Dp,
-    active: Boolean,
+    controlsActive: Boolean,
     enabled: Boolean,
-    onScrubStart: (Float) -> Unit,
-    onScrub: (Float) -> Unit,
-    onScrubEnd: (Float) -> Unit,
+    onScrub: () -> Unit,
+    onSeek: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var scrubbing by remember { mutableStateOf(false) }
+    var scrubValue by remember { mutableFloatStateOf(0f) }
+    val shown = (if (scrubbing) scrubValue else fraction).coerceIn(0f, 1f)
+    val buffered = bufferedFraction.coerceIn(0f, 1f)
+    val active = scrubbing || controlsActive
     val height by animateDpAsState(
         targetValue = if (active) baseHeight + 2.dp else baseHeight,
         label = "scrubHeight"
@@ -245,68 +246,20 @@ fun ScrubBar(
         targetValue = if (active) 1f else 0f,
         label = "scrubKnob"
     )
-    val shown = fraction.coerceIn(0f, 1f)
-    val buffered = bufferedFraction.coerceIn(0f, 1f)
-    BoxWithConstraints(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(32.dp)
-            .pointerInput(enabled) {
-                if (!enabled) return@pointerInput
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    down.consume()
-                    val w = size.width.toFloat().coerceAtLeast(1f)
-                    var last = (down.position.x / w).coerceIn(0f, 1f)
-                    onScrubStart(last)
-                    var dragging = true
-                    while (dragging) {
-                        val event = awaitPointerEvent()
-                        val change = event.changes.firstOrNull()
-                        if (change == null || !change.pressed) {
-                            dragging = false
-                        } else {
-                            change.consume()
-                            last = (change.position.x / w).coerceIn(0f, 1f)
-                            onScrub(last)
-                        }
-                    }
-                    onScrubEnd(last)
-                }
-            }
-    ) {
-        val barWidth = maxWidth
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.Center)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(height)
-                    .clip(RoundedCornerShape(50))
-                    .background(Color.White.copy(alpha = 0.25f))
-            )
-            if (buffered > 0.005f) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(buffered)
-                        .height(height)
-                        .clip(RoundedCornerShape(50))
-                        .background(Color.White.copy(alpha = 0.45f))
-                        .align(Alignment.CenterStart)
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(shown)
-                    .height(height)
-                    .clip(RoundedCornerShape(50))
-                    .background(Color.White)
-                    .align(Alignment.CenterStart)
-            )
+    Slider(
+        value = shown,
+        onValueChange = {
+            if (!scrubbing) scrubbing = true
+            scrubValue = it
+            onScrub()
+        },
+        onValueChangeFinished = {
+            onSeek(scrubValue)
+            scrubbing = false
+        },
+        valueRange = 0f..1f,
+        enabled = enabled,
+        thumb = {
             Box(
                 modifier = Modifier
                     .size(12.dp)
@@ -317,9 +270,38 @@ fun ScrubBar(
                     }
                     .clip(CircleShape)
                     .background(Color.White)
-                    .align(Alignment.CenterStart)
-                    .offset(x = (barWidth * shown - 6.dp).coerceIn(0.dp, barWidth - 12.dp)),
             )
-        }
-    }
+        },
+        track = {
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(height)
+                        .clip(RoundedCornerShape(50))
+                        .background(Color.White.copy(alpha = 0.25f))
+                        .align(Alignment.Center)
+                )
+                if (buffered > 0.005f) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(buffered)
+                            .height(height)
+                            .clip(RoundedCornerShape(50))
+                            .background(Color.White.copy(alpha = 0.45f))
+                            .align(Alignment.CenterStart)
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(shown)
+                        .height(height)
+                        .clip(RoundedCornerShape(50))
+                        .background(Color.White)
+                        .align(Alignment.CenterStart)
+                )
+            }
+        },
+        modifier = modifier.fillMaxWidth()
+    )
 }
