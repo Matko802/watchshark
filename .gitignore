@@ -3,6 +3,8 @@ build/
 target/
 /data/
 node_modules/
+web/build/
+web/.svelte-kit/
 android/release.keystore
 android/local.properties
 *.jks
