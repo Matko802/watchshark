@@ -1,0 +1,1 @@
+import{w as e}from"./CWfVhO4w.js";import{a as s}from"./_hAqeGMd.js";const a=e(null),n=e(0);async function c(){try{const t=await s.me();a.set(t.user)}catch{a.set(null)}try{const t=await s.notifications();n.set(t.unread??0)}catch{n.set(0)}}export{a as m,c as r,n as u};

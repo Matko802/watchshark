@@ -138,3 +138,6 @@
     {mode === 'login' ? 'Create account' : 'Log in'}
   </button>
 </p>
+{#if mode === 'login'}
+  <p><a class="linkbtn" href="/forgot">Forgot password?</a></p>
+{/if}

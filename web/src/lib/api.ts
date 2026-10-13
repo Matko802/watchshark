@@ -122,6 +122,17 @@ export const api = {
       body: JSON.stringify({ username, email, password })
     }),
   logout: () => req<Record<string, unknown>>('/api/auth/logout', { method: 'POST' }),
+  verify: (token: string) => req<{ ok: boolean }>(`/api/auth/verify?token=${encodeURIComponent(token)}`),
+  forgot: (email: string) =>
+    req<Record<string, unknown>>('/api/auth/forgot', {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    }),
+  reset: (token: string, password: string) =>
+    req<Record<string, unknown>>('/api/auth/reset', {
+      method: 'POST',
+      body: JSON.stringify({ token, password })
+    }),
   rename: (username: string) =>
     req<Record<string, unknown>>('/api/auth/username', {
       method: 'POST',

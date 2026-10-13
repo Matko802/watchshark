@@ -14,19 +14,12 @@ fun isPollPath(u: String): Boolean {
     return u == "/api/me" || u == "/api/notifications" || u.startsWith("/api/dm/")
 }
 
-val cleanPages = mapOf(
-    "/watch" to "watch.html",
-    "/channel" to "channel.html",
-    "/wheels" to "wheels.html",
-    "/upload" to "upload.html",
-    "/settings" to "settings.html",
-    "/forgot" to "forgot.html",
-    "/reset" to "reset.html",
-    "/verify" to "verify.html",
-    "/admin" to "admin.html",
-    "/messages" to "messages.html",
-    "/about" to "about.html"
+val spaRoutes = setOf(
+    "/watch", "/channel", "/wheels", "/upload", "/settings", "/forgot",
+    "/reset", "/verify", "/admin", "/messages", "/about", "/auth", "/notifications"
 )
+
+val spaPrefixes = listOf("/watch/", "/channel/", "/chat/")
 
 fun main() {
     Config.load()
@@ -51,9 +44,6 @@ fun main() {
     val app = Javalin.create { cfg ->
         cfg.http.defaultContentType = "application/json"
         cfg.http.maxRequestSize = Config.maxBytes + 64L * 1024 * 1024
-        // Caddy already gzips at the edge. Javalin's compressor gzips bodies
-        // without fixing the explicit Content-Length set by Static.serveMedia,
-        // which truncates every compressed response and breaks all browsers.
         cfg.http.disableCompression()
     }
 
@@ -74,7 +64,6 @@ fun main() {
         }
     }
 
-    // ---- health ----
     app.get("/health") { ctx -> HttpUtil.writeJson(ctx, 200, mapOf("ok" to true)) }
     app.get("/api/app/latest") { AppHandlers.latest(it) }
     app.post("/api/clientlog") { ctx ->
@@ -86,7 +75,6 @@ fun main() {
         HttpUtil.writeJson(ctx, 200, mapOf("ok" to true))
     }
 
-    // ---- auth ----
     app.post("/api/auth/signup") { AuthHandlers.signup(it) }
     app.post("/api/auth/login") { AuthHandlers.login(it) }
     app.post("/api/auth/logout") { AuthHandlers.logout(it) }
@@ -108,7 +96,6 @@ fun main() {
     }
     app.get("/api/me") { AuthHandlers.me(it) }
 
-    // ---- videos ----
     app.get("/api/videos") { VideoHandlers.list(it) }
     app.post("/api/videos") {
         val (uid, _, ok) = HandlersCommon.authUser(it)
@@ -128,7 +115,6 @@ fun main() {
         if (!ok) HttpUtil.writeErr(it, 401, "Login required") else VideoHandlers.notifRead(it, uid)
     }
 
-    // ---- DMs (TikTok-style: mutual friends only) ----
     app.get("/api/dm/friends") {
         val (uid, _, ok) = HandlersCommon.authUser(it)
         if (!ok) HttpUtil.writeErr(it, 401, "Login required") else DmHandlers.friends(it, uid)
@@ -162,7 +148,6 @@ fun main() {
         if (!ok) HttpUtil.writeErr(it, 401, "Login required") else DmHandlers.userSearch(it, uid)
     }
 
-    // /api/videos/{id...} — use wildcard so /like /comments /thumbnail /edit suffixes match
     app.get("/api/videos/*") { ctx ->
         val u = ctx.path()
         val prefix = "/api/videos/"
@@ -186,7 +171,6 @@ fun main() {
         VideoHandlers.deleteVideo(ctx, id)
     }
     app.post("/api/videos/*") { ctx ->
-        // handles /like /comments /thumbnail /edit suffixes; parse full path like Go.
         val u = ctx.path()
         val prefix = "/api/videos/"
         val rest = if (u.startsWith(prefix)) u.substring(prefix.length) else ""
@@ -234,7 +218,6 @@ fun main() {
         VideoHandlers.channel(ctx, name, viewer)
     }
 
-    // ---- admin ----
     app.get("/api/admin/pending") {
         val (_, _, ok) = AdminHandlers.requireAdmin(it)
         if (ok) AdminHandlers.pending(it)
@@ -281,10 +264,6 @@ fun main() {
         AdminHandlers.delUser(ctx, id, uid)
     }
 
-    // ---- 404 for unknown api ----
-    app.before("/api/*") { ctx ->
-        // handled per-route; this only sets JSON 404 if no route matched — done via error handler below
-    }
     app.error(404) { ctx ->
         if (ctx.path().startsWith("/api/") && ctx.result().isNullOrEmpty()) {
             ctx.header("Content-Type", "application/json")
@@ -292,7 +271,6 @@ fun main() {
         }
     }
 
-    // ---- clean pages, redirects, crawler meta, static ----
     app.get("/shorts") { ctx ->
         var dest = "/wheels"
         val qs = ctx.req().queryString
@@ -300,38 +278,72 @@ fun main() {
         ctx.redirect(dest, HttpStatus.MOVED_PERMANENTLY)
     }
 
-    for ((route, file) in cleanPages) {
-        app.get(route) { ctx ->
-            // crawler meta for /watch and /channel
-            if (Static.isCrawler(ctx)) {
-                if (route == "/watch") {
-                    val q = ctx.queryParam("id") ?: ""
-                    val (id, rest, ok) = HttpUtil.parseId(q)
-                    if (ok && rest == "") {
-                        val tags = Static.watchMeta(id)
-                        if (tags.isNotEmpty()) {
-                            Static.servePageWithMeta(ctx, "watch.html", tags)
-                            return@get
-                        }
-                    }
-                }
-                if (route == "/channel") {
-                    val tags = Static.channelMeta(ctx.queryParam("user") ?: "")
-                    if (tags.isNotEmpty()) {
-                        Static.servePageWithMeta(ctx, "channel.html", tags)
-                        return@get
-                    }
+    fun serveSpa(ctx: Context) {
+        Static.serveMedia(ctx, "${Config.publicDir}/index.html", "index.html")
+    }
+
+    fun serveWatch(ctx: Context, idParam: String) {
+        if (Static.isCrawler(ctx)) {
+            val (id, rest, ok) = HttpUtil.parseId(idParam)
+            if (ok && rest == "") {
+                val tags = Static.watchMeta(id)
+                if (tags.isNotEmpty()) {
+                    Static.servePageWithMeta(ctx, "index.html", tags)
+                    return
                 }
             }
-            Static.serveMedia(ctx, "${Config.publicDir}/$file", file)
+        }
+        serveSpa(ctx)
+    }
+
+    fun serveChannel(ctx: Context, nameParam: String) {
+        if (Static.isCrawler(ctx)) {
+            val tags = Static.channelMeta(nameParam)
+            if (tags.isNotEmpty()) {
+                Static.servePageWithMeta(ctx, "index.html", tags)
+                return
+            }
+        }
+        serveSpa(ctx)
+    }
+
+    for (route in spaRoutes) {
+        app.get(route) { ctx ->
+            if (route == "/watch") {
+                serveWatch(ctx, ctx.queryParam("id") ?: "")
+                return@get
+            }
+            if (route == "/channel") {
+                serveChannel(ctx, ctx.queryParam("user") ?: "")
+                return@get
+            }
+            serveSpa(ctx)
         }
     }
 
-    // /x.html -> /x canonical redirect
+    for (prefix in spaPrefixes) {
+        app.get("$prefix*") { ctx ->
+            val u = ctx.path()
+            if (u.startsWith("/api/")) {
+                HttpUtil.writeErr(ctx, 404, "Not found")
+                return@get
+            }
+            if (prefix == "/watch/") {
+                serveWatch(ctx, u.removePrefix(prefix).substringBefore("/"))
+                return@get
+            }
+            if (prefix == "/channel/") {
+                serveChannel(ctx, u.removePrefix(prefix).substringBefore("/"))
+                return@get
+            }
+            serveSpa(ctx)
+        }
+    }
+
     app.get("/*.html") { ctx ->
-        val p = ctx.path() // e.g. /watch.html
+        val p = ctx.path()
         val name = p.removePrefix("/").removeSuffix(".html")
-        if (cleanPages.containsKey("/$name")) {
+        if (spaRoutes.contains("/$name")) {
             var dest = "/$name"
             val qs = ctx.req().queryString
             if (!qs.isNullOrEmpty()) dest += "?$qs"
@@ -341,7 +353,6 @@ fun main() {
         }
     }
 
-    // ---- static fallback (GET + HEAD) ----
     val staticHandler = { ctx: Context -> Static.serveStatic(ctx, ctx.path()) }
     app.get("/*") { ctx ->
         if (ctx.path().startsWith("/api/")) {

@@ -10,8 +10,8 @@ services:
       - "3001:3000"
     volumes:
       - /home/matko/.config/watchshark/data:/data
-      # Live HTML/JS/CSS: edits in ~/watchshark/public apply instantly,
-      # no image rebuild needed (Kotlin reads from disk per request).
+      # Live frontend: public/ holds the SvelteKit SPA build output
+      # (rebuild with `bun run --cwd web build` then copy web/build/. here).
       - ./public:/app/public
     environment:
       PORT: "3000"

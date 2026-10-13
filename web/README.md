@@ -20,4 +20,6 @@ bun run --cwd web build
 ```
 
 Static output lands in `web/build/` (`index.html` fallback SPA).
-Not wired into deployment yet — `public/` is still what the server serves.
+`public/` holds the deployed copy: rebuild, then copy `web/build/.`
+over `public/` and commit. The compose stack mounts `./public` live,
+and the backend serves `index.html` for all app routes.
