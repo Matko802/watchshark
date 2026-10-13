@@ -54,6 +54,7 @@ import watchshark.duckdns.org.data.ApiClient
 import watchshark.duckdns.org.data.CrashLog
 import watchshark.duckdns.org.data.Haptics
 import watchshark.duckdns.org.data.MeUser
+import watchshark.duckdns.org.data.PlayerPrefs
 import watchshark.duckdns.org.data.ThemePrefs
 import watchshark.duckdns.org.data.UpdateCheck
 import watchshark.duckdns.org.data.Updater
@@ -66,6 +67,7 @@ private const val SET_ACCOUNT = "set_account"
 private const val SET_APPEARANCE = "set_appearance"
 private const val SET_NOTIFICATIONS = "set_notifications"
 private const val SET_HAPTICS = "set_haptics"
+private const val SET_PLAYER = "set_player"
 private const val SET_ABOUT = "set_about"
 
 
@@ -75,6 +77,8 @@ fun SettingsScreen(
     onThemeMode: (Int) -> Unit,
     showLabels: Boolean,
     onShowLabels: (Boolean) -> Unit,
+    scrubStyle: Int,
+    onScrubStyle: (Int) -> Unit,
     onSignedOut: () -> Unit,
     onOpenAdmin: () -> Unit,
     onUpdateAvailable: () -> Unit,
@@ -170,6 +174,14 @@ fun SettingsScreen(
                                 subtitle = "Button vibration",
                                 iconRes = R.drawable.ic_vibration,
                                 onClick = { open(SET_HAPTICS) },
+                            )
+                        },
+                        {
+                            SettingsCategoryRow(
+                                title = "Player",
+                                subtitle = "Seek bar style",
+                                iconRes = R.drawable.ic_play_arrow,
+                                onClick = { open(SET_PLAYER) },
                             )
                         },
                         {
@@ -362,6 +374,33 @@ fun SettingsScreen(
                     )
                     Text("${vibStr.toInt()}%")
                 }
+            }
+        }
+
+        composable(SET_PLAYER) {
+            SettingsDetail(title = "Player", onBack = ::back) {
+                val options = listOf(
+                    PlayerPrefs.SCRUB_SLIM to "Slim",
+                    PlayerPrefs.SCRUB_CLASSIC to "Classic",
+                    PlayerPrefs.SCRUB_BOLD to "Bold",
+                )
+                options.forEach { (style, label) ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        RadioButton(
+                            selected = scrubStyle == style,
+                            onClick = { onScrubStyle(style) },
+                        )
+                        Text(label)
+                    }
+                }
+                Text(
+                    "Slim stays thin until you touch it, then grows a knob like YouTube.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
 

@@ -24,14 +24,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,6 +52,7 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
 import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.Haptics
+import watchshark.duckdns.org.data.PlayerPrefs
 
 
 @Composable
@@ -208,7 +208,7 @@ private fun PlayerChrome(
 
 
         AnimatedVisibility(
-            visible = ui.isReady,
+            visible = ui.isReady || ui.isBuffering,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -227,19 +227,34 @@ private fun PlayerChrome(
                 val fraction = if (ui.durationMs > 0) {
                     (ui.positionMs.toFloat() / ui.durationMs).coerceIn(0f, 1f)
                 } else 0f
-                Slider(
-                    value = fraction,
-                    onValueChange = {
+                val bufferedFraction = if (ui.durationMs > 0) {
+                    (ui.bufferedMs.toFloat() / ui.durationMs).coerceIn(0f, 1f)
+                } else 0f
+                var scrubbing by remember { mutableStateOf(false) }
+                var scrubValue by remember { mutableFloatStateOf(0f) }
+                val ctx = LocalContext.current
+                ScrubBar(
+                    fraction = if (scrubbing) scrubValue else fraction,
+                    bufferedFraction = bufferedFraction,
+                    baseHeight = PlayerPrefs.scrubBaseHeight(PlayerPrefs.scrubStyle(ctx)),
+                    active = scrubbing || controlsVisible,
+                    enabled = ui.durationMs > 0,
+                    onScrubStart = {
+                        scrubbing = true
+                        scrubValue = it
+                        poke()
+                    },
+                    onScrub = {
+                        scrubValue = it
+                        poke()
+                    },
+                    onScrubEnd = {
                         if (ui.durationMs > 0) {
                             player?.seekTo((it * ui.durationMs).toLong())
                         }
+                        scrubbing = false
                         poke()
                     },
-                    colors = SliderDefaults.colors(
-                        thumbColor = Color.White,
-                        activeTrackColor = Color.White,
-                        inactiveTrackColor = Color.White.copy(alpha = 0.3f),
-                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 8.dp),

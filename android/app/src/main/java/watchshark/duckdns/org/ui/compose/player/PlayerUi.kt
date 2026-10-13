@@ -2,16 +2,25 @@ package watchshark.duckdns.org.ui.compose.player
 
 import android.view.ViewGroup
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
@@ -29,8 +38,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.Player
@@ -48,6 +61,7 @@ data class PlayerUiState(
     val volume: Float = 1f,
     val positionMs: Long = 0L,
     val durationMs: Long = 0L,
+    val bufferedMs: Long = 0L,
 ) {
     val isBuffering: Boolean get() = playbackState == Player.STATE_BUFFERING
     val isReady: Boolean get() = playbackState == Player.STATE_READY || playbackState == Player.STATE_ENDED
@@ -62,6 +76,7 @@ fun rememberPlayerUiState(player: Player?): PlayerUiState {
     var volume by remember(player) { mutableStateOf(player?.volume ?: 1f) }
     var positionMs by remember(player) { mutableLongStateOf(0L) }
     var durationMs by remember(player) { mutableLongStateOf(0L) }
+    var bufferedMs by remember(player) { mutableLongStateOf(0L) }
 
     DisposableEffect(player) {
         if (player == null) return@DisposableEffect onDispose {}
@@ -84,6 +99,7 @@ fun rememberPlayerUiState(player: Player?): PlayerUiState {
             try {
                 positionMs = player.currentPosition.coerceAtLeast(0)
                 durationMs = player.duration.coerceAtLeast(0).takeIf { it < Long.MAX_VALUE } ?: 0L
+                bufferedMs = player.bufferedPosition.coerceAtLeast(0).takeIf { it < Long.MAX_VALUE } ?: 0L
                 volume = player.volume
                 isPlaying = player.isPlaying
                 playbackState = player.playbackState
@@ -93,7 +109,7 @@ fun rememberPlayerUiState(player: Player?): PlayerUiState {
         }
     }
 
-    return PlayerUiState(isPlaying, playbackState, volume, positionMs, durationMs)
+    return PlayerUiState(isPlaying, playbackState, volume, positionMs, durationMs, bufferedMs)
 }
 
 
@@ -206,5 +222,104 @@ object VideoPlaying {
 
     fun setPlaying(value: Boolean) {
         isPlaying.value = value
+    }
+}
+
+@Composable
+fun ScrubBar(
+    fraction: Float,
+    bufferedFraction: Float,
+    baseHeight: Dp,
+    active: Boolean,
+    enabled: Boolean,
+    onScrubStart: (Float) -> Unit,
+    onScrub: (Float) -> Unit,
+    onScrubEnd: (Float) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val height by animateDpAsState(
+        targetValue = if (active) baseHeight + 2.dp else baseHeight,
+        label = "scrubHeight"
+    )
+    val knob by animateFloatAsState(
+        targetValue = if (active) 1f else 0f,
+        label = "scrubKnob"
+    )
+    val shown = fraction.coerceIn(0f, 1f)
+    val buffered = bufferedFraction.coerceIn(0f, 1f)
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(32.dp)
+            .pointerInput(enabled) {
+                if (!enabled) return@pointerInput
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    down.consume()
+                    val w = size.width.toFloat().coerceAtLeast(1f)
+                    var last = (down.position.x / w).coerceIn(0f, 1f)
+                    onScrubStart(last)
+                    var dragging = true
+                    while (dragging) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull()
+                        if (change == null || !change.pressed) {
+                            dragging = false
+                        } else {
+                            change.consume()
+                            last = (change.position.x / w).coerceIn(0f, 1f)
+                            onScrub(last)
+                        }
+                    }
+                    onScrubEnd(last)
+                }
+            }
+    ) {
+        val barWidth = maxWidth
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.Center)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(height)
+                    .clip(RoundedCornerShape(50))
+                    .background(Color.White.copy(alpha = 0.25f))
+            )
+            if (buffered > 0.005f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(buffered)
+                        .height(height)
+                        .clip(RoundedCornerShape(50))
+                        .background(Color.White.copy(alpha = 0.45f))
+                        .align(Alignment.CenterStart)
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(shown)
+                    .height(height)
+                    .clip(RoundedCornerShape(50))
+                    .background(Color.White)
+                    .align(Alignment.CenterStart)
+            )
+            Box(
+                modifier = Modifier
+                    .size(12.dp)
+                    .graphicsLayer {
+                        scaleX = knob
+                        scaleY = knob
+                        alpha = knob
+                    }
+                    .clip(CircleShape)
+                    .background(Color.White)
+                    .align(Alignment.CenterStart)
+                    .offset(x = (barWidth * shown - 6.dp).coerceIn(0.dp, barWidth - 12.dp)),
+            )
+        }
     }
 }
