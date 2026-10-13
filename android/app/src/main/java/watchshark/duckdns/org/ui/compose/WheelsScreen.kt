@@ -47,6 +47,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -84,8 +85,10 @@ import watchshark.duckdns.org.data.Haptics
 import watchshark.duckdns.org.data.PlayerCache
 import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.Video
+import watchshark.duckdns.org.data.PlayerPrefs
 import watchshark.duckdns.org.ui.compose.player.BufferingSpinner
 import watchshark.duckdns.org.ui.compose.player.CenterPlayButton
+import watchshark.duckdns.org.ui.compose.player.ScrubBar
 import watchshark.duckdns.org.ui.compose.common.ReplyTargetChip
 import watchshark.duckdns.org.ui.compose.common.threadedComments
 import watchshark.duckdns.org.ui.compose.player.dynRenditionUrl
@@ -158,6 +161,8 @@ fun WheelsScreen(
     var commentsFor by remember { mutableStateOf<Video?>(null) }
     val commentCounts = remember { mutableStateMapOf<Long, Int>() }
     var lastCommentsId by remember { mutableStateOf(0L) }
+    var wheelScrubbing by remember { mutableStateOf(false) }
+    var wheelScrubValue by remember { mutableFloatStateOf(0f) }
 
     fun loadCommentCount(id: Long, force: Boolean = false) {
         if (!force && commentCounts.containsKey(id)) return
@@ -613,6 +618,40 @@ fun WheelsScreen(
                     style = MaterialTheme.typography.labelSmall,
                 )
             }
+            }
+            if (isCurrent) {
+                val wheelFraction = if (ui.durationMs > 0) {
+                    (ui.positionMs.toFloat() / ui.durationMs).coerceIn(0f, 1f)
+                } else 0f
+                val wheelBuffered = if (ui.durationMs > 0) {
+                    (ui.bufferedMs.toFloat() / ui.durationMs).coerceIn(0f, 1f)
+                } else 0f
+                ScrubBar(
+                    fraction = if (wheelScrubbing) wheelScrubValue else wheelFraction,
+                    bufferedFraction = wheelBuffered,
+                    baseHeight = PlayerPrefs.scrubBaseHeight(PlayerPrefs.scrubStyle(appCtx)),
+                    active = wheelScrubbing,
+                    enabled = ui.durationMs > 0,
+                    onScrubStart = {
+                        wheelScrubbing = true
+                        wheelScrubValue = it
+                    },
+                    onScrub = { wheelScrubValue = it },
+                    onScrubEnd = {
+                        if (ui.durationMs > 0) {
+                            player.seekTo(
+                                player.currentMediaItemIndex,
+                                (it * ui.durationMs).toLong()
+                            )
+                        }
+                        wheelScrubbing = false
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp)
+                        .padding(bottom = 100.dp)
+                )
             }
         }
     }

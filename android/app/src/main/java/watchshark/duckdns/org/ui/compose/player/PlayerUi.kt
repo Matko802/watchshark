@@ -254,7 +254,7 @@ fun ScrubBar(
             .pointerInput(enabled) {
                 if (!enabled) return@pointerInput
                 awaitEachGesture {
-                    val down = awaitFirstDown()
+                    val down = awaitFirstDown(requireUnconsumed = false)
                     down.consume()
                     val w = size.width.toFloat().coerceAtLeast(1f)
                     var last = (down.position.x / w).coerceIn(0f, 1f)

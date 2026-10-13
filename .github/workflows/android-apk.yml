@@ -143,5 +143,5 @@ jobs:
           prerelease: false
           generate_release_notes: true
           body: |
-            WatchShark 1.9.20: rebuilt player scrubber (no more fighting the thumb, buffered display, Slim/Classic/Bold styles in Settings > Player).
+            WatchShark 1.9.21: Wheels gets the same wiggly scrub bar as Watch, scrub gestures hardened everywhere.
             Built from main. In-app updater looks for WatchShark-<version>.apk.
