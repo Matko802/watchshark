@@ -105,7 +105,7 @@
   </div>
 {:else if video}
   {@const v = video}
-  <video class="player" src={v.src} poster={v.thumbnail ?? undefined} controls playsinline preload="metadata" />
+  <video class="player" src={v.src} poster={v.thumbnail ?? undefined} controls playsinline preload="metadata"></video>
   <h2 style="margin: 12px 0 4px;">{v.title}</h2>
   <p class="muted" style="margin: 0 0 12px;">
     {fmtNum(v.views)} views • {fmtAge(v.created_at)} • {fmtNum(v.likes)} likes
