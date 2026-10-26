@@ -104,6 +104,9 @@ object Static {
     }
 
     fun serveStatic(ctx: Context, uri: String) {
+        if (uri == "/" || uri == "/index.html") {
+            if (Pages.serve(ctx, "index.html")) return
+        }
         if (uri == "/") {
             serveMedia(ctx, "${Config.publicDir}/index.html", "index.html")
             return

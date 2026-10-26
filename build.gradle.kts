@@ -12,6 +12,7 @@ repositories {
 
 dependencies {
     implementation("io.javalin:javalin:6.3.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:0.12.0")
     implementation("org.xerial:sqlite-jdbc:3.47.1.0")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.18.2")
     implementation("org.slf4j:slf4j-simple:2.0.13")
