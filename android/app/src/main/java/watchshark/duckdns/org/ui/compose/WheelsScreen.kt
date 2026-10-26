@@ -648,6 +648,7 @@ fun WheelsScreen(
                     bufferedFraction = wheelBuffered,
                     controlsActive = false,
                     enabled = ui.durationMs > 0,
+                    waveOn = ui.isPlaying,
                     onScrub = {},
                     onSeek = {
                         if (ui.durationMs > 0) {

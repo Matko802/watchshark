@@ -234,6 +234,7 @@ fun ScrubBar(
     enabled: Boolean,
     onScrub: () -> Unit,
     onSeek: (Float) -> Unit,
+    waveOn: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     var scrubbing by remember { mutableStateOf(false) }
@@ -241,9 +242,10 @@ fun ScrubBar(
     val shown = (if (scrubbing) scrubValue else fraction).coerceIn(0f, 1f)
     val buffered = bufferedFraction.coerceIn(0f, 1f)
     val active = scrubbing || controlsActive
+    val wavy = active || waveOn
     var waveAmp by remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(active) {
-        val target = if (active) 1f else 0f
+    LaunchedEffect(wavy) {
+        val target = if (wavy) 1f else 0f
         val start = waveAmp
         val steps = 12
         repeat(steps) { i ->
@@ -253,8 +255,8 @@ fun ScrubBar(
         waveAmp = target
     }
     var phase by remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(active) {
-        while (active) {
+    LaunchedEffect(wavy) {
+        while (wavy) {
             delay(16)
             phase = (phase + 0.118f) % (2f * Math.PI.toFloat())
         }

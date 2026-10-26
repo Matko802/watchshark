@@ -26,6 +26,11 @@ cd android
 
 The APK lands at `app/build/outputs/apk/debug/app-debug.apk`.
 
+## Release 1.9.26
+
+- Watch player (fullscreen and inline): the whole bottom block — gradient, progress bar and time — now hides together with the controls after the auto-hide delay, YouTube-style; tap to bring it back.
+- Progress bar wiggle now follows playback instead of the controls state: the wheels bar waves while its wheel is playing (static when paused), and the watch bar stays lively whenever the video is playing.
+
 ## Release 1.9.25
 
 - Top bar auto-hides while scrolling down and slides back on scroll up, YouTube-style (home, watch, channel, messages, notifications, settings, admin; wheels/chat/upload keep it pinned).

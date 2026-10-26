@@ -245,7 +245,7 @@ private fun PlayerChrome(
 
 
         AnimatedVisibility(
-            visible = ui.isReady || ui.isBuffering,
+            visible = (ui.isReady || ui.isBuffering) && controlsVisible,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -272,6 +272,7 @@ private fun PlayerChrome(
                     bufferedFraction = bufferedFraction,
                     controlsActive = controlsVisible,
                     enabled = ui.durationMs > 0,
+                    waveOn = ui.isPlaying,
                     onScrub = { poke() },
                     onSeek = {
                         if (ui.durationMs > 0) {
