@@ -26,6 +26,12 @@ cd android
 
 The APK lands at `app/build/outputs/apk/debug/app-debug.apk`.
 
+## Release 1.9.25
+
+- Top bar auto-hides while scrolling down and slides back on scroll up, YouTube-style (home, watch, channel, messages, notifications, settings, admin; wheels/chat/upload keep it pinned).
+- Wheels: scrub bar sits flush at the bottom of the player instead of floating 100 dp above it; title and action overlays lifted above the scrub line.
+- Includes all 1.9.24 changes (double-tap like, media-cache playback, feed race fix, wheels retry on network errors, locale-stable counters).
+
 ## Release 1.9.24
 
 - Watch screen: double-tap the video to like (heart burst, same as Wheels), like/follow failures now toast instead of failing silently, comment posting errors show inline.

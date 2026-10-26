@@ -143,5 +143,5 @@ jobs:
           prerelease: false
           generate_release_notes: true
           body: |
-            WatchShark 1.9.24: double-tap to like on the watch screen, media-cached playback, home feed race fix, wheels retry on network errors, like/follow failure toasts, locale-stable counters, comment error surfacing.
+            WatchShark 1.9.25: YouTube-style auto-hiding top bar, wheels scrub bar flush to the bottom of the player.
             Built from main. In-app updater looks for WatchShark-<version>.apk.

@@ -551,7 +551,7 @@ fun WheelsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth(0.78f)
-                    .padding(start = 12.dp, bottom = 16.dp, end = 8.dp),
+                    .padding(start = 12.dp, bottom = 36.dp, end = 8.dp),
             ) {
                 Text(
                     vid.title,
@@ -577,7 +577,7 @@ fun WheelsScreen(
             ) {
             Column(
                 modifier = Modifier
-                    .padding(end = 8.dp, bottom = 16.dp),
+                    .padding(end = 8.dp, bottom = 36.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -661,7 +661,6 @@ fun WheelsScreen(
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
                         .padding(horizontal = 4.dp)
-                        .padding(bottom = 100.dp)
                 )
             }
         }

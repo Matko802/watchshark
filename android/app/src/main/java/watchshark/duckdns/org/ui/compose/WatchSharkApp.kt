@@ -6,11 +6,13 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
@@ -59,6 +61,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,13 +70,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavType
@@ -187,6 +195,41 @@ fun WatchSharkApp(
             route.startsWith(ROUTE_MESSAGES) || route.startsWith("chat") -> ROUTE_MESSAGES
             route.startsWith(ROUTE_YOU) || route.startsWith("channel") -> ROUTE_YOU
             else -> null
+        }
+
+        val collapsibleRoute = route == ROUTE_HOME || route == ROUTE_YOU ||
+            route.startsWith("watch") || route.startsWith("channel") ||
+            route == ROUTE_MESSAGES || route == "notifications" ||
+            route == "settings" || route == "admin"
+        var topBarShown by remember { mutableStateOf(true) }
+        var barHideAccum by remember { mutableFloatStateOf(0f) }
+        val barNested = remember {
+            object : NestedScrollConnection {
+                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                    barHideAccum = (barHideAccum + available.y).coerceIn(-200f, 200f)
+                    if (barHideAccum <= -90f) {
+                        if (topBarShown) {
+                            topBarShown = false
+                            barHideAccum = 0f
+                        }
+                    } else if (barHideAccum >= 90f) {
+                        if (!topBarShown) {
+                            topBarShown = true
+                            barHideAccum = 0f
+                        }
+                    }
+                    return Offset.Zero
+                }
+
+                override suspend fun onPostFling(consumed: Velocity, velocity: Velocity): Velocity {
+                    barHideAccum = 0f
+                    return Velocity.Zero
+                }
+            }
+        }
+        LaunchedEffect(route, searchExpanded, homeReselect, wheelsReselect) {
+            topBarShown = true
+            barHideAccum = 0f
         }
 
         fun goSection(route: String) {
@@ -429,9 +472,17 @@ fun WatchSharkApp(
                     }
                 }
                 Scaffold(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).then(
+                        if (collapsibleRoute) Modifier.nestedScroll(barNested) else Modifier
+                    ),
                     topBar = {
                         if (!route.startsWith("auth")) {
+                            AnimatedVisibility(
+                                visible = topBarShown,
+                                enter = expandVertically() + fadeIn(),
+                                exit = shrinkVertically() + slideOutVertically { -it } + fadeOut(),
+                                label = "topBarHide",
+                            ) {
                             TopAppBar(
                                 title = {
                                     AnimatedContent(
@@ -517,6 +568,7 @@ fun WatchSharkApp(
                                     containerColor = MaterialTheme.colorScheme.surface,
                                 ),
                             )
+                            }
                         }
                     },
                     bottomBar = {
