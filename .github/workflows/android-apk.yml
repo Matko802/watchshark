@@ -143,5 +143,5 @@ jobs:
           prerelease: false
           generate_release_notes: true
           body: |
-            WatchShark 1.9.23: slim-only wavy scrubber (official M3 expressive wave), centered knob, gestures on the framework slider engine.
+            WatchShark 1.9.24: double-tap to like on the watch screen, media-cached playback, home feed race fix, wheels retry on network errors, like/follow failure toasts, locale-stable counters, comment error surfacing.
             Built from main. In-app updater looks for WatchShark-<version>.apk.

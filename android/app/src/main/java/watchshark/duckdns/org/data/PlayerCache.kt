@@ -3,6 +3,7 @@ package watchshark.duckdns.org.data
 import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
@@ -31,13 +32,18 @@ object PlayerCache {
     }
 
 
+    @Synchronized
+    fun wrap(context: Context, upstream: DataSource.Factory): DataSource.Factory {
+        return CacheDataSource.Factory()
+            .setCache(get(context.applicationContext))
+            .setUpstreamDataSourceFactory(upstream)
+            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+    }
+
     fun mediaSource(context: Context, url: String, props: Map<String, String>): MediaSource {
         val http = DefaultHttpDataSource.Factory()
             .setDefaultRequestProperties(props)
-        val cached = CacheDataSource.Factory()
-            .setCache(get(context.applicationContext))
-            .setUpstreamDataSourceFactory(http)
-            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+        val cached = wrap(context, http)
         return ProgressiveMediaSource.Factory(cached)
             .createMediaSource(MediaItem.fromUri(url))
     }

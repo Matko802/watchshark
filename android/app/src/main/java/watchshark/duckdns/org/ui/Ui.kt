@@ -14,11 +14,16 @@ fun fmtNum(n: Long): String {
     for ((v, s) in units) {
         if (n >= v) {
             val x = n.toDouble() / v
-            return (if (x >= 100) x.toInt().toString() else "%.1f".format(x).trimEnd('0').trimEnd('.')) + s
+            return (if (x >= 100) x.toInt().toString()
+            else "%.1f".format(Locale.US, x).trimEnd('0').trimEnd('.')) + s
         }
     }
     return n.toString()
 }
+
+private fun pluralAge(count: Long, unit: String): String =
+    if (count == 1L) "1 $unit ago" else "$count ${unit}s ago"
+
 fun fmtAge(s: String?): String {
     if (s.isNullOrEmpty()) return ""
     return try {
@@ -27,12 +32,14 @@ fun fmtAge(s: String?): String {
         }
         val t = fmt.parse(s.replace('T', ' ').substringBefore('.'))?.time ?: return s
         val sec = ((System.currentTimeMillis() - t) / 1000).coerceAtLeast(0)
+        val days = sec / 86400
         when {
-            sec < 60 -> "$sec seconds ago"
-            sec < 3600 -> "${sec / 60} minutes ago"
-            sec < 86400 -> "${sec / 3600} hours ago"
-            sec < 86400 * 30 -> "${sec / 86400} days ago"
-            else -> "${sec / (86400 * 30)} months ago"
+            sec < 60 -> pluralAge(sec, "second")
+            sec < 3600 -> pluralAge(sec / 60, "minute")
+            days == 0L -> pluralAge(sec / 3600, "hour")
+            days < 30 -> pluralAge(days, "day")
+            sec < 86400L * 365 -> pluralAge(sec / (86400L * 30), "month")
+            else -> pluralAge(sec / (86400L * 365), "year")
         }
     } catch (e: Exception) {
         s

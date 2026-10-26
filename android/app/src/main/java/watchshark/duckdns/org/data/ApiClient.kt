@@ -94,7 +94,7 @@ object ApiClient {
         } catch (_: Exception) {
         }
         return ExoPlayer.Builder(appCtx)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSource))
+            .setMediaSourceFactory(DefaultMediaSourceFactory(PlayerCache.wrap(appCtx, dataSource)))
             .build()
     }
     fun mediaItem(url: String): MediaItem = MediaItem.fromUri(url)

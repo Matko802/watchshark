@@ -1,15 +1,11 @@
 package watchshark.duckdns.org.data
 
 import android.content.Context
-import androidx.lifecycle.DefaultLifecycleObserver
-import androidx.lifecycle.LifecycleOwner
 import androidx.media3.exoplayer.ExoPlayer
 
 object PlayerManager {
     @Volatile
     private var player: ExoPlayer? = null
-    @Volatile
-    private var wasPlayingBeforePause = false
 
     @Synchronized
     fun get(context: Context): ExoPlayer {
@@ -19,20 +15,7 @@ object PlayerManager {
 
     fun pauseForBackground() {
         try {
-            val p = player ?: return
-            wasPlayingBeforePause = p.isPlaying
-            if (p.isPlaying) p.pause()
-        } catch (_: Exception) {
-        }
-    }
-
-    fun resumeIfNeeded() {
-        try {
-            val p = player ?: return
-            if (wasPlayingBeforePause) {
-                p.play()
-            }
-            wasPlayingBeforePause = false
+            player?.pause()
         } catch (_: Exception) {
         }
     }
@@ -55,20 +38,6 @@ object PlayerManager {
         try {
             PlayerCache.release()
         } catch (_: Exception) {
-        }
-    }
-
-    fun observer(): DefaultLifecycleObserver = object : DefaultLifecycleObserver {
-        override fun onPause(owner: LifecycleOwner) {
-            pauseForBackground()
-        }
-
-        override fun onResume(owner: LifecycleOwner) {
-            resumeIfNeeded()
-        }
-
-        override fun onStop(owner: LifecycleOwner) {
-            pauseForBackground()
         }
     }
 }

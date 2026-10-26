@@ -95,6 +95,7 @@ import watchshark.duckdns.org.ui.compose.player.rememberPlayerUiState
 import watchshark.duckdns.org.ui.compose.theme.AppMotion
 import watchshark.duckdns.org.ui.fmtNum
 import watchshark.duckdns.org.ui.httpErrorMessage
+import watchshark.duckdns.org.ui.toast
 
 private fun parseWheelVideo(o: JsonObject): Video? {
     return try {
@@ -153,6 +154,7 @@ fun WheelsScreen(
     var loading by remember { mutableStateOf(false) }
     var exhausted by remember { mutableStateOf(false) }
     var prepared by remember { mutableStateOf(false) }
+    var netError by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var qualityFor by remember { mutableStateOf<Video?>(null) }
     var meId by remember { mutableStateOf<Long?>(null) }
@@ -257,10 +259,12 @@ fun WheelsScreen(
     fun loadMore() {
         if (loading || exhausted) return
         loading = true
+        netError = false
         error = null
         scope.launch {
             try {
                 var added = 0
+                var failed = 0
                 repeat(5) {
                     if (exhausted) return@repeat
                     try {
@@ -275,11 +279,16 @@ fun WheelsScreen(
                         player.addMediaSource(cachedSource(url))
                         added++
                     } catch (_: Exception) {
+                        failed++
                     }
                 }
                 if (added == 0) {
-                    exhausted = true
-                    if (videos.isEmpty()) error = "No wheels yet"
+                    if (failed > 0 && !exhausted) {
+                        netError = true
+                    } else {
+                        exhausted = true
+                        if (videos.isEmpty()) error = "No wheels yet"
+                    }
                 } else if (!prepared) {
                     player.prepare()
                     player.seekTo(0, 0)
@@ -329,8 +338,20 @@ fun WheelsScreen(
 
     if (videos.isEmpty()) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            if (loading) CircularProgressIndicator()
-            else Text(error ?: "No wheels yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            when {
+                loading -> CircularProgressIndicator()
+                netError -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "Couldn't load wheels",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Button(
+                        onClick = { watchAgain() },
+                        modifier = Modifier.padding(top = 12.dp),
+                    ) { Text("Retry") }
+                }
+                else -> Text(error ?: "No wheels yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
         return
     }
@@ -408,7 +429,7 @@ fun WheelsScreen(
                 } catch (e: Exception) {
                     val i = videos.indexOfFirst { it.id == vid.id }
                     if (i >= 0) videos[i] = cur
-                    error = httpErrorMessage(e)
+                    context.toast(httpErrorMessage(e))
                 }
             }
         }
@@ -427,7 +448,7 @@ fun WheelsScreen(
                 } catch (e: Exception) {
                     val i = videos.indexOfFirst { it.id == vid.id }
                     if (i >= 0) videos[i] = cur
-                    error = httpErrorMessage(e)
+                    context.toast(httpErrorMessage(e))
                 }
             }
         }
@@ -792,6 +813,7 @@ private fun WheelCommentsPanel(
     var draft by remember(video.id) { mutableStateOf("") }
     var posting by remember(video.id) { mutableStateOf(false) }
     var replyTo by remember(video.id) { mutableStateOf<Comment?>(null) }
+    var postError by remember(video.id) { mutableStateOf<String?>(null) }
     val expandedThreads = remember { mutableStateMapOf<Long, Boolean>() }
 
     fun reload() {
@@ -813,6 +835,7 @@ private fun WheelCommentsPanel(
         val body = draft.trim()
         if (body.isEmpty() || posting) return
         posting = true
+        postError = null
         scope.launch {
             try {
                 val payload = buildMap<String, Any> {
@@ -823,7 +846,8 @@ private fun WheelCommentsPanel(
                 draft = ""
                 replyTo = null
                 reload()
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                postError = httpErrorMessage(e)
             } finally {
                 posting = false
             }
@@ -849,7 +873,7 @@ private fun WheelCommentsPanel(
                     .padding(start = 16.dp, top = 8.dp, end = 8.dp, bottom = 4.dp),
             ) {
                 Text(
-                    "Comments (${list.size})",
+                    if (loading && list.isEmpty()) "Comments" else "Comments (${list.size})",
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
                 )
@@ -917,7 +941,7 @@ private fun WheelCommentsPanel(
             ) {
                 OutlinedTextField(
                     value = draft,
-                    onValueChange = { draft = it },
+                    onValueChange = { draft = it; postError = null },
                     placeholder = {
                         Text(
                             replyTo?.let { "Reply to @${it.username}…" }
@@ -950,6 +974,14 @@ private fun WheelCommentsPanel(
                         else MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }
+            }
+            postError?.let { msg ->
+                Text(
+                    msg,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
             }
         }
     }

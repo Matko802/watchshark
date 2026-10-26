@@ -3,6 +3,8 @@ package watchshark.duckdns.org.ui.compose.player
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -51,6 +53,7 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
 import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.Haptics
+import watchshark.duckdns.org.ui.compose.theme.AppMotion
 
 
 @Composable
@@ -60,6 +63,7 @@ fun WatchPlayer(
     qualities: List<String> = emptyList(),
     quality: String = "Auto",
     onQuality: (String) -> Unit = {},
+    onDoubleTapLike: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     var fullscreen by remember { mutableStateOf(false) }
@@ -79,6 +83,7 @@ fun WatchPlayer(
                 qualities = qualities,
                 quality = quality,
                 onQuality = onQuality,
+                onDoubleTapLike = onDoubleTapLike,
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black),
@@ -93,6 +98,7 @@ fun WatchPlayer(
             qualities = qualities,
             quality = quality,
             onQuality = onQuality,
+            onDoubleTapLike = onDoubleTapLike,
             modifier = modifier,
         )
     }
@@ -107,12 +113,15 @@ private fun PlayerChrome(
     qualities: List<String>,
     quality: String,
     onQuality: (String) -> Unit,
+    onDoubleTapLike: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val ui = rememberPlayerUiState(player)
     var controlsVisible by remember { mutableStateOf(true) }
     var hideTick by remember { mutableIntStateOf(0) }
     var qualityOpen by remember { mutableStateOf(false) }
+    var heartBurst by remember { mutableStateOf(false) }
+    val buzzCtx = LocalContext.current
 
 
     LaunchedEffect(ui.isPlaying, hideTick) {
@@ -123,6 +132,12 @@ private fun PlayerChrome(
             controlsVisible = true
         }
     }
+    LaunchedEffect(heartBurst) {
+        if (heartBurst) {
+            delay(800)
+            heartBurst = false
+        }
+    }
     fun poke() {
         controlsVisible = true
         hideTick++
@@ -131,8 +146,17 @@ private fun PlayerChrome(
     Box(
         modifier = modifier
             .background(Color.Black)
-            .pointerInput(Unit) {
-                detectTapGestures(onTap = { poke() })
+            .pointerInput(onDoubleTapLike) {
+                detectTapGestures(
+                    onTap = { poke() },
+                    onDoubleTap = {
+                        if (onDoubleTapLike != null) {
+                            Haptics.tick(buzzCtx)
+                            heartBurst = true
+                            onDoubleTapLike()
+                        }
+                    },
+                )
             },
     ) {
         VideoSurface(player = player, modifier = Modifier.matchParentSize())
@@ -144,6 +168,21 @@ private fun PlayerChrome(
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.matchParentSize(),
+            )
+        }
+
+        AnimatedVisibility(
+            visible = heartBurst,
+            enter = scaleIn(AppMotion.fastSpatial, initialScale = 0.4f) + fadeIn(),
+            exit = scaleOut(targetScale = 1.4f) + fadeOut(),
+            modifier = Modifier.align(Alignment.Center),
+            label = "heartBurst",
+        ) {
+            Icon(
+                painterResource(R.drawable.ic_favorite_fill),
+                contentDescription = null,
+                tint = Color(0xFFFF5C5C),
+                modifier = Modifier.size(96.dp),
             )
         }
 

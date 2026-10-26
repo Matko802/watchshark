@@ -213,6 +213,7 @@ fun ChatScreen(
         }
     }
     Column(modifier.fillMaxSize().imePadding()) {
+        val display = remember(messages) { messages.asReversed() }
         if (loading && messages.isEmpty()) {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
@@ -222,7 +223,7 @@ fun ChatScreen(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 reverseLayout = true,
             ) {
-                items(messages.reversed(), key = { it.id }) { m ->
+                items(display, key = { it.id }) { m ->
                     val mine = m.senderId == meId
                     Row(
                         modifier = Modifier

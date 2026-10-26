@@ -27,6 +27,7 @@ class HomeViewModel : ViewModel() {
     var query: String = ""
         private set
     private var queryJob: Job? = null
+    private var gen = 0
 
     init {
         refresh()
@@ -41,7 +42,7 @@ class HomeViewModel : ViewModel() {
     fun setQuery(q: String) {
         if (query == q) return
         query = q
-
+        gen++
         queryJob?.cancel()
         queryJob = viewModelScope.launch {
             delay(350)
@@ -50,6 +51,7 @@ class HomeViewModel : ViewModel() {
     }
 
     fun refresh() {
+        val g = ++gen
         viewModelScope.launch {
             _state.value = _state.value.copy(loading = true, error = null)
             try {
@@ -60,6 +62,7 @@ class HomeViewModel : ViewModel() {
                     limit = 24,
                     kind = "video",
                 )
+                if (g != gen) return@launch
                 _state.value = HomeUiState(
                     videos = res.videos.orEmpty(),
                     loading = false,
@@ -67,6 +70,7 @@ class HomeViewModel : ViewModel() {
                     pages = res.pages.toInt(),
                 )
             } catch (e: Exception) {
+                if (g != gen) return@launch
                 _state.value = _state.value.copy(
                     loading = false,
                     error = e.message ?: "Network error",
@@ -78,6 +82,7 @@ class HomeViewModel : ViewModel() {
     fun loadMore() {
         val s = _state.value
         if (s.loading || s.page >= s.pages) return
+        val g = gen
         viewModelScope.launch {
             _state.value = s.copy(loading = true)
             try {
@@ -89,6 +94,7 @@ class HomeViewModel : ViewModel() {
                     limit = 24,
                     kind = "video",
                 )
+                if (g != gen) return@launch
                 _state.value = s.copy(
                     videos = s.videos + res.videos.orEmpty(),
                     loading = false,
@@ -96,6 +102,7 @@ class HomeViewModel : ViewModel() {
                     pages = res.pages.toInt().coerceAtLeast(next),
                 )
             } catch (e: Exception) {
+                if (g != gen) return@launch
                 _state.value = s.copy(loading = false, error = e.message)
             }
         }

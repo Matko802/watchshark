@@ -78,6 +78,7 @@ import watchshark.duckdns.org.ui.compose.player.VideoPlaying
 import watchshark.duckdns.org.ui.fmtAge
 import watchshark.duckdns.org.ui.fmtNum
 import watchshark.duckdns.org.ui.httpErrorMessage
+import watchshark.duckdns.org.ui.toast
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,6 +98,7 @@ fun WatchScreen(
     var meId by remember { mutableStateOf<Long?>(null) }
     var draft by remember { mutableStateOf("") }
     var posting by remember { mutableStateOf(false) }
+    var commentError by remember { mutableStateOf<String?>(null) }
     var replyTo by remember(videoId) { mutableStateOf<Comment?>(null) }
     val expandedThreads = remember { mutableStateMapOf<Long, Boolean>() }
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -138,6 +140,30 @@ fun WatchScreen(
         }
     }
 
+    fun toggleLike() {
+        val cur = video ?: return
+        Haptics.tick(context)
+        video = cur.copy(
+            liked = !cur.liked,
+            likes = (cur.likes + if (cur.liked) -1 else 1).coerceAtLeast(0),
+        )
+        scope.launch {
+            try {
+                ApiClient.api.like(cur.id)
+            } catch (e: Exception) {
+                AppErrors.log(e, "like")
+                context.toast(httpErrorMessage(e))
+                video = cur
+            }
+        }
+    }
+
+    fun likeIfNotLiked() {
+        if (video?.liked == false) toggleLike()
+    }
+
+    val doubleTapLike = remember { { likeIfNotLiked() } }
+
 
     DisposableEffect(videoId) {
         onDispose {
@@ -156,18 +182,20 @@ fun WatchScreen(
 
     fun qualityOptions(v: Video): List<String> = QualityKit.options(v)
 
-    fun qualityUrl(v: Video, selected: String): String? = QualityKit.url(v, selected)
-
-    LaunchedEffect(video, quality) {
-        val v = video ?: return@LaunchedEffect
-        val url = qualityUrl(v, quality) ?: return@LaunchedEffect
+    val playbackUrl = video?.let { QualityKit.url(it, quality) }
+    var preparedUrl by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(playbackUrl) {
+        val url = playbackUrl ?: return@LaunchedEffect
+        if (preparedUrl == url) return@LaunchedEffect
         try {
             val keep = player.playbackState != Player.STATE_IDLE && player.duration.coerceAtLeast(0) > 0
             val pos = if (keep) player.currentPosition.coerceAtLeast(0) else 0L
+            val resume = if (keep) player.playWhenReady else true
             player.setMediaItem(ApiClient.mediaItem(url))
             player.prepare()
             player.seekTo(pos)
-            player.playWhenReady = true
+            player.playWhenReady = resume
+            preparedUrl = url
         } catch (_: Exception) {
         }
     }
@@ -208,6 +236,7 @@ fun WatchScreen(
                     qualities = qualityOptions(v),
                     quality = quality,
                     onQuality = { quality = it },
+                    onDoubleTapLike = doubleTapLike,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -384,22 +413,7 @@ fun WatchScreen(
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null,
-                                        onClick = {
-                                            val cur = video ?: return@clickable
-                                            Haptics.tick(context)
-                                            video = cur.copy(
-                                                liked = !cur.liked,
-                                                likes = (cur.likes + if (cur.liked) -1 else 1).coerceAtLeast(0),
-                                            )
-                                            scope.launch {
-                                                try {
-                                                    ApiClient.api.like(cur.id)
-                                                } catch (e: Exception) {
-                                                    AppErrors.log(e, "like")
-                                                    video = cur
-                                                }
-                                            }
-                                        },
+                                        onClick = { toggleLike() },
                                     )
                                     .padding(horizontal = 12.dp, vertical = 8.dp),
                             ) {
@@ -481,7 +495,10 @@ fun WatchScreen(
                 ) {
                     OutlinedTextField(
                         value = draft,
-                        onValueChange = { draft = it },
+                        onValueChange = {
+                            draft = it
+                            commentError = null
+                        },
                         placeholder = {
                             Text(
                                 replyTo?.let { "Reply to @${it.username}…" }
@@ -497,6 +514,7 @@ fun WatchScreen(
                         val body = draft.trim()
                         if (body.isEmpty() || posting) return@IconButton
                         posting = true
+                        commentError = null
                         scope.launch {
                             try {
                                 val payload = buildMap<String, Any> {
@@ -509,7 +527,7 @@ fun WatchScreen(
                                 reloadComments()
                             } catch (e: Exception) {
                                 AppErrors.log(e, "comment")
-                                error = httpErrorMessage(e)
+                                commentError = httpErrorMessage(e)
                             } finally {
                                 posting = false
                             }
@@ -520,6 +538,14 @@ fun WatchScreen(
                             contentDescription = "Post comment"
                         )
                     }
+                }
+                commentError?.let { msg ->
+                    Text(
+                        msg,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
         }

@@ -49,7 +49,6 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.Player
 import androidx.media3.ui.PlayerView
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import watchshark.duckdns.org.R
 import watchshark.duckdns.org.data.Haptics
@@ -205,8 +204,8 @@ fun fmtPlayerTime(ms: Long): String {
     val h = totalSec / 3600
     val m = (totalSec % 3600) / 60
     val s = totalSec % 60
-    return if (h > 0) "%d:%02d:%02d".format(h, m, s)
-    else "%d:%02d".format(m, s)
+    return if (h > 0) "%d:%02d:%02d".format(java.util.Locale.US, h, m, s)
+    else "%d:%02d".format(java.util.Locale.US, m, s)
 }
 
 fun dynRenditionUrl(src: String, res: String): String? {

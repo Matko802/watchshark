@@ -26,6 +26,18 @@ cd android
 
 The APK lands at `app/build/outputs/apk/debug/app-debug.apk`.
 
+## Release 1.9.24
+
+- Watch screen: double-tap the video to like (heart burst, same as Wheels), like/follow failures now toast instead of failing silently, comment posting errors show inline.
+- Watch screen: playback no longer restarts or auto-plays when you tap like/follow or edit meta while paused; position/resume state is preserved across quality switches.
+- Watch screen streams through the shared 300 MB media cache like Wheels, so replays and quality switches hit disk before the network.
+- Home: sort/search responses are generation-guarded, so a slow older response can no longer overwrite the newer sort or search result.
+- Wheels: network failure during preload shows "Couldn't load wheels" with a Retry button instead of a false "No wheels yet"; like/follow failures toast.
+- Wheel comments: silent post failures now show an error; the header shows the real count only once loaded.
+- Player timestamps and compact counts (1.2K) are locale-stable (US digits/separators); relative ages are grammatical ("1 minute ago") and include a years bucket.
+- Chat: message list reuses a reversed view instead of reallocating on every recomposition.
+- Removed dead `PlayerManager` lifecycle/resume machinery.
+
 ## Release 1.9.23
 
 - `versionCode 10923`, `versionName 1.9.23`, `targetSdk 35`, `media3 1.6.1`, `core-ktx 1.16.0`, `navigation 2.9.3`, `lifecycle 2.9.2`, `work 2.10.3`, `coroutines 1.10.2`, `retrofit 2.12.0`, `coil 2.7.0`, version catalog at `gradle/libs.versions.toml`.
