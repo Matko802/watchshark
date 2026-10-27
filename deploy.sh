@@ -3,6 +3,7 @@ set -e
 echo "==> Building image..."
 podman build -t watchshark:latest -f Containerfile .
 echo "==> Starting container (compose)..."
+podman-compose -f podman-compose.yml down 2>/dev/null || true
 podman-compose -f podman-compose.yml up -d
 echo "==> Waiting 5s for boot..."
 sleep 5
