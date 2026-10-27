@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101418">
+<meta name="description" content="WatchShark — watch and share videos and wheels.">
+<link rel="icon" href="/favicon.png">
+<title>WatchShark</title>
+<style>html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#101418}#wasmstatus{position:fixed;left:0;right:0;bottom:8vh;display:flex;flex-direction:column;align-items:center;gap:6px;font-family:system-ui,sans-serif;color:#9aa7b5;font-size:14px}</style>
+</head>
+<body>
+<div id="wasmstatus"><span>WatchShark is loading&hellip;</span><span id="wasmslow" hidden>This may take a moment on the first visit.</span></div>
+<script src="/wasm/watchshark.js"></script>
+<script>
+setTimeout(function () {
+  var s = document.getElementById("wasmstatus");
+  if (s) {
+    var slow = document.getElementById("wasmslow");
+    if (slow) slow.hidden = false;
+  }
+}, 6000);
+</script>
+</body>
+</html>

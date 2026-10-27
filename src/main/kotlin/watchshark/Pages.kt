@@ -132,6 +132,7 @@ object Pages {
         val swiper: Boolean = false,
         val extraDialogs: Boolean = false,
         val crawlerMeta: Boolean = false,
+        val wasmApp: Boolean = false,
     )
 
     private val bodies = mapOf(
@@ -157,6 +158,7 @@ object Pages {
             topbar = topHome,
             nav = true,
             headline = "Welcome to WatchShark",
+            wasmApp = true,
         ),
         "about" to Spec(
             title = "About — WatchShark",
@@ -164,6 +166,7 @@ object Pages {
             ogDescription = "What WatchShark is, where the code lives, and where to get the Android app.",
             topbar = topFull,
             nav = true,
+            wasmApp = true,
         ),
         "forgot" to Spec(
             title = "Forgot password — WatchShark",
@@ -191,6 +194,7 @@ object Pages {
             ogDescription = "WatchShark — watch and share videos and wheels.",
             topbar = topUpload,
             nav = true,
+            wasmApp = true,
         ),
         "settings" to Spec(
             title = "Settings — WatchShark",
@@ -198,6 +202,7 @@ object Pages {
             ogDescription = "WatchShark — watch and share videos and wheels.",
             topbar = topSettings,
             nav = true,
+            wasmApp = true,
         ),
         "admin" to Spec(
             title = "Admin — WatchShark",
@@ -205,6 +210,7 @@ object Pages {
             ogDescription = "WatchShark — watch and share videos and wheels.",
             topbar = topAdmin,
             nav = true,
+            wasmApp = true,
         ),
         "channel" to Spec(
             title = "Channel — WatchShark",
@@ -212,6 +218,7 @@ object Pages {
             nav = true,
             headline = "Welcome to WatchShark",
             crawlerMeta = true,
+            wasmApp = true,
         ),
         "watch" to Spec(
             title = "Watch — WatchShark",
@@ -220,6 +227,7 @@ object Pages {
             headline = "Login required",
             extraDialogs = true,
             crawlerMeta = true,
+            wasmApp = true,
         ),
         "wheels" to Spec(
             title = "Wheels — WatchShark",
@@ -230,6 +238,7 @@ object Pages {
             mainClass = "reelmain",
             nav = true,
             swiper = true,
+            wasmApp = true,
         ),
         "messages" to Spec(
             title = "Messages — WatchShark",
@@ -238,6 +247,7 @@ object Pages {
             topbar = topFull,
             nav = true,
             headline = "Welcome to WatchShark",
+            wasmApp = true,
         ),
     )
 
@@ -341,6 +351,9 @@ object Pages {
     fun serve(ctx: Context, page: String): Boolean {
         val key = page.removeSuffix(".html")
         val spec = specs[key] ?: return false
+        if (spec.wasmApp && !Static.isCrawler(ctx) && Static.serveShell(ctx)) {
+            return true
+        }
         val html = rendered["$key.html"] ?: return false
         if (spec.crawlerMeta && Static.isCrawler(ctx)) {
             val extra = when (key) {

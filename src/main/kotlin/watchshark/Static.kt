@@ -107,6 +107,17 @@ object Static {
         if (uri == "/" || uri == "/index.html") {
             if (Pages.serve(ctx, "index.html")) return
         }
+        if (uri.startsWith("/composeResources/")) {
+            val rel = uri.removePrefix("/")
+            val full = File("${Config.publicDir}/wasm/$rel").canonicalPath
+            val pubCanon = File(Config.publicDir).canonicalPath
+            if (!full.startsWith(pubCanon) || uri.contains("..")) {
+                HttpUtil.writeErr(ctx, 404, "Not found")
+                return
+            }
+            serveWasmAsset(ctx, full, File(full).name)
+            return
+        }
         if (uri == "/") {
             serveMedia(ctx, "${Config.publicDir}/index.html", "index.html")
             return
@@ -151,7 +162,26 @@ object Static {
             HttpUtil.writeErr(ctx, 404, "Not found")
             return
         }
+        if (rel.startsWith("wasm${File.separator}") && extOf(File(full).name) == ".wasm") {
+            serveWasmAsset(ctx, full, File(full).name, true)
+            return
+        }
         serveMedia(ctx, full, File(full).name)
+    }
+
+    private fun serveWasmAsset(ctx: Context, full: String, name: String, immutable: Boolean = false) {
+        val f = File(full)
+        if (!f.exists() || !f.isFile) {
+            HttpUtil.writeErr(ctx, 404, "Not found")
+            return
+        }
+        val ct = HttpUtil.mediaTypes[extOf(name)] ?: "application/octet-stream"
+        ctx.header("Content-Type", ct)
+        ctx.header("Cache-Control", if (immutable) "public, max-age=31536000, immutable" else "no-cache")
+        ctx.header("X-Content-Type-Options", "nosniff")
+        ctx.header("Content-Length", f.length().toString())
+        ctx.status(200)
+        if (ctx.method().name != "HEAD") ctx.result(f.inputStream())
     }
 
     private val attrEsc = mapOf("&" to "&amp;", "<" to "&lt;", ">" to "&gt;", "\"" to "&quot;")
@@ -183,10 +213,23 @@ object Static {
 
     fun isCrawler(ctx: Context): Boolean {
         val ua = (ctx.header("User-Agent") ?: "").lowercase()
-        for (s in listOf("whatsapp", "discordbot", "twitterbot", "facebookexternalhit", "telegrambot", "slackbot", "linkedinbot", "pinterest", "googlebot")) {
+        for (s in listOf("whatsapp", "discordbot", "twitterbot", "facebookexternalhit", "telegrambot", "slackbot", "linkedinbot", "pinterest", "googlebot", "bingbot", "duckduckbot", "yandexbot", "baiduspider", "petalbot", "mojeekbot", "applebot", "dotbot", "ahrefsbot", "semrushbot")) {
             if (ua.contains(s)) return true
         }
         return false
+    }
+
+    fun serveShell(ctx: Context): Boolean {
+        val f = File("${Config.publicDir}/wasm/index.html")
+        if (!f.exists() || !f.isFile) {
+            return false
+        }
+        ctx.header("Content-Type", "text/html; charset=utf-8")
+        ctx.header("Cache-Control", "no-cache")
+        ctx.header("X-Content-Type-Options", "nosniff")
+        ctx.status(200)
+        if (ctx.method().name != "HEAD") ctx.result(f.readText())
+        return true
     }
 
     fun watchMeta(id: Long): String {

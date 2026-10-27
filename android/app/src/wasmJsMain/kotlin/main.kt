@@ -10,6 +10,7 @@ import watchshark.duckdns.org.data.WebVideoStage
 import watchshark.duckdns.org.ui.compose.WatchSharkApp
 
 fun main() {
+    document.getElementById("wasmstatus")?.remove()
     WebVideoStage.preinit()
     val container = document.createElement("div") as HTMLDivElement
     container.style.position = "absolute"

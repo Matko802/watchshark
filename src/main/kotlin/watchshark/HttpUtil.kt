@@ -32,6 +32,9 @@ object HttpUtil {
         ".css" to "text/css; charset=utf-8",
         ".js" to "text/javascript; charset=utf-8",
         ".json" to "application/json",
+        ".map" to "application/json",
+        ".xml" to "application/xml",
+        ".wasm" to "application/wasm",
         ".txt" to "text/plain; charset=utf-8",
         ".ico" to "image/x-icon"
     )
