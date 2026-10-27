@@ -1,14 +1,78 @@
 import java.io.File
 
 plugins {
+    id("org.jetbrains.kotlin.multiplatform")
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("org.jetbrains.kotlin.plugin.serialization")
+    id("org.jetbrains.compose")
+}
+
+kotlin {
+    androidTarget {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
+    wasmJs {
+        browser {
+            commonWebpackConfig {
+                outputFileName = "watchshark.js"
+            }
+        }
+        binaries.executable()
+    }
+
+    sourceSets {
+        commonMain.dependencies {
+            implementation(compose.runtime)
+            implementation(compose.foundation)
+            implementation(compose.material3)
+            implementation(compose.ui)
+            implementation(compose.components.resources)
+            implementation("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0")
+            implementation("org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
+            implementation("org.jetbrains.androidx.navigation:navigation-compose:2.10.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+            implementation("io.ktor:ktor-client-core:3.6.0")
+            implementation("io.ktor:ktor-client-content-negotiation:3.6.0")
+            implementation("io.ktor:ktor-serialization-kotlinx-json:3.6.0")
+            implementation("io.coil-kt.coil3:coil:3.1.0")
+            implementation("io.coil-kt.coil3:coil-compose:3.1.0")
+            implementation("io.coil-kt.coil3:coil-network-ktor3:3.1.0")
+        }
+        androidMain.dependencies {
+            implementation("io.ktor:ktor-client-okhttp:3.6.0")
+            implementation("io.coil-kt.coil3:coil-video:3.1.0")
+            implementation("androidx.core:core-ktx:1.16.0")
+            implementation("androidx.appcompat:appcompat:1.7.1")
+            implementation("com.google.android.material:material:1.13.0")
+            implementation("androidx.activity:activity-compose:1.10.1")
+            implementation("androidx.media3:media3-exoplayer:1.6.1")
+            implementation("androidx.media3:media3-ui:1.6.1")
+            implementation("androidx.media3:media3-datasource:1.6.1")
+            implementation("androidx.media3:media3-database:1.6.1")
+            implementation("androidx.work:work-runtime-ktx:2.10.3")
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+        }
+        wasmJsMain.dependencies {
+            implementation("io.ktor:ktor-client-js:3.6.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-browser:0.5.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.8.0")
+        }
+    }
+}
+
+compose.resources {
+    publicResClass = true
+    packageOfResClass = "watchshark.duckdns.org"
+    generateResClass = always
 }
 
 android {
     namespace = "watchshark.duckdns.org"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "watchshark.duckdns.org"
@@ -50,8 +114,6 @@ android {
         }
     }
     lint {
-
-
         abortOnError = false
         checkReleaseBuilds = false
     }
@@ -59,38 +121,8 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
     buildFeatures {
         buildConfig = true
         compose = true
     }
-}
-
-dependencies {
-    implementation(platform("androidx.compose:compose-bom:2025.10.00"))
-
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.foundation:foundation")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material3:material3-window-size-class")
-    implementation("androidx.activity:activity-compose:1.10.1")
-    implementation("androidx.navigation:navigation-compose:2.9.3")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.2")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.2")
-    implementation("io.coil-kt:coil-compose:2.7.0")
-    implementation("androidx.core:core-ktx:1.16.0")
-    implementation("androidx.appcompat:appcompat:1.7.1")
-    implementation("com.google.android.material:material:1.13.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.2")
-    implementation("androidx.work:work-runtime-ktx:2.10.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
-    implementation("com.squareup.retrofit2:retrofit:2.12.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.12.0")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("androidx.media3:media3-exoplayer:1.6.1")
-    implementation("androidx.media3:media3-ui:1.6.1")
-    implementation("io.coil-kt:coil:2.7.0")
-    implementation("io.coil-kt:coil-video:2.7.0")
 }

@@ -10,21 +10,10 @@ import watchshark.duckdns.org.BuildConfig
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.TimeUnit
-data class AppUpdate(
-    val version: String,
-    val notes: String,
-    val url: String,
-    val size: Long
-)
-sealed interface UpdateCheck {
-    data class Available(val update: AppUpdate) : UpdateCheck
-    data object UpToDate : UpdateCheck
-    data class Failed(val reason: String) : UpdateCheck
-}
-object Updater {
+actual object Updater {
 
     @Volatile
-    var pending: AppUpdate? = null
+    actual var pending: AppUpdate? = null
     private const val LATEST_URL =
         "https://github.com/Matko802/watchshark/releases/latest"
     private const val TAG_URL_PREFIX =
@@ -78,7 +67,7 @@ object Updater {
         return if (n >= 1048576) "${n / 1048576} MB" else "${n / 1024} KB"
     }
 
-    fun currentVersion(ctx: Context): String = try {
+    actual fun currentVersion(ctx: Context): String = try {
         ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName
             ?: BuildConfig.VERSION_NAME
     } catch (_: Exception) {
@@ -86,7 +75,7 @@ object Updater {
     }
 
 
-    suspend fun checkForUpdate(): UpdateCheck = withContext(Dispatchers.IO) {
+    actual suspend fun checkForUpdate(): UpdateCheck = withContext(Dispatchers.IO) {
         val current = parseVer(BuildConfig.VERSION_NAME)
         try {
             var tag: String? = null

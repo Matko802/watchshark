@@ -1,0 +1,117 @@
+package watchshark.duckdns.org.ui.compose.theme
+
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+import watchshark.duckdns.org.ui.Uikit
+
+expect fun dynamicSchemeOrNull(darkTheme: Boolean): ColorScheme?
+
+
+private val FallbackDark = darkColorScheme(
+    primary = Color.White,
+    onPrimary = Color.Black,
+    primaryContainer = Color(0xFF222222),
+    onPrimaryContainer = Color.White,
+    secondary = Color(0xFFA8A8A8),
+    onSecondary = Color.Black,
+    secondaryContainer = Color(0xFF2B2B2B),
+    onSecondaryContainer = Color.White,
+    tertiary = Color(0xFFDDDDDD),
+    surface = Color.Black,
+    onSurface = Color.White,
+    surfaceVariant = Color(0xFF141414),
+    onSurfaceVariant = Color(0xFFA8A8A8),
+    surfaceContainerHighest = Color(0xFF1D1D1D),
+    outline = Color(0xFF8A8A8A),
+    outlineVariant = Color(0xFF3D3D3D),
+    error = Color(0xFFF2B8B5),
+)
+
+
+private val AmoledDark = darkColorScheme(
+    primary = Color.White,
+    onPrimary = Color.Black,
+    primaryContainer = Color(0xFF2E2E2E),
+    onPrimaryContainer = Color.White,
+    secondary = Color(0xFFA8A8A8),
+    onSecondary = Color.Black,
+    secondaryContainer = Color(0xFF2E2E2E),
+    onSecondaryContainer = Color.White,
+    tertiary = Color(0xFFDDDDDD),
+    surface = Color.Black,
+    onSurface = Color.White,
+    surfaceVariant = Color.Black,
+    onSurfaceVariant = Color(0xFFA8A8A8),
+    surfaceContainerLowest = Color.Black,
+    surfaceContainerLow = Color.Black,
+    surfaceContainer = Color(0xFF0D0D0D),
+    surfaceContainerHigh = Color(0xFF141414),
+    surfaceContainerHighest = Color(0xFF1C1C1C),
+    outline = Color(0xFF5A5A5A),
+    outlineVariant = Color(0xFF3D3D3D),
+    error = Color(0xFFF2B8B5),
+)
+
+
+private val FallbackLight = lightColorScheme(
+    primary = Color(0xFF0F0F0F),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFE7E7E7),
+    onPrimaryContainer = Color(0xFF0F0F0F),
+    secondary = Color(0xFF606060),
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFE7E7E7),
+    onSecondaryContainer = Color(0xFF0F0F0F),
+    tertiary = Color(0xFF404040),
+    surface = Color.White,
+    onSurface = Color(0xFF0F0F0F),
+    surfaceVariant = Color(0xFFF0F0F0),
+    onSurfaceVariant = Color(0xFF606060),
+    surfaceContainerHighest = Color(0xFFE9E9E9),
+    outline = Color(0xFF737373),
+    outlineVariant = Color(0xFFD9D9D9),
+    error = Color(0xFFB3261E),
+)
+
+
+@Composable
+fun WatchSharkTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    dynamicColor: Boolean = true,
+    amoled: Boolean = false,
+    content: @Composable () -> Unit,
+) {
+    val useDynamic = dynamicColor && Uikit.hasDynamicColor()
+    val colorScheme = when {
+        darkTheme && amoled && useDynamic -> {
+            val base = dynamicSchemeOrNull(true)
+            if (base == null) AmoledDark
+            else base.copy(
+                background = Color.Black,
+                surface = Color.Black,
+                surfaceDim = Color.Black,
+                surfaceVariant = Color.Black,
+                surfaceContainerLowest = Color.Black,
+                surfaceContainerLow = Color.Black,
+                surfaceContainer = Color(0xFF0D0D0D),
+                surfaceContainerHigh = Color(0xFF141414),
+                surfaceContainerHighest = Color(0xFF1C1C1C),
+            )
+        }
+        darkTheme && amoled -> AmoledDark
+        useDynamic -> dynamicSchemeOrNull(darkTheme) ?: if (darkTheme) FallbackDark else FallbackLight
+        darkTheme -> FallbackDark
+        else -> FallbackLight
+    }
+    MaterialTheme(
+        colorScheme = colorScheme,
+
+
+        content = content,
+    )
+}

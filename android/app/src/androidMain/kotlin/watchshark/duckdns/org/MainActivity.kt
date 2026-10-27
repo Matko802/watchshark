@@ -5,7 +5,6 @@ import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import watchshark.duckdns.org.data.ApiClient
@@ -13,6 +12,7 @@ import watchshark.duckdns.org.data.CrashLog
 import watchshark.duckdns.org.data.ThemePrefs
 import watchshark.duckdns.org.data.UploadAlerts
 import watchshark.duckdns.org.data.Updater
+import watchshark.duckdns.org.ui.Uikit
 import watchshark.duckdns.org.ui.compose.AppNavigator
 import watchshark.duckdns.org.ui.compose.WatchSharkApp
 
@@ -21,9 +21,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
 
-        AppCompatDelegate.setDefaultNightMode(
-            ThemePrefs.toNightMode(ThemePrefs.getMode(this)),
-        )
+        Uikit.attach(this)
+        Uikit.applyThemeMode(ThemePrefs.getMode(this))
         CrashLog.install(this)
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)

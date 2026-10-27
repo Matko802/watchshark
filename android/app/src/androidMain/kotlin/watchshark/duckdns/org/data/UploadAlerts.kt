@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit
 import watchshark.duckdns.org.MainActivity
 import watchshark.duckdns.org.R
 
-object UploadAlerts {
+actual object UploadAlerts {
     const val CHANNEL_UPLOADS = "uploads"
     const val ACTION_WATCH = "watchshark.duckdns.org.action.WATCH"
     private const val WORK = "upload-check"
@@ -54,7 +54,7 @@ object UploadAlerts {
             .enqueueUniquePeriodicWork(WORK, ExistingPeriodicWorkPolicy.KEEP, req)
     }
 
-    fun cancel(ctx: Context) {
+    actual fun cancel(ctx: Context) {
         WorkManager.getInstance(ctx.applicationContext).cancelUniqueWork(WORK)
     }
 
@@ -63,15 +63,15 @@ object UploadAlerts {
             ActivityCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) ==
             PackageManager.PERMISSION_GRANTED
 
-    fun ensureScheduled(activity: Activity) {
+    actual fun ensureScheduled(ctx: Context) {
         if (ApiClient.sessionToken().isNullOrEmpty()) return
-        schedule(activity)
-        if (Build.VERSION.SDK_INT >= 33 && !hasPermission(activity)) {
-            val p = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        schedule(ctx)
+        if (ctx is Activity && Build.VERSION.SDK_INT >= 33 && !hasPermission(ctx)) {
+            val p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             if (!p.getBoolean(KEY_ASKED, false)) {
                 p.edit().putBoolean(KEY_ASKED, true).apply()
                 ActivityCompat.requestPermissions(
-                    activity,
+                    ctx,
                     arrayOf(Manifest.permission.POST_NOTIFICATIONS),
                     PERM_CODE
                 )
