@@ -104,8 +104,9 @@ object Static {
     }
 
     fun serveStatic(ctx: Context, uri: String) {
-        if (uri == "/" || uri == "/index.html") {
-            if (Pages.serve(ctx, "index.html")) return
+        if (uri == "/") {
+            serveMedia(ctx, "${Config.publicDir}/index.html", "index.html")
+            return
         }
         if (uri.startsWith("/composeResources/")) {
             val rel = uri.removePrefix("/")
@@ -217,19 +218,6 @@ object Static {
             if (ua.contains(s)) return true
         }
         return false
-    }
-
-    fun serveShell(ctx: Context): Boolean {
-        val f = File("${Config.publicDir}/wasm/index.html")
-        if (!f.exists() || !f.isFile) {
-            return false
-        }
-        ctx.header("Content-Type", "text/html; charset=utf-8")
-        ctx.header("Cache-Control", "no-cache")
-        ctx.header("X-Content-Type-Options", "nosniff")
-        ctx.status(200)
-        if (ctx.method().name != "HEAD") ctx.result(f.readText())
-        return true
     }
 
     fun watchMeta(id: Long): String {

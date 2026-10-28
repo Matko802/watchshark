@@ -302,7 +302,6 @@ fun main() {
 
     for ((route, file) in cleanPages) {
         app.get(route) { ctx ->
-            if (Pages.serve(ctx, file)) return@get
             // crawler meta for /watch and /channel
             if (Static.isCrawler(ctx)) {
                 if (route == "/watch") {

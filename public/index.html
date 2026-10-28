@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WatchShark</title>
+<link rel="icon" type="image/png" href="/favicon.png?v=1">
+<script>try{var t=localStorage.getItem('ws_theme');if(t!=='dark'&&t!=='light'){t=(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark'}document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="/styles.css?v=43">
+<link rel="preload" href="/vendor/fonts/f1.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/vendor/fonts/f0.woff2" as="font" type="font/woff2" crossorigin>
+<link href="/vendor/fonts.css" rel="stylesheet">
+
+<link rel="modulepreload" href="/vendor/material-web.js">
+<script type="module">import '/vendor/material-web.js';</script>
+<meta property="og:site_name" content="WatchShark">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:title" content="WatchShark">
+<meta property="og:description" content="WatchShark — watch and share videos and wheels.">
+<meta property="og:image" content="https://watchshark.duckdns.org/watchshark.webp">
+</head>
+<body data-pjax="1"><div id="bootloader"><div class="boots"></div></div>
+<header class="topbar">
+  <a class="brand" href="/"><img src="/watchshark.webp?v=2" alt="WatchShark logo"><span>WatchShark</span></a>
+  <div class="searchbox collapsed" id="searchbox">
+    <md-icon-button id="searchToggle" aria-label="Search" onclick="toggleSearch()"><md-icon id="searchToggleIcon">search</md-icon></md-icon-button>
+    <md-outlined-text-field id="q" placeholder="Search" class="search">
+      <md-icon slot="leading-icon">search</md-icon>
+    </md-outlined-text-field>
+  </div>
+  <span class="spacer"></span>
+  <span id="bellSlot" data-auth="in" style="display:none"></span>
+  <md-icon-button data-auth="in" href="/settings" aria-label="Settings" style="display:none"><md-icon>settings</md-icon></md-icon-button>
+  <md-text-button data-admin href="/admin" style="display:none">Admin</md-text-button>
+  <a class="createcircle" data-auth="in" href="/upload" style="display:none" aria-label="Create"><md-icon>add</md-icon></a>
+  <span id="whoami"></span>
+  <md-filled-button data-auth="out" onclick="openAuth('login')" style="display:none">Sign in</md-filled-button>
+</header>
+<main>
+  <div class="segtabs" id="sortTabs" role="tablist" aria-label="Sort videos">
+    <span class="segind"></span>
+    <button class="segbtn on" data-sort="new"><md-icon>new_releases</md-icon>Latest</button>
+    <button class="segbtn" data-sort="popular"><md-icon>local_fire_department</md-icon>Trending</button>
+  </div>
+  <div id="grid" class="grid stripe"></div>
+  <div id="sentinel" aria-hidden="true" style="min-height:4px"></div>
+</main>
+<md-dialog id="authDialog">
+  <div slot="headline">Welcome to WatchShark</div>
+  <div slot="content">
+    <form id="loginPane" method="post" action="/api/auth/login" onsubmit="return submitLogin(event)">
+      <div class="nfield">
+        <label for="login-id">Email</label>
+        <input placeholder=" " id="login-id" name="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+      </div>
+      <div class="nfield">
+        <label for="login-pw">Password</label>
+        <input placeholder=" " id="login-pw" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <div class="auth-row"><md-text-button onclick="location.href='/forgot'">Forgot password?</md-text-button></div>
+      <button type="submit" tabindex="-1" aria-hidden="true" style="position:fixed;top:0;left:0;width:8px;height:8px;opacity:.01;pointer-events:none;border:0;padding:0"></button>
+    </form>
+    <form id="signupPane" method="post" action="/api/auth/signup" onsubmit="return submitSignup(event)" style="display:none">
+      <div class="nfield">
+        <label for="su-name">Handle (a-z, 0-9, _)</label>
+        <input placeholder=" " id="su-name" name="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" minlength="3" maxlength="30" required>
+      </div>
+      <div class="nfield">
+        <label for="su-email">Email</label>
+        <input placeholder=" " id="su-email" name="email" type="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+      </div>
+      <div class="nfield">
+        <label for="su-pw">Password (6+ chars)</label>
+        <input placeholder=" " id="su-pw" name="password" type="password" autocomplete="new-password" minlength="6" required>
+      </div>
+      <button type="submit" tabindex="-1" aria-hidden="true" style="position:fixed;top:0;left:0;width:8px;height:8px;opacity:.01;pointer-events:none;border:0;padding:0"></button>
+    </form>
+    <p id="auth-err" style="color:var(--md-sys-color-error)"></p>
+  </div>
+  <div slot="actions">
+    <md-text-button id="auth-switch" onclick="toggleAuth()">Create account</md-text-button>
+    <md-filled-button id="auth-go" onclick="authGo()">Log in</md-filled-button>
+    <md-text-button onclick="closeAuth()">Close</md-text-button>
+  </div>
+</md-dialog>
+<nav id="bottomnav">
+  <a href="/" data-tab="home"><md-icon>home</md-icon><span>Home</span></a>
+  <a href="/wheels" data-tab="wheels"><md-icon>movie</md-icon><span>Wheels</span></a>
+  <a href="/upload" class="createbtn" aria-label="Create"><md-icon>add</md-icon></a>
+  <a href="/messages" data-tab="messages"><md-icon>chat</md-icon><span>Messages</span></a>
+  <a href="/settings" data-tab="account" id="navAccount"><span id="navAvatar"><md-icon>person</md-icon></span><span>You</span></a>
+</nav>
+<script>
+(function() {
+  function mark(tab) {
+    document.querySelectorAll('#bottomnav [data-tab]').forEach((a) => {
+      a.classList.toggle('active', a.dataset.tab === tab);
+    });
+  }
+  const path = location.pathname;
+  if (path === '/') mark('home');
+  else if (path === '/wheels') mark('wheels');
+  else if (path === '/messages') mark('messages');
+  else if (path === '/settings' || path === '/admin') mark('account');
+  const acc = document.getElementById('navAccount');
+  const navAv = document.getElementById('navAvatar');
+  fetch('/api/me', { credentials: 'include' }).then((r) => r.json()).then((j) => {
+    if (j && j.user) {
+      acc.href = '/channel?user=' + encodeURIComponent(j.user.username);
+      acc.dataset.user = j.user.username;
+      if (navAv) navAv.innerHTML = avatarHtml(j.user.avatar, 'navavatar');
+      const u = new URLSearchParams(location.search).get('user');
+      if (path.startsWith('/channel') && u === j.user.username) mark('account');
+    }
+  }).catch(() => {});
+  acc.addEventListener('click', (e) => {
+    if (!acc.dataset.user) {
+      e.preventDefault();
+      if (typeof openAuth === 'function') openAuth('login');
+      else location.href = '/';
+    }
+  });
+})();
+</script>
+
+
+<script src="/app.js?v=29"></script>
+<script>
+{
+window.__boot = function() {
+let page = 1, sort = 'new';
+segTabs(document.getElementById('sortTabs'), (btn) => {
+  sort = btn.dataset.sort || 'new';
+  load(1);
+});
+document.getElementById('q').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') load(1);
+  if (e.key === 'Escape') toggleSearch(false);
+});
+function toggleSearch(force) {
+  const box = document.getElementById('searchbox');
+  const open = force !== undefined ? force : box.classList.contains('collapsed');
+  box.classList.toggle('collapsed', !open);
+  box.classList.toggle('expanded', open);
+  document.getElementById('searchToggleIcon').textContent = open ? 'close' : 'search';
+  if (open) setTimeout(() => document.getElementById('q').focus(), 120);
+  else document.getElementById('q').blur();
+}
+document.addEventListener('click', (e) => {
+  const box = document.getElementById('searchbox');
+  if (!box || !box.classList.contains('expanded')) return;
+  if (box.contains(e.target)) return;
+  toggleSearch(false);
+});
+let searchTimer = null;
+let searchAbort = null;
+let loading = false, hasMore = true;
+document.getElementById('q').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => load(1), 250); });
+async function load(p = 1) {
+  if (p === 1) {
+    page = 1;
+    hasMore = true;
+    const g0 = document.getElementById('grid');
+    g0.innerHTML = '';
+    for (let i = 0; i < 6; i++) {
+      const d = document.createElement('div');
+      d.innerHTML = `<div class="skel skel-media"></div><div class="skel skel-line"></div><div class="skel skel-line short"></div>`;
+      g0.appendChild(d);
+    }
+  } else if (loading || !hasMore) {
+    return;
+  }
+  loading = true;
+  // abort superseded requests so slow responses can't overwrite fresh results
+  if (searchAbort) searchAbort.abort();
+  searchAbort = new AbortController();
+  const q = document.getElementById('q').value || '';
+  let r;
+  try {
+    r = await fetch(`/api/videos?q=${encodeURIComponent(q)}&sort=${sort}&page=${p}&limit=12`, { signal: searchAbort.signal });
+  } catch (e) {
+    loading = false;
+    if (e && e.name === 'AbortError') return;
+    throw e;
+  }
+  const j = await r.json();
+  loading = false;
+  if (!document.getElementById('grid')) return;
+  page = p;
+  hasMore = p < j.pages;
+  const g = document.getElementById('grid');
+  if (p === 1) g.innerHTML = '';
+  for (const v of j.videos) {
+    const media = v.thumbnail
+      ? `<img class="media" src="${v.thumbnail}" loading="lazy" alt="">`
+      : `<video class="media" src="${v.src}#t=0.5" preload="metadata" muted></video>`;
+    const a = document.createElement('a');
+    a.className = 'cardlink'; a.href = '/watch?id=' + v.id;
+    const badge = v.status && v.status !== 'ready' ? '⏳ Processing… ' : '';
+    a.innerHTML = `<article class="m3card">${media}<div class="meta">${avatarHtml(v.avatar, 'pfp-sm')}<div class="metatext"><h3>${esc(v.title)}</h3>`
+      + `<small>${badge}${esc(v.username)} • ${fmtNum(v.views)} views • <span title="${esc(fmtDate(v.created_at))}">${fmtAge(v.created_at)}</span></small></div></div></article>`;
+    g.appendChild(a);
+  }
+}
+if (window.__moreObs) window.__moreObs.disconnect();
+window.__moreObs = new IntersectionObserver((es) => {
+  if (es.some((e) => e.isIntersecting)) load(page + 1);
+}, { rootMargin: '700px' });
+window.__moreObs.observe(document.getElementById('sentinel'));
+window.__destroy = function() { if (window.__moreObs) { window.__moreObs.disconnect(); window.__moreObs = null; } };
+load(1);
+Object.assign(window, { load, toggleSearch });
+};
+window.__boot();
+hideBoot();
+}
+</script>
+</body>
+</html>
