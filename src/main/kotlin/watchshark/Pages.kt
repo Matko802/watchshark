@@ -351,9 +351,6 @@ object Pages {
     fun serve(ctx: Context, page: String): Boolean {
         val key = page.removeSuffix(".html")
         val spec = specs[key] ?: return false
-        if (spec.wasmApp && !Static.isCrawler(ctx) && Static.serveShell(ctx)) {
-            return true
-        }
         val html = rendered["$key.html"] ?: return false
         if (spec.crawlerMeta && Static.isCrawler(ctx)) {
             val extra = when (key) {
