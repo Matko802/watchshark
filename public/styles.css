@@ -257,6 +257,23 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px 16px 96px; }
 }
 #seek { width: 100%; margin: 0; }
 .ctrl-row { display: flex; align-items: center; gap: 2px; }
+.volgroup { display: flex; align-items: center; gap: 8px; width: 0; opacity: 0; overflow: hidden; transition: width .28s cubic-bezier(.4,0,.2,1), opacity .2s ease; }
+.volgroup .vol { width: 180px; max-width: 180px; min-width: 180px; flex: none; margin: 0; }
+.volgroup .volpct { font-size: 13px; color: #fff; white-space: nowrap; }
+.volgroup.open { width: 236px; opacity: 1; }
+@media (pointer: coarse) {
+  .volgroup, .volgroup.open { width: 170px; opacity: 1; }
+  .volgroup .vol { width: 120px; max-width: 120px; min-width: 120px; }
+}
+.privchip { display: inline-flex; align-items: center; gap: 5px; vertical-align: middle; background: rgba(255,180,0,.16); color: #ffca7a; border-radius: 999px; font-size: 13px; font-weight: 500; padding: 4px 12px; margin-left: 8px; }
+.privchip md-icon { font-size: 15px; width: 15px; height: 15px; }
+.sharehint { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.shareinp { flex: 1; min-width: 200px; background: var(--md-sys-color-surface-container-high); color: var(--md-sys-color-on-surface); border: 1px solid var(--md-sys-color-outline-variant); border-radius: 8px; padding: 8px 12px; font: inherit; font-size: 13px; }
+.proccard { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; background: var(--md-sys-color-surface-container-low); border: 1px solid var(--md-sys-color-outline-variant); border-radius: 16px; padding: 40px 24px; margin-top: 8px; }
+.procstage { font-size: 17px; font-weight: 500; }
+.proccard md-linear-progress { width: min(420px, 100%); margin: 4px 0; }
+.edrow { margin: 14px 0; display: flex; flex-direction: column; gap: 6px; }
+.edlabel { font-size: 13px; color: var(--md-sys-color-on-surface-variant); }
 .ctrl-row .time { font-size: 13px; color: #fff; white-space: nowrap; margin: 0 4px; }
 .ctrl-row .vol { max-width: 110px; min-width: 64px; }
 .ctrl-row md-icon-button, .ctrl-row md-text-button { --md-icon-button-icon-color: #fff; --md-text-button-label-text-color: #fff; }
@@ -292,7 +309,7 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px 16px 96px; }
   .m3card .meta { padding: 8px 12px 12px; }
   .m3card h3 { font-size: 14px; }
   .player-wrap { border-radius: 0; margin: 0 -12px; width: calc(100% + 24px); }
-  .ctrl-row .vol { display: none; }
+  .volgroup .volpct { display: none; }
   .ctrl-row .time { font-size: 12px; }
   .fab { right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); }
 }

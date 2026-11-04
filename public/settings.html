@@ -6,7 +6,7 @@
 <title>Settings — WatchShark</title>
 <link rel="icon" type="image/png" href="/favicon.png?v=1">
 <script>try{var t=localStorage.getItem('ws_theme');if(t!=='dark'&&t!=='light'){t=(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark'}document.documentElement.dataset.theme=t}catch(e){}</script>
-<link rel="stylesheet" href="/styles.css?v=43">
+<link rel="stylesheet" href="/styles.css?v=44">
 <link rel="preload" href="/vendor/fonts/f1.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/vendor/fonts/f0.woff2" as="font" type="font/woff2" crossorigin>
 <link href="/vendor/fonts.css" rel="stylesheet">
@@ -115,7 +115,7 @@
     <h3>About</h3>
     <p class="muted">What WatchShark is, where the code lives, and where to get the Android app.</p>
     <div class="row">
-      <md-filled-tonal-button href="/about"><md-icon slot="icon">info</md-icon>About WatchShark</md-filled-tonal-button>
+      <md-filled-tonal-button href="/welcome?force=1"><md-icon slot="icon">info</md-icon>About WatchShark</md-filled-tonal-button>
     </div>
   </div>
   </div>
@@ -162,7 +162,7 @@
 </script>
 
 
-<script src="/app.js?v=29"></script>
+<script src="/app.js?v=30"></script>
 <script>
 {
 async function initSettings() {

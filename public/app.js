@@ -19,7 +19,24 @@ async function refreshAuth() {
   const lbl = document.getElementById('whoami');
   if (lbl) lbl.innerHTML = u ? `<a class="who" href="/channel?user=${esc(u.username)}">${avatarHtml(u.avatar, 'pfp-sm')}<span>@${esc(u.username)}</span></a>` : '';
   checkBanStatus(u);
+  maybeWelcome(u);
   return u;
+}
+function maybeWelcome(u) {
+  try {
+    if (u) { localStorage.setItem('ws_welcomed', '1'); }
+  } catch {}
+  if (window.__wsWelcomeChecked) return;
+  window.__wsWelcomeChecked = true;
+  const p = location.pathname;
+  if (u) {
+    if (p === '/welcome' && !new URLSearchParams(location.search).has('force')) location.replace('/');
+    return;
+  }
+  if (p !== '/') return;
+  let seen = '0';
+  try { seen = localStorage.getItem('ws_welcomed') || '0'; } catch {}
+  if (seen !== '1') location.replace('/welcome');
 }
 function avatarHtml(file, cls) {
   if (!file) return `<md-icon class="${cls}">account_circle</md-icon>`;
@@ -329,7 +346,7 @@ applyThemePref();
 document.addEventListener('DOMContentLoaded', () => setTimeout(hideBoot, 1500));
 function ensureSidebar() {
   if (window.innerWidth < 1000) return;
-  const bare = ['/forgot', '/reset', '/verify'].some((p) => location.pathname.startsWith(p));
+  const bare = ['/forgot', '/reset', '/verify', '/welcome'].some((p) => location.pathname.startsWith(p));
   if (bare) return;
   if (document.getElementById('sidebar')) {
     markSidebar();

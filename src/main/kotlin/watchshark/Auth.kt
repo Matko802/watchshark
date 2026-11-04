@@ -98,6 +98,15 @@ object Auth {
         }
     }
 
+    fun randToken(n: Int): String {
+        val alpha = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789"
+        val b = ByteArray(n)
+        try { java.security.SecureRandom().nextBytes(b) } catch (_: Exception) {}
+        val out = CharArray(n)
+        for (i in b.indices) out[i] = alpha[(b[i].toInt() and 0xFF) % alpha.length]
+        return String(out)
+    }
+
     fun validUsername(u: String): Boolean {
         if (u.length < 3 || u.length > 30) return false
         for (c in u) {

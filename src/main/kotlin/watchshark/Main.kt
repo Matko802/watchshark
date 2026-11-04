@@ -25,7 +25,7 @@ val cleanPages = mapOf(
     "/verify" to "verify.html",
     "/admin" to "admin.html",
     "/messages" to "messages.html",
-    "/about" to "about.html"
+    "/welcome" to "welcome.html"
 )
 
 fun main() {

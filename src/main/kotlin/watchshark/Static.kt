@@ -221,6 +221,14 @@ object Static {
     }
 
     fun watchMeta(id: Long): String {
+        var priv = false
+        synchronized(Db.lock) {
+            Db.conn.prepareStatement("SELECT COALESCE(visibility,'public') FROM videos WHERE id=?").use { ps ->
+                ps.setLong(1, id)
+                ps.executeQuery().use { rs -> if (rs.next()) priv = (rs.getString(1) ?: "public") == "private" }
+            }
+        }
+        if (priv) return ""
         val v = HandlersCommon.videoJson(id, -1) ?: return ""
         fun str(k: String): String = v[k] as? String ?: ""
         var title = str("title")

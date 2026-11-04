@@ -55,7 +55,7 @@ object HandlersCommon {
     fun videoJson(id: Long, viewer: Long): Map<String, Any?>? {
         synchronized(Db.lock) {
             Db.conn.prepareStatement(
-                "SELECT v.id,v.user_id,v.title,v.description,v.filename,v.thumbnail,v.mimetype,v.size,v.views,v.created_at,v.status,u.username,u.avatar,v.renditions,v.orientation,v.kind FROM videos v JOIN users u ON u.id=v.user_id WHERE v.id=?"
+                "SELECT v.id,v.user_id,v.title,v.description,v.filename,v.thumbnail,v.mimetype,v.size,v.views,v.created_at,v.status,u.username,u.avatar,v.renditions,v.orientation,v.kind,v.stage,v.progress,COALESCE(v.visibility,'public'),v.share_token FROM videos v JOIN users u ON u.id=v.user_id WHERE v.id=?"
             ).use { ps ->
                 ps.setLong(1, id)
                 ps.executeQuery().use { rs ->
@@ -76,6 +76,10 @@ object HandlersCommon {
                     val rend = rs.getString(14)
                     val ori = rs.getString(15)
                     val kk = rs.getString(16)
+                    val stage = rs.getString(17) ?: ""
+                    val prog = rs.getDouble(18)
+                    val vis = rs.getString(19) ?: "public"
+                    val tok = rs.getString(20)
 
                     var likes = 0L
                     Db.conn.prepareStatement("SELECT COUNT(*) FROM likes WHERE video_id=?").use { p2 ->
@@ -113,6 +117,10 @@ object HandlersCommon {
                     val oriStr = if (ori == "v") "v" else "h"
                     val kindStr = if (kk == "wheel") kk else "video"
                     val av: Any? = if (!uav.isNullOrEmpty()) "/a/$uav" else null
+                    val visStr = if (vis == "private") "private" else "public"
+                    val stageStr = if (st == "ready") "" else stage
+                    val progNum = if (st == "ready") 0.0 else (if (prog > 0) prog else 0.0)
+                    val shareTok: Any? = if (visStr == "private" && viewer == uid && !tok.isNullOrEmpty()) tok else null
                     var renditions: Any? = null
                     if (!rend.isNullOrEmpty()) {
                         try {
@@ -128,6 +136,8 @@ object HandlersCommon {
                         "likes" to likes, "liked" to liked, "comments" to comments,
                         "followers" to followers, "following" to following,
                         "created_at" to ca, "status" to st, "avatar" to av,
+                        "stage" to stageStr, "progress" to progNum,
+                        "visibility" to visStr, "share_token" to shareTok,
                         "renditions" to renditions, "orientation" to oriStr, "kind" to kindStr
                     )
                 }

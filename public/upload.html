@@ -3,22 +3,51 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Upload — WatchShark</title>
+<title>Create — WatchShark</title>
 <link rel="icon" type="image/png" href="/favicon.png?v=1">
 <script>try{var t=localStorage.getItem('ws_theme');if(t!=='dark'&&t!=='light'){t=(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark'}document.documentElement.dataset.theme=t}catch(e){}</script>
-<link rel="stylesheet" href="/styles.css?v=43">
+<link rel="stylesheet" href="/styles.css?v=44">
 <link rel="preload" href="/vendor/fonts/f1.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/vendor/fonts/f0.woff2" as="font" type="font/woff2" crossorigin>
 <link href="/vendor/fonts.css" rel="stylesheet">
 
 <link rel="modulepreload" href="/vendor/material-web.js">
 <script type="module">import '/vendor/material-web.js';</script>
-<meta property="og:site_name" content="WatchShark">
-<meta property="og:type" content="website">
-<meta name="twitter:card" content="summary_large_image">
-<meta property="og:title" content="WatchShark">
-<meta property="og:description" content="WatchShark — watch and share videos and wheels.">
-<meta property="og:image" content="https://watchshark.duckdns.org/watchshark.webp">
+<style>
+.upmain { max-width: 1080px; }
+.uptitle { margin: 4px 0 14px; }
+.upcard { background: var(--md-sys-color-surface-container-low); border: 1px solid var(--md-sys-color-outline-variant); border-radius: 16px; padding: 20px; }
+.bigdrop { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 64px 24px; border-style: dashed; border-width: 2px; cursor: pointer; transition: border-color .2s ease, background .2s ease; }
+.bigdrop.over { border-color: var(--md-sys-color-primary); background: var(--md-sys-color-surface-container); }
+.bigdrop .dropicon { font-size: 56px; width: 56px; height: 56px; color: var(--md-sys-color-on-surface-variant); }
+.bigdrop h3 { margin: 4px 0 0; }
+.bigdrop .hint { max-width: 460px; margin: 0; font-size: 14px; }
+.upgrid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 860px) { .upgrid { grid-template-columns: 1fr; } }
+.prevbox { background: #000; border-radius: 12px; overflow: hidden; aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; }
+.prevbox video, .prevbox img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.filemeta { display: flex; flex-direction: column; gap: 2px; padding: 12px 4px 4px; overflow: hidden; }
+.filemeta b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 500; margin: 8px 4px 0 0; }
+.chip md-icon { font-size: 16px; width: 16px; height: 16px; }
+.chip.warn { background: rgba(255, 180, 0, .16); color: #ffca7a; }
+.chip.ok { background: rgba(53, 208, 90, .14); color: #58d97a; }
+.uperr { color: var(--md-sys-color-error); font-size: 14px; margin: 8px 0 0; }
+.steps { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.steps li { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 12px; color: var(--md-sys-color-on-surface-variant); transition: background .2s ease, color .2s ease; }
+.steps li.active { color: var(--md-sys-color-on-surface); background: var(--md-sys-color-surface-container-high); }
+.steps li.done { color: var(--md-sys-color-on-surface-variant); }
+.steps li.done md-icon { color: #58d97a; }
+.steps md-icon { font-size: 22px; width: 22px; height: 22px; flex-shrink: 0; }
+.steps .stxt { font-size: 13px; }
+.steps b { display: block; font-size: 14px; font-weight: 500; }
+#progState md-linear-progress { margin: 14px 0 6px; }
+.center { text-align: center; }
+.donecard { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 44px 24px; }
+.donecard .okicon { font-size: 56px; width: 56px; height: 56px; color: #58d97a; }
+.donecard img, .donecard video { width: min(420px, 100%); aspect-ratio: 16/9; object-fit: cover; border-radius: 12px; background: #000; }
+.privrow { display: flex; align-items: center; gap: 10px; margin: 8px 0; flex-wrap: wrap; }
+</style>
 </head>
 <body data-pjax="1"><div id="bootloader"><div class="boots"></div></div>
 <header class="topbar">
@@ -28,27 +57,93 @@
   <md-icon-button data-auth="in" href="/settings" aria-label="Settings" style="display:none"><md-icon>settings</md-icon></md-icon-button>
   <md-text-button data-admin href="/admin" style="display:none">Admin</md-text-button>
 </header>
-<main>
-  <h2>Upload</h2>
-  <div class="segtabs" id="kindTabs" role="tablist" aria-label="Upload type">
-    <span class="segind"></span>
-    <button class="segbtn on" data-kind="video">Videos</button>
-    <button class="segbtn" data-kind="wheel">Wheels</button>
-  </div>
-  <div id="drop"><p>Drag &amp; drop a file here or</p>
-    <md-filled-tonal-button onclick="document.getElementById('f').click()"><md-icon slot="icon">folder_open</md-icon>Choose file</md-filled-tonal-button>
+<main class="upmain">
+  <h2 class="uptitle">Create</h2>
+
+  <section id="pickCard" class="upcard bigdrop">
+    <md-icon class="dropicon">cloud_upload</md-icon>
+    <h3>Upload a video</h3>
+    <p class="hint muted">Drag &amp; drop a file here, or choose one.<br>Videos up to <b>80&nbsp;MB</b> go live instantly. Bigger files (up to 2&nbsp;GB) are compressed automatically after upload.</p>
+    <md-filled-tonal-button id="chooseBtn"><md-icon slot="icon">folder_open</md-icon>Choose file</md-filled-tonal-button>
     <input type="file" id="f" accept="video/*" hidden>
-  </div>
-  <div class="row" style="margin-top:12px">
-    <md-filled-tonal-button onclick="document.getElementById('thumbf').click()"><md-icon slot="icon">image</md-icon>Choose thumbnail</md-filled-tonal-button>
-    <img id="thumbprev" style="display:none;width:128px;aspect-ratio:16/9;object-fit:cover;border-radius:8px" alt="">
-  </div>
-  <input type="file" id="thumbf" accept="image/*" hidden>
-  <md-outlined-text-field id="title" label="Title (required)" maxlength="120" class="field"></md-outlined-text-field>
-  <md-outlined-text-field id="desc" label="Description..." type="textarea" rows="3" maxlength="2000" class="field"></md-outlined-text-field>
-  <md-linear-progress id="bar" value="0" style="display:none"></md-linear-progress>
-  <md-filled-button onclick="up()"><md-icon slot="icon">cloud_upload</md-icon>Upload</md-filled-button>
-  <p id="msg"></p>
+    <p id="pickErr" class="uperr"></p>
+  </section>
+
+  <section id="editState" style="display:none">
+    <div class="upgrid">
+      <div class="upcard">
+        <div id="prevBox" class="prevbox"></div>
+        <div class="filemeta">
+          <b id="fName"></b>
+          <span class="muted" id="fMeta"></span>
+        </div>
+        <div>
+          <span id="compChip" class="chip warn" style="display:none"><md-icon>compress</md-icon><span>Over 80 MB — will be compressed after upload</span></span>
+          <span id="noCompChip" class="chip ok" style="display:none"><md-icon>bolt</md-icon><span>Under 80 MB — goes live instantly, no compression</span></span>
+        </div>
+        <md-text-button id="changeFileBtn"><md-icon slot="icon">swap_horiz</md-icon>Choose a different file</md-text-button>
+      </div>
+      <div class="upcard">
+        <md-outlined-text-field id="title" label="Title (required)" maxlength="120" class="field"></md-outlined-text-field>
+        <md-outlined-text-field id="desc" label="Description..." type="textarea" rows="3" maxlength="2000" class="field"></md-outlined-text-field>
+        <div class="segtabs" id="kindTabs" role="tablist" aria-label="Upload type">
+          <span class="segind"></span>
+          <button class="segbtn on" data-kind="video">Videos</button>
+          <button class="segbtn" data-kind="wheel">Wheels</button>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <md-filled-tonal-button id="thumbBtn"><md-icon slot="icon">image</md-icon>Choose thumbnail</md-filled-tonal-button>
+          <img id="thumbprev" style="display:none;width:128px;aspect-ratio:16/9;object-fit:cover;border-radius:8px" alt="">
+        </div>
+        <input type="file" id="thumbf" accept="image/*" hidden>
+        <div class="privrow">
+          <md-icon>lock</md-icon>
+          <select id="vis" class="themesel" style="flex:1">
+            <option value="public">Public — everyone can see it</option>
+            <option value="private">Private — only people with the share link</option>
+          </select>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <md-filled-button id="goBtn" style="flex:1"><md-icon slot="icon">cloud_upload</md-icon>Upload</md-filled-button>
+        </div>
+        <p id="msg" class="uperr"></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="progState" class="upcard" style="display:none">
+    <ol class="steps">
+      <li id="st-up" class="active"><md-icon>cloud_upload</md-icon><div><b>Uploading</b><span class="stxt" id="st-up-txt">Preparing…</span></div></li>
+      <li id="st-chk"><md-icon>fact_check</md-icon><div><b>Checking video</b><span class="stxt" id="st-chk-txt"></span></div></li>
+      <li id="st-cmp" style="display:none"><md-icon>compress</md-icon><div><b>Compressing</b><span class="stxt" id="st-cmp-txt"></span></div></li>
+      <li id="st-fin"><md-icon>movie</md-icon><div><b>Finishing up</b><span class="stxt" id="st-fin-txt"></span></div></li>
+    </ol>
+    <md-linear-progress id="upBar" value="0"></md-linear-progress>
+    <p id="progMsg" class="muted" style="margin:6px 0 10px"></p>
+    <md-text-button id="cancelBtn"><md-icon slot="icon">close</md-icon>Cancel upload</md-text-button>
+  </section>
+
+  <section id="doneState" class="upcard" style="display:none">
+    <div class="donecard">
+      <md-icon class="okicon">check_circle</md-icon>
+      <h3 style="margin:0">Published!</h3>
+      <div id="doneThumb"></div>
+      <b id="doneTitle" style="max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></b>
+      <div class="row" style="justify-content:center;margin-top:6px">
+        <md-filled-button id="goWatchBtn"><md-icon slot="icon">play_arrow</md-icon>Go to video</md-filled-button>
+        <md-filled-tonal-button id="againBtn"><md-icon slot="icon">add</md-icon>Upload another</md-filled-tonal-button>
+      </div>
+    </div>
+  </section>
+
+  <section id="failState" class="upcard" style="display:none">
+    <div class="donecard">
+      <md-icon class="okicon" style="color:var(--md-sys-color-error)">error</md-icon>
+      <h3 style="margin:0">Upload failed</h3>
+      <p class="muted" id="failMsg" style="margin:0"></p>
+      <md-filled-tonal-button id="retryBtn"><md-icon slot="icon">refresh</md-icon>Try again</md-filled-tonal-button>
+    </div>
+  </section>
 </main>
 <nav id="bottomnav">
   <a href="/" data-tab="home"><md-icon>home</md-icon><span>Home</span></a>
@@ -76,8 +171,6 @@
       acc.href = '/channel?user=' + encodeURIComponent(j.user.username);
       acc.dataset.user = j.user.username;
       if (navAv) navAv.innerHTML = avatarHtml(j.user.avatar, 'navavatar');
-      const u = new URLSearchParams(location.search).get('user');
-      if (path.startsWith('/channel') && u === j.user.username) mark('account');
     }
   }).catch(() => {});
   acc.addEventListener('click', (e) => {
@@ -91,44 +184,112 @@
 </script>
 
 
-<script src="/app.js?v=29"></script>
+<script src="/app.js?v=30"></script>
 <script>
 {
-var file = null;
-var thumbFile = null;
-var upKind = 'video';
-var kindManual = false;
-var drop = document.getElementById('drop'), fi = document.getElementById('f');
-const kindSeg = segTabs(document.getElementById('kindTabs'), (btn) => {
+window.__boot = function() {
+const CAP = 80 * 1024 * 1024;
+const HARD = 2048 * 1024 * 1024;
+let file = null;
+let thumbFile = null;
+let upKind = 'video';
+let kindManual = false;
+let willCompress = false;
+let vidUrl = null;
+let xhrRef = null;
+let pollTimer = null;
+let busy = false;
+let doneId = 0;
+
+const $ = (id) => document.getElementById(id);
+const drop = $('pickCard');
+const fi = $('f');
+const msg = $('msg');
+
+const kindSeg = segTabs($('kindTabs'), (btn) => {
   upKind = btn.dataset.kind || 'video';
   kindManual = true;
 });
+
+function show(id) {
+  for (const s of ['pickCard', 'editState', 'progState', 'doneState', 'failState']) $(s).style.display = 'none';
+  $(id).style.display = '';
+  window.scrollTo(0, 0);
+}
+function fmtMB(n) {
+  return (n / 1048576).toFixed(1) + ' MB';
+}
+function setStep(id, state, txt) {
+  const li = $(id);
+  const icon = li.querySelector('md-icon');
+  if (!li.dataset.icon) li.dataset.icon = icon.textContent;
+  li.classList.toggle('active', state === 'active');
+  li.classList.toggle('done', state === 'done');
+  if (state === 'done') icon.textContent = 'check_circle';
+  else icon.textContent = li.dataset.icon;
+  if (txt !== undefined) li.querySelector('.stxt').textContent = txt;
+}
+function guardUnload(e) {
+  if (busy) { e.preventDefault(); e.returnValue = ''; }
+}
+function resetToPick() {
+  busy = false;
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  if (vidUrl) { URL.revokeObjectURL(vidUrl); vidUrl = null; }
+  file = null;
+  thumbFile = null;
+  willCompress = false;
+  msg.textContent = '';
+  show('pickCard');
+}
+
 function pickFile(f) {
-  file = f;
   if (!f) return;
-  drop.querySelector('p').textContent = f.name;
-  if (kindManual) return;
-  const url = URL.createObjectURL(f);
+  $('pickErr').textContent = '';
+  if (f.type && !f.type.startsWith('video/')) {
+    $('pickErr').textContent = 'That is not a video file.';
+    return;
+  }
+  if (f.size > HARD) {
+    $('pickErr').textContent = 'Too big — the maximum is 2 GB.';
+    return;
+  }
+  file = f;
+  willCompress = f.size > CAP;
+  if (vidUrl) URL.revokeObjectURL(vidUrl);
+  vidUrl = URL.createObjectURL(f);
+  $('prevBox').innerHTML = `<video src="${vidUrl}#t=0.5" preload="metadata" muted playsinline controls></video>`;
+  $('fName').textContent = f.name;
+  $('fMeta').textContent = fmtMB(f.size) + (f.type ? ' • ' + f.type : '');
+  $('compChip').style.display = willCompress ? '' : 'none';
+  $('noCompChip').style.display = willCompress ? 'none' : '';
+  const base = f.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim();
+  if (base && !$('title').value) $('title').value = base.slice(0, 120);
   const v = document.createElement('video');
   v.preload = 'metadata';
   v.onloadedmetadata = () => {
+    $('fMeta').textContent = fmtMB(f.size) + (f.type ? ' • ' + f.type : '') + ' • ' + (v.videoWidth || '?') + '×' + (v.videoHeight || '?');
     if (!kindManual) {
       upKind = v.videoHeight > v.videoWidth ? 'wheel' : 'video';
       const b = document.querySelector(`#kindTabs [data-kind="${upKind}"]`);
       if (kindSeg && b) kindSeg.pick(b, true);
     }
-    URL.revokeObjectURL(url);
+    URL.revokeObjectURL(v.src);
   };
-  v.onerror = () => URL.revokeObjectURL(url);
-  v.src = url;
+  v.src = vidUrl;
+  show('editState');
 }
+
+drop.addEventListener('click', (e) => { if (e.target === drop || e.target.closest('.bigdrop') && !e.target.closest('md-filled-tonal-button')) fi.click(); });
+$('chooseBtn').addEventListener('click', (e) => { e.stopPropagation(); fi.click(); });
+$('changeFileBtn').addEventListener('click', () => fi.click());
 ['dragover', 'dragenter'].forEach((e) => drop.addEventListener(e, (ev) => { ev.preventDefault(); drop.classList.add('over'); }));
 ['dragleave', 'drop'].forEach((e) => drop.addEventListener(e, (ev) => { ev.preventDefault(); drop.classList.remove('over'); }));
 drop.addEventListener('drop', (ev) => { pickFile(ev.dataTransfer.files[0]); });
-fi.addEventListener('change', () => { pickFile(fi.files[0]); });
-document.getElementById('thumbf').addEventListener('change', () => {
-  thumbFile = document.getElementById('thumbf').files[0] || null;
-  const prev = document.getElementById('thumbprev');
+fi.addEventListener('change', () => pickFile(fi.files[0]));
+$('thumbf').addEventListener('change', () => {
+  thumbFile = $('thumbf').files[0] || null;
+  const prev = $('thumbprev');
   if (thumbFile) {
     prev.src = URL.createObjectURL(thumbFile);
     prev.style.display = '';
@@ -137,48 +298,173 @@ document.getElementById('thumbf').addEventListener('change', () => {
     prev.style.display = 'none';
   }
 });
+$('goBtn').addEventListener('click', up);
+$('retryBtn').addEventListener('click', resetToPick);
+$('againBtn').addEventListener('click', resetToPick);
+$('goWatchBtn').addEventListener('click', () => { if (doneId) location.href = '/watch?id=' + doneId; });
+$('cancelBtn').addEventListener('click', () => {
+  if (xhrRef) {
+    xhrRef.abort();
+    xhrRef = null;
+    resetToPick();
+  }
+});
+window.addEventListener('beforeunload', guardUnload);
+
 (async () => {
   const u = await refreshAuth();
-  if (!u) { alert('Login first'); openAuth('login'); return; }
-  if (isBlockedUser(u)) {
-    document.getElementById('msg').textContent = banMessage(u);
-  }
+  if (!u) { openAuth('login'); return; }
+  if (isBlockedUser(u)) msg.textContent = banMessage(u);
 })();
+
 function up() {
   me().then((u) => {
     if (isBlockedUser(u)) { alert(banMessage(u)); return; }
-    doUp();
+    startUp();
   });
 }
-function doUp() {
-  if (!file) return alert('Choose a file first');
-  const title = document.getElementById('title').value.trim();
-  if (!title) return alert('Title is required');
+
+function startUp() {
+  if (busy) return;
+  if (!file) { show('pickCard'); return; }
+  const title = $('title').value.trim();
+  if (!title) { msg.textContent = 'Title is required.'; $('title').focus(); return; }
+  busy = true;
+  msg.textContent = '';
   const fd = new FormData();
   fd.append('title', title);
-  fd.append('description', document.getElementById('desc').value);
+  fd.append('description', $('desc').value);
   fd.append('kind', upKind);
+  fd.append('visibility', $('vis').value || 'public');
   fd.append('file', file);
   if (thumbFile) fd.append('thumb', thumbFile);
-  const bar = document.getElementById('bar');
-  bar.style.display = ''; bar.indeterminate = false; bar.value = 0;
+
+  show('progState');
+  $('st-cmp').style.display = willCompress ? '' : 'none';
+  setStep('st-up', 'active', 'Preparing…');
+  setStep('st-chk', 'idle', '');
+  setStep('st-cmp', 'idle', '');
+  setStep('st-fin', 'idle', '');
+  const bar = $('upBar');
+  bar.indeterminate = false;
+  bar.value = 0;
+  $('progMsg').textContent = willCompress ? 'Bigger files are compressed right after upload — you can watch as soon as it finishes.' : 'Hang tight — this usually takes just a few seconds.';
+  const cancelBtn = $('cancelBtn');
+  cancelBtn.style.display = '';
+
   const xhr = new XMLHttpRequest();
-  xhr.open('POST', '/api/videos', true); xhr.withCredentials = true;
-  xhr.upload.onprogress = (ev) => { if (ev.lengthComputable) bar.value = ev.loaded / ev.total; };
+  xhrRef = xhr;
+  xhr.open('POST', '/api/videos', true);
+  xhr.withCredentials = true;
+  let lastLoaded = 0;
+  let lastTime = Date.now();
+  xhr.upload.onprogress = (ev) => {
+    if (!ev.lengthComputable) return;
+    const frac = ev.loaded / ev.total;
+    bar.indeterminate = false;
+    bar.value = frac;
+    const now = Date.now();
+    const dt = (now - lastTime) / 1000;
+    let speed = '';
+    if (dt > 0.4) {
+      const bps = (ev.loaded - lastLoaded) / dt;
+      if (bps > 0) speed = ' • ' + fmtMB(bps) + '/s';
+      lastLoaded = ev.loaded;
+      lastTime = now;
+    }
+    setStep('st-up', 'active', Math.round(frac * 100) + '% • ' + fmtMB(ev.loaded) + ' of ' + fmtMB(ev.total) + speed);
+  };
   xhr.onload = () => {
+    xhrRef = null;
+    $('cancelBtn').style.display = 'none';
     try {
       const j = JSON.parse(xhr.responseText);
-      if (xhr.status >= 200 && xhr.status < 300) {
-        document.getElementById('msg').textContent = 'Uploaded! Redirecting...';
-        location.href = '/watch?id=' + j.id;
-      } else document.getElementById('msg').textContent = (j.error || 'failed');
-    } catch { document.getElementById('msg').textContent = 'Upload failed'; }
+      if (xhr.status >= 200 && xhr.status < 300 && j.id) {
+        setStep('st-up', 'done', 'Done');
+        startPoll(j.id);
+      } else {
+        fail(j.error || 'Upload failed');
+      }
+    } catch { fail('Upload failed'); }
   };
-  xhr.onerror = () => document.getElementById('msg').textContent = 'Network error';
+  xhr.onerror = () => { xhrRef = null; fail('Network error — check your connection.'); };
+  xhr.onabort = () => { xhrRef = null; };
   xhr.send(fd);
 }
 
+function fail(m) {
+  busy = false;
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  $('failMsg').textContent = m;
+  show('failState');
+}
+
+function startPoll(id) {
+  doneId = id;
+  setStep('st-chk', 'active', 'Reading the file…');
+  pollTimer = setInterval(async () => {
+    let v = null;
+    try {
+      const r = await fetch('/api/videos/' + id, { credentials: 'include' });
+      if (!r.ok) return;
+      v = (await r.json()).video;
+    } catch { return; }
+    if (!v) return;
+    if (v.status === 'ready') {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+      busy = false;
+      setStep('st-chk', 'done');
+      setStep('st-cmp', 'done');
+      setStep('st-fin', 'done', 'Done');
+      const media = v.thumbnail
+        ? `<img src="${v.thumbnail}" alt="">`
+        : `<video src="${v.src}#t=0.5" preload="metadata" muted></video>`;
+      $('doneThumb').innerHTML = media;
+      $('doneTitle').textContent = v.title;
+      show('doneState');
+    } else if (v.status === 'failed') {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+      fail('Processing failed — this file could not be converted.');
+    } else {
+      const st = v.stage || 'analyzing';
+      const pct = Math.round(v.progress || 0);
+      if (st === 'compressing') {
+        setStep('st-up', 'done', 'Done');
+        setStep('st-chk', 'done');
+        $('st-cmp').style.display = '';
+        setStep('st-cmp', 'active', pct + '%');
+        const bar = $('upBar');
+        bar.indeterminate = false;
+        bar.value = Math.max(0.05, Math.min(0.99, pct / 100));
+        $('progMsg').textContent = 'Compressing to keep the video under 80 MB…';
+      } else if (st === 'finalizing') {
+        setStep('st-up', 'done', 'Done');
+        setStep('st-chk', 'done');
+        setStep('st-cmp', 'done');
+        setStep('st-fin', 'active', 'Almost there…');
+        const bar = $('upBar');
+        bar.indeterminate = false;
+        bar.value = 0.9;
+        $('progMsg').textContent = 'Making the thumbnail and publishing…';
+      } else {
+        setStep('st-up', 'done', 'Done');
+        setStep('st-chk', 'active', 'Reading the file…');
+      }
+    }
+  }, 2000);
+}
+
 Object.assign(window, { up });
+
+window.__destroy = function() {
+  window.removeEventListener('beforeunload', guardUnload);
+  if (pollTimer) clearInterval(pollTimer);
+  if (xhrRef) xhrRef.abort();
+  busy = false;
+};
+};
+window.__boot();
+hideBoot();
 }
 </script>
 </body>

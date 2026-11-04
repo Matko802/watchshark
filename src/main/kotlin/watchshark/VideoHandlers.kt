@@ -30,10 +30,11 @@ object VideoHandlers {
         val ids = mutableListOf<Long>()
         var total = 0L
         synchronized(Db.lock) {
+            val readySql = if (mine) "v.status='ready'" else "v.status='ready' AND COALESCE(v.visibility,'public')!='private'"
             if (mine) {
                 val like = "%${HttpUtil.escapeLike(search)}%"
                 Db.conn.prepareStatement(
-                    "SELECT v.id FROM videos v JOIN users u ON u.id=v.user_id WHERE v.user_id=? AND COALESCE(v.kind,'video')!='music' AND (?='' OR v.title LIKE ? ESCAPE '\\' OR v.description LIKE ? ESCAPE '\\' OR u.username LIKE ? ESCAPE '\\') ORDER BY $order LIMIT ? OFFSET ?"
+                    "SELECT v.id FROM videos v JOIN users u ON u.id=v.user_id WHERE v.user_id=? AND $readySql AND COALESCE(v.kind,'video')!='music' AND (?='' OR v.title LIKE ? ESCAPE '\\' OR v.description LIKE ? ESCAPE '\\' OR u.username LIKE ? ESCAPE '\\') ORDER BY $order LIMIT ? OFFSET ?"
                 ).use { ps ->
                     ps.setLong(1, viewer)
                     ps.setString(2, search)
@@ -42,7 +43,7 @@ object VideoHandlers {
                     ps.executeQuery().use { rs -> while (rs.next()) ids.add(rs.getLong(1)) }
                 }
                 Db.conn.prepareStatement(
-                    "SELECT COUNT(*) FROM videos v JOIN users u ON u.id=v.user_id WHERE v.user_id=? AND COALESCE(v.kind,'video')!='music' AND (?='' OR v.title LIKE ? ESCAPE '\\' OR v.description LIKE ? ESCAPE '\\' OR u.username LIKE ? ESCAPE '\\')"
+                    "SELECT COUNT(*) FROM videos v JOIN users u ON u.id=v.user_id WHERE v.user_id=? AND $readySql AND COALESCE(v.kind,'video')!='music' AND (?='' OR v.title LIKE ? ESCAPE '\\' OR v.description LIKE ? ESCAPE '\\' OR u.username LIKE ? ESCAPE '\\')"
                 ).use { ps ->
                     ps.setLong(1, viewer)
                     ps.setString(2, search)
@@ -50,19 +51,19 @@ object VideoHandlers {
                     ps.executeQuery().use { rs -> if (rs.next()) total = rs.getLong(1) }
                 }
             } else if (search.isEmpty()) {
-                Db.conn.prepareStatement("SELECT v.id FROM videos v JOIN users u ON u.id=v.user_id WHERE COALESCE(v.kind,'video')=? ORDER BY $order LIMIT ? OFFSET ?").use { ps ->
+                Db.conn.prepareStatement("SELECT v.id FROM videos v JOIN users u ON u.id=v.user_id WHERE COALESCE(v.kind,'video')=? AND $readySql ORDER BY $order LIMIT ? OFFSET ?").use { ps ->
                     ps.setString(1, kind)
                     ps.setLong(2, limit); ps.setLong(3, off)
                     ps.executeQuery().use { rs -> while (rs.next()) ids.add(rs.getLong(1)) }
                 }
-                Db.conn.prepareStatement("SELECT COUNT(*) FROM videos WHERE COALESCE(kind,'video')=?").use { ps ->
+                Db.conn.prepareStatement("SELECT COUNT(*) FROM videos v WHERE COALESCE(v.kind,'video')=? AND $readySql").use { ps ->
                     ps.setString(1, kind)
                     ps.executeQuery().use { rs -> if (rs.next()) total = rs.getLong(1) }
                 }
             } else {
                 val like = "%${HttpUtil.escapeLike(search)}%"
                 Db.conn.prepareStatement(
-                    "SELECT v.id FROM videos v JOIN users u ON u.id=v.user_id WHERE COALESCE(v.kind,'video')=? AND (v.title LIKE ? ESCAPE '\\' OR v.description LIKE ? ESCAPE '\\' OR u.username LIKE ? ESCAPE '\\') ORDER BY $order LIMIT ? OFFSET ?"
+                    "SELECT v.id FROM videos v JOIN users u ON u.id=v.user_id WHERE COALESCE(v.kind,'video')=? AND $readySql AND (v.title LIKE ? ESCAPE '\\' OR v.description LIKE ? ESCAPE '\\' OR u.username LIKE ? ESCAPE '\\') ORDER BY $order LIMIT ? OFFSET ?"
                 ).use { ps ->
                     ps.setString(1, kind)
                     ps.setString(2, like); ps.setString(3, like); ps.setString(4, like)
@@ -70,7 +71,7 @@ object VideoHandlers {
                     ps.executeQuery().use { rs -> while (rs.next()) ids.add(rs.getLong(1)) }
                 }
                 Db.conn.prepareStatement(
-                    "SELECT COUNT(*) FROM videos v JOIN users u ON u.id=v.user_id WHERE COALESCE(v.kind,'video')=? AND (v.title LIKE ? ESCAPE '\\' OR v.description LIKE ? ESCAPE '\\' OR u.username LIKE ? ESCAPE '\\')"
+                    "SELECT COUNT(*) FROM videos v JOIN users u ON u.id=v.user_id WHERE COALESCE(v.kind,'video')=? AND $readySql AND (v.title LIKE ? ESCAPE '\\' OR v.description LIKE ? ESCAPE '\\' OR u.username LIKE ? ESCAPE '\\')"
                 ).use { ps ->
                     ps.setString(1, kind)
                     ps.setString(2, like); ps.setString(3, like); ps.setString(4, like)
@@ -90,19 +91,38 @@ object VideoHandlers {
         var viewer = -1L
         val (aid, _, aok) = HandlersCommon.authUser(ctx)
         if (aok) viewer = aid
+        var owner = 0L
+        var vis = "public"
+        var tok = ""
         var exists = false
         synchronized(Db.lock) {
-            Db.conn.prepareStatement("SELECT 1 FROM videos WHERE id=?").use { ps ->
+            Db.conn.prepareStatement("SELECT user_id,COALESCE(visibility,'public'),COALESCE(share_token,'') FROM videos WHERE id=?").use { ps ->
                 ps.setLong(1, id)
-                ps.executeQuery().use { rs -> exists = rs.next() }
-            }
-            if (exists && viewer >= 0) {
-                HandlersCommon.recordViewLocked(id, viewer, "")
+                ps.executeQuery().use { rs ->
+                    if (rs.next()) {
+                        owner = rs.getLong(1)
+                        vis = rs.getString(2) ?: "public"
+                        tok = rs.getString(3) ?: ""
+                        exists = true
+                    }
+                }
             }
         }
         if (!exists) {
             HttpUtil.writeErr(ctx, 404, "Not found")
             return
+        }
+        if (vis == "private" && viewer != owner && !Auth.isAdmin(viewer, "")) {
+            val linkTok = ctx.queryParam("t") ?: ""
+            if (linkTok.isEmpty() || linkTok != tok) {
+                HttpUtil.writeErr(ctx, 404, "Not found")
+                return
+            }
+        }
+        if (viewer >= 0) {
+            synchronized(Db.lock) {
+                HandlersCommon.recordViewLocked(id, viewer, "")
+            }
         }
         val v = HandlersCommon.videoJson(id, viewer)
         if (v == null) {
@@ -334,8 +354,48 @@ object VideoHandlers {
                     ps.executeUpdate()
                 }
             }
+            var shareTok: String? = null
+            Db.conn.prepareStatement("SELECT share_token FROM videos WHERE id=?").use { ps ->
+                ps.setLong(1, id)
+                ps.executeQuery().use { rs -> if (rs.next()) shareTok = rs.getString(1) }
+            }
+            val visRaw = HttpUtil.truncateRunes(ctx.formParam("visibility") ?: "", 16).lowercase()
+            if (visRaw == "public" || visRaw == "private") {
+                if (visRaw == "private" && shareTok.isNullOrEmpty()) {
+                    shareTok = Auth.randToken(12)
+                    Db.conn.prepareStatement("UPDATE videos SET visibility=?, share_token=? WHERE id=?").use { ps ->
+                        ps.setString(1, visRaw); ps.setString(2, shareTok); ps.setLong(3, id)
+                        ps.executeUpdate()
+                    }
+                } else {
+                    Db.conn.prepareStatement("UPDATE videos SET visibility=? WHERE id=?").use { ps ->
+                        ps.setString(1, visRaw); ps.setLong(2, id)
+                        ps.executeUpdate()
+                    }
+                }
+            }
+            if (ctx.formParam("share_action") == "regen") {
+                shareTok = Auth.randToken(12)
+                Db.conn.prepareStatement("UPDATE videos SET share_token=? WHERE id=?").use { ps ->
+                    ps.setString(1, shareTok); ps.setLong(2, id)
+                    ps.executeUpdate()
+                }
+            }
         }
-        HttpUtil.writeJson(ctx, 200, mapOf("ok" to true))
+        var visOut = "public"
+        var tokOut: String? = null
+        synchronized(Db.lock) {
+            Db.conn.prepareStatement("SELECT COALESCE(visibility,'public'),share_token FROM videos WHERE id=?").use { ps ->
+                ps.setLong(1, id)
+                ps.executeQuery().use { rs ->
+                    if (rs.next()) {
+                        visOut = rs.getString(1) ?: "public"
+                        tokOut = rs.getString(2)
+                    }
+                }
+            }
+        }
+        HttpUtil.writeJson(ctx, 200, mapOf("ok" to true, "visibility" to visOut, "share_token" to tokOut))
     }
 
     fun like(ctx: Context, id: Long) {
@@ -449,7 +509,7 @@ object VideoHandlers {
                 if (v != null && v > 0) seen.add(v)
             }
         }
-        val sb = StringBuilder("SELECT id FROM videos WHERE status='ready' AND COALESCE(kind,'video')='wheel'")
+        val sb = StringBuilder("SELECT id FROM videos WHERE status='ready' AND COALESCE(visibility,'public')!='private' AND COALESCE(kind,'video')='wheel'")
         if (seen.isNotEmpty()) {
             sb.append(" AND id NOT IN (")
             sb.append(seen.joinToString(",") { "?" })
@@ -512,6 +572,8 @@ object VideoHandlers {
         var desc = HttpUtil.truncateRunes(ctx.formParam("description") ?: "", 2000)
         var kind = HttpUtil.truncateRunes(ctx.formParam("kind") ?: "", 16)
         if (kind != "video" && kind != "wheel") kind = "video"
+        var vis = "public"
+        if (HttpUtil.truncateRunes(ctx.formParam("visibility") ?: "", 16).lowercase() == "private") vis = "private"
 
         val fileParts = try { ctx.uploadedFiles("file") } catch (_: Exception) {
             HttpUtil.writeErr(ctx, 400, "Bad multipart")
@@ -591,7 +653,7 @@ object VideoHandlers {
         var id = 0L
         synchronized(Db.lock) {
             try {
-                Db.conn.prepareStatement("INSERT INTO videos (user_id,title,description,filename,thumbnail,mimetype,size,kind,status) VALUES (?,?,?,?,NULL,?,?,?,'processing')").use { ps ->
+                Db.conn.prepareStatement("INSERT INTO videos (user_id,title,description,filename,thumbnail,mimetype,size,kind,status,visibility,share_token) VALUES (?,?,?,?,NULL,?,?,?,'processing',?,?)").use { ps ->
                     ps.setLong(1, uid)
                     ps.setString(2, title)
                     ps.setString(3, desc)
@@ -599,6 +661,8 @@ object VideoHandlers {
                     ps.setString(5, "video/mp4")
                     ps.setLong(6, savedSize)
                     ps.setString(7, kind)
+                    ps.setString(8, vis)
+                    if (vis == "private") ps.setString(9, Auth.randToken(12)) else ps.setNull(9, java.sql.Types.VARCHAR)
                     ps.executeUpdate()
                 }
                 id = Db.lastInsertId()
@@ -840,15 +904,15 @@ object VideoHandlers {
                 ps.setLong(1, uid)
                 ps.executeQuery().use { rs -> if (rs.next()) followers = rs.getLong(1) }
             }
-            Db.conn.prepareStatement("SELECT COUNT(*),COALESCE(SUM(views),0) FROM videos WHERE user_id=?").use { ps ->
+            Db.conn.prepareStatement("SELECT COUNT(*),COALESCE(SUM(views),0) FROM videos WHERE user_id=? AND status='ready' AND COALESCE(visibility,'public')!='private'").use { ps ->
                 ps.setLong(1, uid)
                 ps.executeQuery().use { rs -> if (rs.next()) { nvideos = rs.getLong(1); views = rs.getLong(2) } }
             }
-            Db.conn.prepareStatement("SELECT COUNT(*) FROM videos WHERE user_id=? AND COALESCE(kind,'video')='video'").use { ps ->
+            Db.conn.prepareStatement("SELECT COUNT(*) FROM videos WHERE user_id=? AND status='ready' AND COALESCE(visibility,'public')!='private' AND COALESCE(kind,'video')='video'").use { ps ->
                 ps.setLong(1, uid)
                 ps.executeQuery().use { rs -> if (rs.next()) nV = rs.getLong(1) }
             }
-            Db.conn.prepareStatement("SELECT COUNT(*) FROM videos WHERE user_id=? AND COALESCE(kind,'video')='wheel'").use { ps ->
+            Db.conn.prepareStatement("SELECT COUNT(*) FROM videos WHERE user_id=? AND status='ready' AND COALESCE(visibility,'public')!='private' AND COALESCE(kind,'video')='wheel'").use { ps ->
                 ps.setLong(1, uid)
                 ps.executeQuery().use { rs -> if (rs.next()) nW = rs.getLong(1) }
             }
@@ -858,7 +922,7 @@ object VideoHandlers {
                     ps.executeQuery().use { rs -> following = rs.next() }
                 }
             }
-            Db.conn.prepareStatement("SELECT id FROM videos WHERE user_id=? ORDER BY id DESC LIMIT 120").use { ps ->
+            Db.conn.prepareStatement("SELECT id FROM videos WHERE user_id=? AND status='ready' AND COALESCE(visibility,'public')!='private' ORDER BY id DESC LIMIT 120").use { ps ->
                 ps.setLong(1, uid)
                 ps.executeQuery().use { rs -> while (rs.next()) ids.add(rs.getLong(1)) }
             }

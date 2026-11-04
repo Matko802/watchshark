@@ -13,6 +13,8 @@ object Media {
         Thread(r).also { it.isDaemon = true }
     }
 
+    const val videoCapBytes: Long = 80L * 1024 * 1024
+
     fun dirSize(path: String): Long {
         var total = 0L
         try {
@@ -56,52 +58,60 @@ object Media {
         return ok && out.contains("video")
     }
 
-    fun probeHasAudio(path: String): Boolean {
-        val (out, ok) = runOut("ffprobe", "-v", "error", "-show_entries", "stream=codec_type", "-of", "csv=p=0", path)
-        return ok && out.contains("audio")
-    }
+    data class ProbeInfo(
+        val vc: String, val ac: String, val fm: String,
+        val dur: Double, val w: Long, val h: Long,
+        val hasAudio: Boolean, val ok: Boolean
+    )
 
-    fun probeDuration(path: String): Double {
-        val (out, ok) = runOut("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", path)
-        if (!ok) return 0.0
-        val d = out.trim().toDoubleOrNull() ?: 0.0
-        return if (d < 0) 0.0 else d
+    fun probeInfoOf(path: String): ProbeInfo {
+        val (out, good) = runOut(
+            "ffprobe", "-v", "error",
+            "-show_entries", "stream=codec_name,codec_type,width,height:format=duration,format_name",
+            "-of", "json", path
+        )
+        if (!good) return ProbeInfo("", "", "", 0.0, 0, 0, false, false)
+        return try {
+            val root = Auth.json.readTree(out)
+            var vc = ""
+            var ac = ""
+            var w = 0L
+            var h = 0L
+            var hasAudio = false
+            val streams = root.get("streams")
+            if (streams != null && streams.isArray) {
+                for (s in streams) {
+                    when (s.get("codec_type")?.asText() ?: "") {
+                        "video" -> if (vc.isEmpty()) {
+                            vc = s.get("codec_name")?.asText() ?: ""
+                            w = s.get("width")?.asLong() ?: 0L
+                            h = s.get("height")?.asLong() ?: 0L
+                        }
+                        "audio" -> if (ac.isEmpty()) {
+                            ac = s.get("codec_name")?.asText() ?: ""
+                            hasAudio = true
+                        }
+                    }
+                }
+            }
+            val fmt = root.get("format")
+            var fm = ""
+            var dur = 0.0
+            if (fmt != null) {
+                fm = (fmt.get("format_name")?.asText() ?: "").lowercase()
+                dur = fmt.get("duration")?.asText("")?.toDoubleOrNull() ?: 0.0
+                if (dur < 0) dur = 0.0
+            }
+            ProbeInfo(vc, ac, fm, dur, w, h, hasAudio, vc.isNotEmpty())
+        } catch (_: Exception) {
+            ProbeInfo("", "", "", 0.0, 0, 0, false, false)
+        }
     }
 
     fun probeFormat(path: String): String {
         val (out, ok) = runOut("ffprobe", "-v", "error", "-show_entries", "format=format_name", "-of", "csv=p=0", path)
         if (!ok) return ""
         return out.trim().lowercase()
-    }
-
-    data class AV(val vc: String, val ac: String, val fm: String, val ok: Boolean)
-
-    fun probeAV(path: String): AV {
-        val (out, good) = runOut(
-            "ffprobe", "-v", "error",
-            "-show_entries", "stream=codec_name,codec_type",
-            "-show_entries", "format=format_name",
-            "-of", "csv=p=0", path
-        )
-        if (!good) return AV("", "", "", false)
-        var vc = ""
-        var ac = ""
-        var fm = ""
-        for (raw in out.split("\n")) {
-            val ln = raw.trim('"', ' ', '\r')
-            when {
-                ln.contains(",video") -> {
-                    val i = ln.indexOf(',')
-                    if (i > 0) vc = ln.substring(0, i)
-                }
-                ln.contains(",audio") -> {
-                    val i = ln.indexOf(',')
-                    if (i > 0) ac = ln.substring(0, i)
-                }
-                ln.isNotEmpty() -> fm = ln
-            }
-        }
-        return AV(vc, ac, fm, vc.isNotEmpty())
     }
 
     fun probeDims(path: String): Triple<Long, Long, Boolean> {
@@ -127,6 +137,59 @@ object Media {
                 false
             } else p.exitValue() == 0
         } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun setProgress(id: Long, stage: String, pct: Double) {
+        try {
+            synchronized(Db.lock) {
+                Db.conn.prepareStatement("UPDATE videos SET stage=?, progress=? WHERE id=?").use { ps ->
+                    ps.setString(1, stage)
+                    ps.setDouble(2, pct.coerceIn(0.0, 100.0))
+                    ps.setLong(3, id)
+                    ps.executeUpdate()
+                }
+            }
+        } catch (_: Exception) {}
+    }
+
+    fun runFFmpegProgress(id: Long, args: List<String>, dur: Double, stage: String, from: Double, to: Double): Boolean {
+        return try {
+            val pb = ProcessBuilder(listOf("ffmpeg", "-nostats", "-loglevel", "error", "-progress", "-") + args)
+            pb.redirectError(ProcessBuilder.Redirect.DISCARD)
+            val p = pb.start()
+            val reader = Thread {
+                try {
+                    var lastWrite = 0L
+                    p.inputStream.bufferedReader().forEachLine { line ->
+                        val ln = line.trim()
+                        val secs = when {
+                            ln.startsWith("out_time_us=") -> (ln.substringAfter('=').trim().toDoubleOrNull() ?: 0.0) / 1e6
+                            ln.startsWith("out_time_ms=") -> (ln.substringAfter('=').trim().toDoubleOrNull() ?: 0.0) / 1e6
+                            else -> return@forEachLine
+                        }
+                        if (dur <= 0) return@forEachLine
+                        var frac = secs / dur
+                        if (frac < 0) frac = 0.0
+                        if (frac > 1) frac = 1.0
+                        val now = System.currentTimeMillis()
+                        if (now - lastWrite > 1000) {
+                            lastWrite = now
+                            setProgress(id, stage, from + (to - from) * frac)
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
+            reader.isDaemon = true
+            reader.start()
+            val done = p.waitFor(java.time.Duration.ofHours(4).toMillis(), TimeUnit.MILLISECONDS)
+            if (!done) p.destroyForcibly()
+            reader.join(2000)
+            setProgress(id, stage, to)
+            done && p.exitValue() == 0
+        } catch (_: Exception) {
+            setProgress(id, stage, to)
             false
         }
     }
@@ -169,7 +232,7 @@ object Media {
         return f.exists() && f.length() > 0 && f.length() <= 10 * 1024 * 1024
     }
 
-    fun transcode(inp: String, outp: String, dur: Double, target: Long, scale: String): Boolean {
+    fun transcode(inp: String, outp: String, dur: Double, target: Long, scale: String, id: Long = 0L): Boolean {
         transcodeSem.acquire()
         try {
             var vbr = 1500000L
@@ -179,9 +242,16 @@ object Media {
                 if (vbr > 8000000) vbr = 8000000
             }
             val vk = "${vbr / 1000}k"
-            return runFFmpeg(
+            if (id <= 0L) {
+                return runFFmpeg(
+                    listOf("-y", "-i", inp, "-map", "0:v:0", "-map", "0:a?", "-vf", scale, "-c:v", "libsvtav1", "-preset", "12", "-b:v", vk, "-c:a", "libopus", "-b:a", "96k", "-f", "webm", outp),
+                    java.time.Duration.ofHours(4)
+                )
+            }
+            return runFFmpegProgress(
+                id,
                 listOf("-y", "-i", inp, "-map", "0:v:0", "-map", "0:a?", "-vf", scale, "-c:v", "libsvtav1", "-preset", "12", "-b:v", vk, "-c:a", "libopus", "-b:a", "96k", "-f", "webm", outp),
-                java.time.Duration.ofHours(4)
+                dur, "compressing", 5.0, 85.0
             )
         } finally {
             transcodeSem.release()
@@ -287,7 +357,7 @@ object Media {
 
     fun markFailed(id: Long) {
         synchronized(Db.lock) {
-            Db.conn.prepareStatement("UPDATE videos SET status='failed' WHERE id=?").use { ps ->
+            Db.conn.prepareStatement("UPDATE videos SET status='failed', stage='', progress=0 WHERE id=?").use { ps ->
                 ps.setLong(1, id)
                 ps.executeUpdate()
             }
@@ -309,40 +379,67 @@ object Media {
 
     fun processUpload(id: Long, author: Long, tmp: String, stem: String, customThumb: String) {
         var out = ""
-        val th = java.io.File(Config.thumbsForVideoDir(java.io.File(tmp).parentFile ?: java.io.File(Config.videosDir)), "$stem.webp").absolutePath
+        val thumbDir = Config.thumbsForVideoDir(java.io.File(tmp).parentFile ?: java.io.File(Config.videosDir))
+        val th = java.io.File(thumbDir, "$stem.webp").absolutePath
         val thname = "$stem.webp"
         var fn = ""
         var mt = ""
         var size = 0L
         var good = false
+        var fastKeep = false
+        var vw = 0L
+        var vh = 0L
+        var thumbThread: Thread? = null
+        var thumbMade = false
         val tmpF = File(tmp)
         if (tmpF.exists() && tmpF.length() > 0) {
-            val av = probeAV(tmp)
-            if (av.ok) {
-                if (av.vc == "av1" && (av.ac == "" || av.ac == "opus") && (av.fm.contains("webm") || av.fm.contains("matroska")) && tmpF.length() <= 100L * 1024 * 1024) {
-                    fn = "$stem.webm"
-                    mt = "video/webm"
+            setProgress(id, "analyzing", 2.0)
+            val pi = probeInfoOf(tmp)
+            if (pi.ok) {
+                if (customThumb.isEmpty()) {
+                    thumbThread = Thread {
+                        thumbMade = makeThumb(tmp, th)
+                    }
+                    thumbThread.isDaemon = true
+                    thumbThread.start()
+                }
+                val webmish = pi.fm.contains("webm") || pi.fm.contains("matroska")
+                val mp4ish = pi.fm.contains("mp4") || pi.fm.contains("mov") || pi.fm.contains("m4a") || pi.fm.contains("3gp")
+                val fast = pi.dur > 0 && tmpF.length() <= videoCapBytes &&
+                    ((webmish && (pi.vc == "av1" || pi.vc == "vp9")) || (mp4ish && pi.vc == "h264"))
+                if (fast) {
+                    var ext = "mp4"
+                    var mime = "video/mp4"
+                    if (webmish) {
+                        ext = "webm"
+                        mime = "video/webm"
+                    }
+                    fn = "$stem.$ext"
+                    mt = mime
                     out = java.io.File(tmpF.parent, fn).absolutePath
                     if (tmpF.renameTo(File(out))) {
                         size = File(out).length()
+                        vw = pi.w
+                        vh = pi.h
                         good = true
+                        fastKeep = true
                     }
-                } else {
-                    val dur = probeDuration(tmp)
+                } else if (pi.dur > 0) {
+                    setProgress(id, "compressing", 5.0)
                     fn = "$stem.webm"
                     mt = "video/webm"
                     out = java.io.File(tmpF.parent, fn).absolutePath
                     var scale = "scale=1280:720:force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2"
-                    if (dur > 120.0) scale = "scale=854:480:force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2"
-                    transcode(tmp, out, dur, 95L * 1024 * 1024, scale)
+                    if (pi.dur > 120.0) scale = "scale=854:480:force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2"
+                    transcode(tmp, out, pi.dur, videoCapBytes - 2L * 1024 * 1024, scale, id)
                     var sz = fileSize(out)
-                    if (sz < 0 || sz > 100L * 1024 * 1024) {
+                    if (sz < 0 || sz > videoCapBytes) {
                         File(out).delete()
-                        transcode(tmp, out, dur, 80L * 1024 * 1024, "scale=854:480:force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2")
+                        transcode(tmp, out, pi.dur, 58L * 1024 * 1024, "scale=854:480:force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2", id)
+                        sz = fileSize(out)
                     }
                     tmpF.delete()
-                    sz = fileSize(out)
-                    if (sz > 0 && sz <= 100L * 1024 * 1024) {
+                    if (sz > 0 && sz <= videoCapBytes) {
                         size = sz
                         good = true
                     }
@@ -350,22 +447,31 @@ object Media {
             }
         }
         if (!good) {
+            thumbThread?.let { try { it.join(5000) } catch (_: Exception) {} }
+            if (thumbMade) try { File(th).delete() } catch (_: Exception) {}
             tmpF.delete()
             if (out.isNotEmpty()) File(out).delete()
             markFailed(id)
             return
         }
+        setProgress(id, "finalizing", 88.0)
         var thumb: String? = null
         if (customThumb.isNotEmpty()) {
-            val (name, ok) = convertThumb(customThumb, stem, Config.thumbsForVideoDir(java.io.File(tmp).parentFile ?: java.io.File(Config.videosDir)))
+            val (name, ok) = convertThumb(customThumb, stem, thumbDir)
             if (ok) thumb = name
             File(customThumb).delete()
+        } else {
+            thumbThread?.join()
+            if (thumbMade) thumb = thname
         }
         if (thumb == null && makeThumb(out, th)) thumb = thname
-        val (vw, vh, _) = probeDims(out)
+        if (vw == 0L || vh == 0L) {
+            val (w, h, ok) = probeDims(out)
+            if (ok) { vw = w; vh = h }
+        }
         val ori = if (vh > vw) "v" else "h"
         synchronized(Db.lock) {
-            Db.conn.prepareStatement("UPDATE videos SET filename=?, size=?, thumbnail=?, mimetype=?, orientation=?, status='ready' WHERE id=?").use { ps ->
+            Db.conn.prepareStatement("UPDATE videos SET filename=?, size=?, thumbnail=?, mimetype=?, orientation=?, status='ready', stage='', progress=100 WHERE id=?").use { ps ->
                 ps.setString(1, fn)
                 ps.setLong(2, size)
                 if (thumb == null) ps.setNull(3, java.sql.Types.VARCHAR) else ps.setString(3, thumb)
@@ -374,8 +480,13 @@ object Media {
                 ps.setLong(6, id)
                 ps.executeUpdate()
             }
+            var vis = "public"
+            Db.conn.prepareStatement("SELECT COALESCE(visibility,'public') FROM videos WHERE id=?").use { ps ->
+                ps.setLong(1, id)
+                ps.executeQuery().use { rs -> if (rs.next()) vis = rs.getString(1) ?: "public" }
+            }
+            if (vis != "private") notifyFollowers(id, author)
         }
-        notifyFollowers(id, author)
     }
 
     fun backupOnce() {

@@ -6,7 +6,7 @@
 <title>Watch — WatchShark</title>
 <link rel="icon" type="image/png" href="/favicon.png?v=1">
 <script>try{var t=localStorage.getItem('ws_theme');if(t!=='dark'&&t!=='light'){t=(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark'}document.documentElement.dataset.theme=t}catch(e){}</script>
-<link rel="stylesheet" href="/styles.css?v=43">
+<link rel="stylesheet" href="/styles.css?v=44">
 <link rel="preload" href="/vendor/fonts/f1.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/vendor/fonts/f0.woff2" as="font" type="font/woff2" crossorigin>
 <link href="/vendor/fonts.css" rel="stylesheet">
@@ -30,14 +30,16 @@
 <main class="watchmain">
   <div class="watchcol">
     <div id="wrap"><md-linear-progress indeterminate></md-linear-progress></div>
-    <h3 id="chead">Comments</h3>
-    <div class="row">
-      <md-outlined-text-field id="cbody" placeholder="Add a comment..." class="field" style="flex:1"></md-outlined-text-field>
-      <md-filled-button onclick="sendComment()">Post<md-icon slot="icon">send</md-icon></md-filled-button>
+    <div id="csec">
+      <h3 id="chead">Comments</h3>
+      <div class="row">
+        <md-outlined-text-field id="cbody" placeholder="Add a comment..." class="field" style="flex:1"></md-outlined-text-field>
+        <md-filled-button onclick="sendComment()">Post<md-icon slot="icon">send</md-icon></md-filled-button>
+      </div>
+      <div id="cpreview"></div>
+      <md-text-button id="ctoggle" style="display:none">Show less</md-text-button>
+      <md-list id="comments" style="display:none"></md-list>
     </div>
-    <div id="cpreview"></div>
-    <md-text-button id="ctoggle" style="display:none">Show less</md-text-button>
-    <md-list id="comments" style="display:none"></md-list>
   </div>
   <aside class="watchrail" id="rail" style="display:none">
     <div class="segtabs" id="upnextTabs" role="tablist" aria-label="More videos">
@@ -114,6 +116,25 @@
       <img id="edThumbPrev" style="display:none;width:128px;aspect-ratio:16/9;object-fit:cover;border-radius:8px" alt="">
     </div>
     <input type="file" id="edThumb" accept="image/*" hidden>
+    <div class="edrow">
+      <label class="edlabel" for="edVis">Visibility</label>
+      <select id="edVis" class="themesel" style="width:100%">
+        <option value="public">Public — everyone can see it</option>
+        <option value="private">Private — only people with the share link</option>
+      </select>
+    </div>
+    <div id="edShareRow" style="display:none">
+      <div class="nfield">
+        <label for="edShare">Share link (anyone with it can watch)</label>
+        <input placeholder=" " id="edShare" readonly>
+      </div>
+      <div class="row">
+        <md-filled-tonal-button id="copyShareBtn"><md-icon slot="icon">content_copy</md-icon>Copy link</md-filled-tonal-button>
+        <md-text-button id="regenShareBtn"><md-icon slot="icon">refresh</md-icon>New link</md-text-button>
+      </div>
+      <p class="muted" style="font-size:13px;margin:4px 0 0">The link contains a random key, so nobody can find this video by guessing IDs.</p>
+    </div>
+    <md-outlined-button id="edDelete" style="display:none;color:var(--md-sys-color-error)"><md-icon slot="icon">delete</md-icon>Delete video</md-outlined-button>
     <p id="edit-err" style="color:var(--md-sys-color-error)"></p>
   </div>
   <div slot="actions">
@@ -121,7 +142,7 @@
     <md-filled-button onclick="saveEdit()">Save</md-filled-button>
   </div>
 </md-dialog>
-<script src="/app.js?v=29"></script>
+<script src="/app.js?v=30"></script>
 <script>
 {
 window.__boot = function() {
@@ -136,18 +157,31 @@ function destroyPlayer() {
 async function init() {
   destroyPlayer();
   await refreshAuth();
-  const r = await fetch('/api/videos/' + id);
-  if (!r.ok) { document.getElementById('wrap').innerHTML = '<p>Video not found. <a href="/">Back</a></p>'; return; }
+  const shareQ = location.search.includes('t=') ? location.search : '';
+  const r = await fetch('/api/videos/' + id + shareQ);
+  if (!r.ok) { document.getElementById('wrap').innerHTML = '<p>Video not found. <a href="/">Back</a></p>'; document.getElementById('csec').style.display = 'none'; return; }
   const j = await r.json();
   VID = j.video;
   document.title = VID.title + ' — WatchShark';
+  const csec = document.getElementById('csec');
   if (VID.status !== 'ready') {
+    csec.style.display = 'none';
+    const rail = document.getElementById('rail');
+    if (rail) rail.style.display = 'none';
     document.getElementById('wrap').innerHTML = VID.status === 'failed'
       ? `<h2>${esc(VID.title)}</h2><p class="muted">Processing failed. This file could not be converted to a playable video.</p><div class="row"><md-outlined-button onclick="del()"><md-icon slot="icon">delete</md-icon>Delete</md-outlined-button></div>`
-      : `<h2>${esc(VID.title)}</h2><md-linear-progress indeterminate></md-linear-progress><p class="muted">Processing video… big files take a while. This page refreshes automatically.</p>`;
-    if (VID.status !== 'failed') Pjax.timeout(init, 10000);
+      : `<h2>${esc(VID.title)}</h2>
+         <div class="proccard">
+           <md-circular-progress indeterminate></md-circular-progress>
+           <div class="procstage" id="procStage">${procLabel(VID)}</div>
+           <md-linear-progress id="procBar" ${procBarAttrs(VID)}></md-linear-progress>
+           <p class="muted" style="margin:0">Processing video… this page updates automatically. It appears publicly once it is ready.</p>
+         </div>`;
+    if (VID.status !== 'failed') Pjax.timeout(init, 5000);
     return;
   }
+  csec.style.display = '';
+  const priv = VID.visibility === 'private';
   document.getElementById('wrap').innerHTML = `
     <div class="player-wrap loading" id="pw" tabindex="0">
       <video id="vid" class="player-video" playsinline preload="auto"></video>
@@ -162,7 +196,10 @@ async function init() {
         <div class="ctrl-row">
           <md-icon-button id="playBtn" aria-label="Play"><md-icon id="playIcon">play_arrow</md-icon></md-icon-button>
           <md-icon-button id="muteBtn" aria-label="Mute"><md-icon id="muteIcon">volume_up</md-icon></md-icon-button>
-          <md-slider id="vol" class="vol" min="0" max="100" step="1" value="100" aria-label="Volume"></md-slider>
+          <span class="volgroup" id="volGroup">
+            <md-slider id="vol" class="vol" min="0" max="100" step="1" value="100" aria-label="Volume"></md-slider>
+            <span class="volpct" id="volPct">100%</span>
+          </span>
           <span class="time" id="time">0:00 / 0:00</span>
           <span class="spacer"></span>
           <md-text-button id="speedBtn">1x</md-text-button>
@@ -172,7 +209,7 @@ async function init() {
       </div>
       <md-menu id="qualMenu" anchor="qualBtn" positioning="popover"></md-menu>
     </div>
-    <h2>${esc(VID.title)}</h2>
+    <h2>${esc(VID.title)}${priv ? ' <span class="privchip"><md-icon>lock</md-icon>Private</span>' : ''}</h2>
     <div class="row">
       <span id="uav"></span>
       <md-assist-chip href="/channel?user=${esc(VID.username)}" label="${esc(VID.username)}"></md-assist-chip>
@@ -182,7 +219,11 @@ async function init() {
       <md-outlined-button id="delBtn" style="display:none"><md-icon slot="icon">delete</md-icon><span id="delLbl">Delete</span></md-outlined-button>
       <md-outlined-button id="editBtn" style="display:none"><md-icon slot="icon">edit</md-icon><span>Edit</span></md-outlined-button>
     </div>
-    <p class="muted" style="white-space:pre-wrap">${esc(VID.description)}</p>`;
+    <p class="muted" style="white-space:pre-wrap">${esc(VID.description)}</p>
+    ${priv && VID.share_token ? `<p class="muted sharehint">Only people with this link can watch: <input readonly class="shareinp" id="shareLink" value="${esc(shareUrl())}"><md-text-button id="copyWatchBtn">Copy</md-text-button></p>` : ''}`;
+  if (priv && VID.share_token) {
+    document.getElementById('copyWatchBtn').addEventListener('click', copyWatchLink);
+  }
   const list = document.getElementById('comments');
   document.getElementById('uav').innerHTML = avatarHtml(VID.avatar, 'pfp-sm');
   cItems = j.comments || [];
@@ -321,12 +362,43 @@ function renderDel(u) {
     t.style.display = 'none';
   }
   t.onclick = openEditDialog;
+  const edDel = document.getElementById('edDelete');
+  if (edDel) edDel.style.display = (u.id === VID.user_id) ? '' : 'none';
 }
+function shareUrl() {
+  const tok = (VID && VID.share_token) || ED.tok || '';
+  return location.origin + '/watch?id=' + id + (tok ? '&t=' + tok : '');
+}
+function copyWatchLink() {
+  const inp = document.getElementById('shareLink');
+  if (!inp) return;
+  const btn = document.getElementById('copyWatchBtn');
+  const done = () => { if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { if (btn) btn.textContent = 'Copy'; }, 1600); } };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(inp.value).then(done).catch(() => { inp.select(); document.execCommand('copy'); done(); });
+  else { inp.select(); document.execCommand('copy'); done(); }
+}
+function procLabel(v) {
+  const st = v.stage || 'analyzing';
+  if (st === 'compressing') return 'Compressing ' + Math.round(v.progress || 0) + '% — keeping it under 80 MB';
+  if (st === 'finalizing') return 'Finishing up…';
+  return 'Checking video…';
+}
+function procBarAttrs(v) {
+  const st = v.stage || 'analyzing';
+  const p = (v.progress || 0) / 100;
+  if ((st === 'compressing' || st === 'finalizing') && p > 0) return `value="${Math.min(0.99, p)}"`;
+  return 'indeterminate';
+}
+const ED = { tok: '' };
 function openEditDialog() {
   document.getElementById('edTitle').value = VID.title;
   document.getElementById('edDesc').value = VID.description || '';
   document.getElementById('edit-err').textContent = '';
   document.getElementById('edThumb').value = '';
+  const vis = document.getElementById('edVis');
+  vis.value = VID.visibility === 'private' ? 'private' : 'public';
+  ED.tok = VID.share_token || '';
+  syncEditVis();
   const prev = document.getElementById('edThumbPrev');
   if (VID.thumbnail) {
     prev.src = VID.thumbnail;
@@ -337,6 +409,35 @@ function openEditDialog() {
   }
   document.getElementById('editDialog').show();
 }
+function syncEditVis() {
+  const v = document.getElementById('edVis').value;
+  document.getElementById('edShareRow').style.display = v === 'private' ? '' : 'none';
+  if (v === 'private') document.getElementById('edShare').value = shareUrl();
+}
+function copyShare() {
+  const inp = document.getElementById('edShare');
+  if (!inp) return;
+  const btn = document.getElementById('copyShareBtn');
+  const done = () => { if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { if (btn) btn.textContent = 'Copy link'; }, 1600); } };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(inp.value).then(done).catch(() => { inp.select(); document.execCommand('copy'); done(); });
+  else { inp.select(); document.execCommand('copy'); done(); }
+}
+async function regenShare() {
+  const fd = new FormData();
+  fd.append('title', VID.title);
+  fd.append('description', VID.description || '');
+  fd.append('share_action', 'regen');
+  const r = await fetch('/api/videos/' + id + '/edit', { method: 'POST', credentials: 'include', body: fd });
+  const j = await r.json();
+  if (!r.ok) { document.getElementById('edit-err').textContent = j.error || 'Failed'; return; }
+  ED.tok = j.share_token || '';
+  VID.share_token = ED.tok;
+  document.getElementById('edShare').value = shareUrl();
+}
+async function delFromEdit() {
+  closeEditDialog();
+  await del();
+}
 function closeEditDialog() { document.getElementById('editDialog').close(); }
 async function saveEdit() {
   const title = document.getElementById('edTitle').value.trim();
@@ -346,6 +447,7 @@ async function saveEdit() {
   const fd = new FormData();
   fd.append('title', title);
   fd.append('description', document.getElementById('edDesc').value);
+  fd.append('visibility', document.getElementById('edVis').value);
   const tf = document.getElementById('edThumb').files[0];
   if (tf) fd.append('thumb', tf);
   let j = {};
@@ -356,9 +458,13 @@ async function saveEdit() {
   } catch { err.textContent = 'Failed'; return; }
   VID.title = title;
   VID.description = document.getElementById('edDesc').value;
+  VID.visibility = j.visibility || document.getElementById('edVis').value;
+  if (j.share_token) { VID.share_token = j.share_token; ED.tok = j.share_token; }
   document.title = title + ' — WatchShark';
-  document.querySelector('#wrap h2').textContent = title;
-  document.querySelector('#wrap p.muted').textContent = VID.description;
+  const h2 = document.querySelector('#wrap h2');
+  if (h2) h2.innerHTML = esc(VID.title) + (VID.visibility === 'private' ? ' <span class="privchip"><md-icon>lock</md-icon>Private</span>' : '');
+  const descEl = document.querySelector('#wrap p.muted');
+  if (descEl) descEl.textContent = VID.description;
   closeEditDialog();
 }
 function openDelDialog() {
@@ -452,6 +558,15 @@ function initPlayer(src) {
     if (!vid.muted) { P.forceMuted = false; P.unmute.style.display = 'none'; }
     syncMuteIcon();
   });
+  const volGroup = document.getElementById('volGroup');
+  let volTimer = null;
+  const volOpen = () => { clearTimeout(volTimer); volGroup.classList.add('open'); };
+  const volClose = () => { if (!isTouchDevice()) volGroup.classList.remove('open'); };
+  for (const el of [document.getElementById('muteBtn'), volGroup]) {
+    el.addEventListener('mouseenter', volOpen);
+    el.addEventListener('mouseleave', () => { clearTimeout(volTimer); volTimer = setTimeout(volClose, 260); });
+  }
+  if (isTouchDevice()) volGroup.classList.add('open');
   document.getElementById('playBtn').addEventListener('click', (e) => { e.stopPropagation(); togglePlay(); });
   document.getElementById('muteBtn').addEventListener('click', (e) => { e.stopPropagation(); toggleMute(); });
   document.getElementById('fullBtn').addEventListener('click', (e) => { e.stopPropagation(); toggleFull(); });
@@ -562,7 +677,12 @@ function toggleMute() {
   poke();
 }
 function syncMuteIcon() {
+  if (!P) return;
   P.muteIcon.textContent = (P.vid.muted || P.vid.volume === 0) ? 'volume_off' : 'volume_up';
+  const pctEl = document.getElementById('volPct');
+  if (pctEl) pctEl.textContent = (P.vid.muted || P.vid.volume === 0) ? '0%' : Math.round(P.vid.volume * 100) + '%';
+  const vol = document.getElementById('vol');
+  if (vol) vol.value = (P.vid.muted || P.vid.volume === 0) ? 0 : Math.round(P.vid.volume * 100);
 }
 function cycleSpeed() {
   P.speedIdx = (P.speedIdx + 1) % SPEEDS.length;
@@ -742,6 +862,10 @@ async function sendComment() {
 document.getElementById('cbody').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendComment(); });
 document.getElementById('cpreview').onclick = expandComments;
 document.getElementById('ctoggle').onclick = collapseComments;
+document.getElementById('edVis').addEventListener('change', syncEditVis);
+document.getElementById('copyShareBtn').addEventListener('click', copyShare);
+document.getElementById('regenShareBtn').addEventListener('click', regenShare);
+document.getElementById('edDelete').addEventListener('click', delFromEdit);
 segTabs(document.getElementById('upnextTabs'), (btn) => {
   upnextTab = btn.dataset.tab || 'new';
   loadUpnext();
@@ -750,7 +874,7 @@ init();
 window.__destroy = function() {
   destroyPlayer();
 };
-Object.assign(window, { like, del, toggleFollow, sendComment, startReply, openDelDialog, closeDelDialog, adminDel, applyQualityOpt, openEditDialog, closeEditDialog, saveEdit });
+Object.assign(window, { like, del, toggleFollow, sendComment, startReply, openDelDialog, closeDelDialog, adminDel, applyQualityOpt, openEditDialog, closeEditDialog, saveEdit, regenShare, copyShare, delFromEdit });
 };
 window.__boot();
 hideBoot();
