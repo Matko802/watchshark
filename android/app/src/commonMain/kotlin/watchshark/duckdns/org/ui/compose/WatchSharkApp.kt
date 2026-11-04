@@ -170,6 +170,7 @@ fun WatchSharkApp(
             }
             try {
                 val u = ApiClient.api.me().user
+                if (u == null) ApiClient.clearSession()
                 meName = u?.username
                 meAvatar = ApiClient.fullUrl(u?.avatar)
             } catch (_: Exception) {
@@ -752,22 +753,31 @@ fun WatchSharkApp(
                                 )
                             } else if (!ApiClient.sessionToken().isNullOrEmpty()) {
                                 var failed by remember { mutableStateOf(false) }
+                                var stale by remember { mutableStateOf(false) }
                                 var attempt by remember { mutableIntStateOf(0) }
                                 LaunchedEffect(attempt) {
+                                    failed = false
+                                    stale = false
                                     try {
-                                        meName = ApiClient.api.me().user?.username
-                                        if (meName == null) failed = true
+                                        val u = ApiClient.api.me().user
+                                        meName = u?.username
+                                        if (u == null) {
+                                            ApiClient.clearSession()
+                                            stale = true
+                                        }
                                     } catch (_: Exception) {
                                         failed = true
                                     }
                                 }
-                                if (!failed) {
+                                if (!failed && !stale) {
                                     Box(
                                         modifier = Modifier.fillMaxSize(),
                                         contentAlignment = Alignment.Center,
                                     ) {
                                         CircularProgressIndicator()
                                     }
+                                } else if (stale) {
+                                    AuthScreen(onAuthComplete = { handleAuthComplete(it) })
                                 } else {
                                     Column(
                                         modifier = Modifier
