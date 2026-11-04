@@ -1,7 +1,10 @@
 package watchshark.duckdns.org.ui.compose
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -27,10 +30,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -59,6 +62,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import coil3.compose.AsyncImage
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import watchshark.duckdns.org.*
 import watchshark.duckdns.org.Res
@@ -73,6 +78,7 @@ import watchshark.duckdns.org.data.Video
 import watchshark.duckdns.org.data.Haptics
 import watchshark.duckdns.org.ui.Uikit
 import watchshark.duckdns.org.ui.compose.common.ReplyTargetChip
+import watchshark.duckdns.org.ui.compose.common.Shimmer
 import watchshark.duckdns.org.ui.compose.common.threadedComments
 import watchshark.duckdns.org.ui.compose.player.WatchPlayer
 import watchshark.duckdns.org.ui.compose.player.VideoPlaying
@@ -80,6 +86,7 @@ import watchshark.duckdns.org.ui.fmtAge
 import watchshark.duckdns.org.ui.fmtNum
 import watchshark.duckdns.org.ui.httpErrorMessage
 import watchshark.duckdns.org.ui.toast
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -183,7 +190,7 @@ fun WatchScreen(
 
     fun qualityOptions(v: Video): List<String> = QualityKit.options(v)
 
-    val playbackUrl = video?.let { QualityKit.url(it, quality) }
+    val playbackUrl = if (video?.status == "ready") video?.let { QualityKit.url(it, quality) } else null
     var preparedUrl by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(playbackUrl) {
         val url = playbackUrl ?: return@LaunchedEffect
@@ -196,12 +203,34 @@ fun WatchScreen(
     }
 
     if (loading && video == null) {
-        Column(
-            modifier = modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            CircularProgressIndicator()
+        Column(modifier = modifier.fillMaxSize()) {
+            Shimmer(
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f),
+                RoundedCornerShape(0.dp),
+            )
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Shimmer(Modifier.fillMaxWidth(0.72f).height(22.dp))
+                Shimmer(Modifier.fillMaxWidth(0.42f).height(14.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Shimmer(Modifier.size(36.dp), CircleShape)
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Shimmer(Modifier.fillMaxWidth(0.35f).height(14.dp))
+                        Shimmer(Modifier.fillMaxWidth(0.25f).height(12.dp))
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Shimmer(Modifier.width(120.dp).height(36.dp), RoundedCornerShape(50))
+                    Shimmer(Modifier.width(90.dp).height(36.dp), RoundedCornerShape(50))
+                }
+            }
         }
         return
     }
@@ -214,6 +243,76 @@ fun WatchScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(error ?: "Video not found", style = MaterialTheme.typography.bodyLarge)
+        }
+        return
+    }
+
+    if (v.status == "processing") {
+        LaunchedEffect(v.id) {
+            while (isActive) {
+                delay(4000)
+                try {
+                    val res = ApiClient.api.videoDetail(videoId)
+                    val nv = res.video
+                    if (nv != null) {
+                        video = nv
+                        if (nv.status != "processing") break
+                    }
+                } catch (_: Exception) {
+                }
+            }
+        }
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(v.title, style = MaterialTheme.typography.titleLarge)
+            Text(
+                "Processing video…",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            val pct = (v.progress / 100.0).toFloat().coerceIn(0f, 1f)
+            LinearProgressIndicator(
+                progress = { if (pct > 0.02f) pct else 0.02f },
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+            )
+            Text(
+                when (v.stage) {
+                    "compressing" -> "Compressing ${v.progress.roundToInt()}% — keeping it under 80 MB"
+                    "finalizing" -> "Finishing up…"
+                    else -> "Checking video…"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+            Text(
+                "This page updates automatically. Only you can see it here until it is ready.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        return
+    }
+
+    if (v.status == "failed") {
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(v.title, style = MaterialTheme.typography.titleLarge)
+            Text(
+                "Processing failed. This file could not be converted.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
         return
     }
@@ -412,7 +511,20 @@ fun WatchScreen(
                                     )
                                     .padding(horizontal = 12.dp, vertical = 8.dp),
                             ) {
-                                Icon(
+                                val likeBounce = remember(v.id) { Animatable(1f) }
+                LaunchedEffect(v.liked) {
+                    if (v.liked) {
+                        likeBounce.snapTo(0.5f)
+                        likeBounce.animateTo(
+                            1f,
+                            spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMedium,
+                            ),
+                        )
+                    }
+                }
+                Icon(
                                     painterResource(
                                         if (v.liked) Res.drawable.ic_favorite_fill
                                         else Res.drawable.ic_favorite_outline,
@@ -420,7 +532,12 @@ fun WatchScreen(
                                     contentDescription = if (v.liked) "Unlike" else "Like",
                                     tint = if (v.liked) Color(0xFFFF5C5C)
                                     else MaterialTheme.colorScheme.onSecondaryContainer,
-                                    modifier = Modifier.size(20.dp),
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .graphicsLayer {
+                                            scaleX = likeBounce.value
+                                            scaleY = likeBounce.value
+                                        },
                                 )
                                 Text(
                                     "${fmtNum(v.likes)}",

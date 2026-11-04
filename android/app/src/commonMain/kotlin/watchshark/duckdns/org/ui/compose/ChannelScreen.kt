@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +44,7 @@ import watchshark.duckdns.org.*
 import watchshark.duckdns.org.Res
 import watchshark.duckdns.org.data.Haptics
 import watchshark.duckdns.org.data.Video
+import watchshark.duckdns.org.ui.compose.common.VideoCardSkeleton
 import watchshark.duckdns.org.ui.fmtNum
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -86,8 +86,12 @@ fun ChannelScreen(
     }
 
     if (loading && user == null) {
-        Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = 320.dp),
+            modifier = modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 4.dp, end = 4.dp, bottom = 104.dp),
+        ) {
+            items(6) { VideoCardSkeleton() }
         }
         return
     }

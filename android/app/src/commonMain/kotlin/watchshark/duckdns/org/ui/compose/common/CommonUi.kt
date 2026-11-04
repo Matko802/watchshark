@@ -1,11 +1,17 @@
 package watchshark.duckdns.org.ui.compose.common
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -93,6 +99,57 @@ fun ErrorRetry(
             )
         }
         Button(onClick = onRetry) { Text("Retry") }
+    }
+}
+
+@Composable
+fun Shimmer(modifier: Modifier, shape: RoundedCornerShape = RoundedCornerShape(6.dp)) {
+    val transition = rememberInfiniteTransition(label = "shimmer")
+    val alpha by transition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 0.85f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "shimmerAlpha",
+    )
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = alpha))
+    )
+}
+
+@Composable
+fun VideoCardSkeleton() {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Shimmer(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f),
+            RoundedCornerShape(12.dp),
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Shimmer(
+                Modifier
+                    .padding(top = 2.dp)
+                    .size(36.dp),
+                CircleShape,
+            )
+            Column(
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.weight(1f).padding(top = 2.dp),
+            ) {
+                Shimmer(Modifier.fillMaxWidth(0.9f).height(16.dp))
+                Shimmer(Modifier.fillMaxWidth(0.6f).height(12.dp))
+            }
+        }
     }
 }
 

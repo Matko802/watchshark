@@ -20,7 +20,10 @@ data class Video(
     val status: String = "",
     val description: String? = null,
     val renditions: Map<String, String>? = null,
-    val orientation: String? = null
+    val orientation: String? = null,
+    val stage: String = "",
+    val progress: Double = 0.0,
+    val visibility: String = "public"
 )
 @Serializable
 data class MeUser(

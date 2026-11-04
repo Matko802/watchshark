@@ -1,18 +1,11 @@
 package watchshark.duckdns.org.ui.compose
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -21,7 +14,6 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import watchshark.duckdns.org.ui.compose.common.VideoCardSkeleton
 import watchshark.duckdns.org.*
 import watchshark.duckdns.org.Res
 import watchshark.duckdns.org.data.Video
@@ -120,8 +113,7 @@ fun HomeScreen(
                 }
                 if (state.videos.isEmpty() && state.loading) {
                     items(6) { VideoCardSkeleton() }
-                } else if (state.videos.isEmpty() && state.error != null) {
-                    item(span = { GridItemSpan(maxLineSpan) }) {
+                } else if (state.videos.isEmpty() && state.error != null) {                    item(span = { GridItemSpan(maxLineSpan) }) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -175,61 +167,6 @@ fun HomeScreen(
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun VideoCardSkeleton() {
-    val transition = rememberInfiniteTransition(label = "shimmer")
-    val alpha by transition.animateFloat(
-        initialValue = 0.35f,
-        targetValue = 0.85f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(900),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "shimmerAlpha",
-    )
-    val shimmer = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = alpha)
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(12.dp))
-                .background(shimmer),
-        )
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .padding(top = 2.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(shimmer)
-                    .padding(18.dp),
-            )
-            Column(
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.weight(1f).padding(top = 2.dp),
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxWidth(0.9f)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(shimmer)
-                        .padding(8.dp),
-                )
-                Box(
-                    modifier = Modifier.fillMaxWidth(0.6f)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(shimmer)
-                        .padding(6.dp),
-                )
             }
         }
     }

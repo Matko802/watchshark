@@ -1,5 +1,6 @@
 package watchshark.duckdns.org.ui.compose.theme
 
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -33,15 +34,17 @@ object AppMotion {
     fun fadeFast() = fadeIn(tween(150, easing = FastOutSlowInEasing))
     fun fadeOutFast() = fadeOut(tween(150, easing = FastOutSlowInEasing))
 
+    private val emphasizeDecelerate = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
+    private val emphasizeAccelerate = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
 
-    val screenEnter = fadeIn(tween(220, easing = FastOutSlowInEasing)) +
-        slideInHorizontally(tween(220, easing = FastOutSlowInEasing)) { it / 8 }
-    val screenExit = fadeOut(tween(180, easing = FastOutSlowInEasing)) +
-        slideOutHorizontally(tween(180, easing = FastOutSlowInEasing)) { -it / 12 }
-    val screenPopEnter = fadeIn(tween(220, easing = FastOutSlowInEasing)) +
-        slideInHorizontally(tween(220, easing = FastOutSlowInEasing)) { -it / 8 }
-    val screenPopExit = fadeOut(tween(180, easing = FastOutSlowInEasing)) +
-        slideOutHorizontally(tween(180, easing = FastOutSlowInEasing)) { it / 12 }
+    val screenEnter = fadeIn(tween(260, easing = emphasizeDecelerate)) +
+        slideInHorizontally(tween(300, easing = emphasizeDecelerate)) { it / 6 }
+    val screenExit = fadeOut(tween(160, easing = emphasizeAccelerate)) +
+        slideOutHorizontally(tween(200, easing = emphasizeAccelerate)) { -it / 10 }
+    val screenPopEnter = fadeIn(tween(260, easing = emphasizeDecelerate)) +
+        slideInHorizontally(tween(300, easing = emphasizeDecelerate)) { -it / 6 }
+    val screenPopExit = fadeOut(tween(160, easing = emphasizeAccelerate)) +
+        slideOutHorizontally(tween(200, easing = emphasizeAccelerate)) { it / 10 }
 
     val listEnter = fadeIn(tween(250, easing = FastOutSlowInEasing)) +
         slideInVertically(tween(250, easing = FastOutSlowInEasing)) { it / 10 }
