@@ -19,7 +19,7 @@ services:
       MAX_UPLOAD_MB: "2048"
       QUOTA_GB: "50"
       ADMIN_USER: "matkohrad@proton.me"
-      APP_URL: "https://watchshark.sharkhome.lol"
+      APP_URL: "https://watchshark.duckdns.org"
       SMTP_HOST: "smtp.gmail.com"
       SMTP_PORT: "587"
       SMTP_USER: "matkohrad@gmail.com"

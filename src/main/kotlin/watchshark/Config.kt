@@ -14,7 +14,7 @@ object Config {
     var maxBytes: Long = 4096L * 1024 * 1024
     var quotaBytes: Long = 50L * 1024 * 1024 * 1024
     var adminUser: String = ""
-    var appUrl: String = "https://watchshark.sharkhome.lol"
+    var appUrl: String = "https://watchshark.duckdns.org"
     var smtpHost: String = ""
     var smtpPort: String = "587"
     var smtpUser: String = ""
@@ -47,7 +47,7 @@ object Config {
         maxBytes = envULL("MAX_UPLOAD_MB", 4096) * 1024 * 1024
         quotaBytes = envULL("QUOTA_GB", 50) * 1024 * 1024 * 1024
         adminUser = envOr("ADMIN_USER", "").lowercase()
-        appUrl = envOr("APP_URL", "https://watchshark.sharkhome.lol")
+        appUrl = envOr("APP_URL", "https://watchshark.duckdns.org")
         smtpHost = envOr("SMTP_HOST", "")
         smtpPort = envOr("SMTP_PORT", "587")
         smtpUser = envOr("SMTP_USER", "")

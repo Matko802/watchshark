@@ -19,9 +19,9 @@ actual object Uikit {
 
     actual val baseUrl: String
         get() = try {
-            window.location.origin.ifEmpty { "https://watchshark.sharkhome.lol" }
+            window.location.origin.ifEmpty { "https://watchshark.duckdns.org" }
         } catch (_: Exception) {
-            "https://watchshark.sharkhome.lol"
+            "https://watchshark.duckdns.org"
         }
 
     actual fun nowSec(): Long = Clock.System.now().toEpochMilliseconds() / 1000

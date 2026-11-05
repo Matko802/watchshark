@@ -25,7 +25,7 @@ actual object Uikit {
         get() = try {
             watchshark.duckdns.org.BuildConfig.APP_URL
         } catch (_: Exception) {
-            "https://watchshark.sharkhome.lol"
+            "https://watchshark.duckdns.org"
         }
 
     actual fun nowSec(): Long = System.currentTimeMillis() / 1000
