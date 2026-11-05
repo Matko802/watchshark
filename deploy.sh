@@ -17,4 +17,4 @@ echo "1. In duckdns.org dashboard create subdomain 'watchshark' (same IP as matk
 echo "   If your duckdns container uses SUBDOMAINS env, add watchshark and restart it."
 echo "2. Append caddy-snippet.txt to ~/containers/caddy/Caddyfile"
 echo "3. podman exec caddy caddy reload --config /etc/caddy/Caddyfile"
-echo "4. Open https://watchshark.duckdns.org"
+echo "4. Open https://watchshark.sharkhome.lol"
