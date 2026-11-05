@@ -145,7 +145,8 @@ fun UploadScreen(
         }
     }
 
-    val willCompress = file != null && file.size > 80L * 1024 * 1024
+    val cur = file
+    val willCompress = cur != null && cur.size > 80L * 1024 * 1024
     val animProgress by animateFloatAsState(
         targetValue = if (progress < 0f) 0f else progress,
         animationSpec = tween(250),
@@ -200,7 +201,8 @@ fun UploadScreen(
             Text(file?.name ?: "Choose video file")
         }
         if (file != null) {
-            val mb = file.size / (1024.0 * 1024.0)
+            val picked = file
+            val mb = picked.size / (1024.0 * 1024.0)
             val sizeText = if (mb >= 1024.0) "%.2f GB".format(mb / 1024.0) else "%.1f MB".format(mb)
             Surface(
                 shape = RoundedCornerShape(50),
